@@ -132,6 +132,35 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                 <div className="absolute left-2 top-4 text-xs text-gray-600 font-medium">{Math.round(maxDisplayTemp)}°C</div>
                 <div className="absolute left-2 bottom-4 text-xs text-gray-600 font-medium">{Math.round(minDisplayTemp)}°C</div>
               </div>
+
+              <div className="flex justify-between mt-3 px-4">
+                {displayData.map((hour, index) => {
+                  const time = new Date(hour.time);
+                  const showLabel = index % 3 === 0;
+
+                  return (
+                    <div
+                      key={hour.time}
+                      className="flex-1 text-center"
+                      style={{ maxWidth: `${barWidth}px` }}
+                    >
+                      {showLabel && (
+                        <div className="flex flex-col items-center">
+                          <div className="text-xs text-gray-600 font-medium">
+                            {time.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              hour12: true,
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-800 font-semibold">
+                            {time.toLocaleDateString('en-US', { weekday: 'short' })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -180,6 +209,41 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                 <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-300"></div>
                 <div className="absolute left-2 top-4 text-xs text-gray-600 font-medium">{Math.round(maxWind)} km/h</div>
                 <div className="absolute left-2 bottom-4 text-xs text-gray-600 font-medium">0 km/h</div>
+              </div>
+
+              <div className="flex justify-between mt-3 px-4">
+                {displayData.map((hour, index) => {
+                  const time = new Date(hour.time);
+                  const showLabel = index % 3 === 0;
+
+                  return (
+                    <div
+                      key={hour.time}
+                      className="flex-1 text-center"
+                      style={{ maxWidth: `${barWidth}px` }}
+                    >
+                      {showLabel && (
+                        <div className="flex flex-col items-center">
+                          <div className="text-xs text-gray-600 font-medium">
+                            {time.toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              hour12: true,
+                            })}
+                          </div>
+                          <div className="text-xs text-gray-800 font-semibold">
+                            {time.toLocaleDateString('en-US', { weekday: 'short' })}
+                          </div>
+                          {hour.windDirection && (
+                            <Navigation
+                              className="w-4 h-4 text-cyan-600 mt-1"
+                              style={{ transform: `rotate(${getWindDirectionRotation(hour.windDirection)}deg)` }}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -231,7 +295,7 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                 <div className="absolute left-2 bottom-4 text-xs text-gray-600 font-medium">0%</div>
               </div>
 
-              <div className="flex justify-between mt-3">
+              <div className="flex justify-between mt-3 px-4">
                 {displayData.map((hour, index) => {
                   const time = new Date(hour.time);
                   const showLabel = index % 3 === 0;
