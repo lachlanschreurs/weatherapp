@@ -180,6 +180,7 @@ function App() {
   const textColor = getTextColor(weatherCode);
 
   const windSpeedKmh = current.wind.speed * 3.6;
+  const windGustKmh = current.wind.gust ? current.wind.gust * 3.6 : null;
   const windDegrees = current.wind.deg;
   const getWindDirection = (deg: number) => {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -310,6 +311,7 @@ function App() {
               </div>
               <div className="text-sm opacity-80 mt-1">
                 {windDirection}
+                {windGustKmh && ` • Gusts: ${Math.round(windGustKmh)} km/h`}
               </div>
             </div>
 
