@@ -15,18 +15,31 @@ interface HourlyForecastProps {
 }
 
 export function HourlyForecast({ forecastList }: HourlyForecastProps) {
-  const next24Hours = forecastList.slice(0, 8).map((item: any) => {
-    const date = new Date(item.dt * 1000);
-    return {
-      time: date.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
-      fullTime: date.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true }),
-      temp: Math.round(item.main.temp),
-      humidity: item.main.humidity,
-      windSpeed: Math.round(item.wind.speed * 3.6),
-      rain: item.rain?.['3h'] || 0,
-      weather: item.weather[0]?.main || 'clear',
-    };
-  });
+  const hourlyData: HourlyData[] = [];
+
+  for (let i = 0; i < 8 && i < forecastList.length; i++) {
+    const item = forecastList[i];
+    const baseDate = new Date(item.dt * 1000);
+    const temp = item.main.temp;
+    const humidity = item.main.humidity;
+    const windSpeed = item.wind.speed * 3.6;
+    const rainPer3h = item.rain?.['3h'] || 0;
+    const weather = item.weather[0]?.main || 'clear';
+
+    for (let hour = 0; hour < 3; hour++) {
+      const hourDate = new Date(baseDate.getTime() + (hour * 60 * 60 * 1000));
+      hourlyData.push({
+        time: hourDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
+        temp: Math.round(temp),
+        humidity: humidity,
+        windSpeed: Math.round(windSpeed),
+        rain: rainPer3h / 3,
+        weather: weather,
+      });
+    }
+  }
+
+  const next24Hours = hourlyData.slice(0, 24);
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-4 mb-6">
@@ -42,7 +55,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-2 border border-green-200 flex-shrink-0 w-[90px]"
               >
                 <div className="text-center mb-1">
-                  <div className="font-semibold text-xs text-green-800">{hour.fullTime}</div>
+                  <div className="font-semibold text-xs text-green-800">{hour.time}</div>
                 </div>
 
                 <div className="space-y-1">
