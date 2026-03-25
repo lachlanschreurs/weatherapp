@@ -19,7 +19,7 @@ interface HourlyForecastProps {
 export function HourlyForecast({ forecastList }: HourlyForecastProps) {
   const hourlyData: HourlyData[] = [];
 
-  for (let i = 0; i < 8 && i < forecastList.length; i++) {
+  for (let i = 0; i < 16 && i < forecastList.length; i++) {
     const item = forecastList[i];
     const date = new Date(item.dt * 1000);
     const temp = item.main.temp;
@@ -82,7 +82,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
   return (
     <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-white">24-Hour Forecast</h2>
+        <h2 className="text-2xl font-bold text-white">48-Hour Forecast</h2>
       </div>
 
       <div className="relative bg-slate-900 rounded-xl p-6 border border-slate-700">

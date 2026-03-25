@@ -686,37 +686,7 @@ function App() {
 
         <HourlyForecast forecastList={forecastList} />
 
-        <div className="mb-6">
-          <AIWeatherExplanation
-            weatherData={weather}
-            locationName={location.name}
-            isPremium={hasAccess}
-          />
-        </div>
-
-        <div className="mb-6">
-          <RainRadar
-            lat={location.lat}
-            lon={location.lon}
-            locationName={location.name}
-          />
-        </div>
-
-        <div className="mb-6">
-          <ExtendedForecast forecast={extendedForecast} isPremium={hasAccess} />
-        </div>
-
-        <div className="mb-6">
-          <SoilWorkability predictions={soilWorkability} isPremium={hasAccess} />
-        </div>
-
-        {user && (
-          <div className="mb-6" id="moisture-probes-section">
-            <MoistureProbes initialTab={probeTabMode} />
-          </div>
-        )}
-
-        <div className="bg-white rounded-2xl shadow-xl p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <h2 className="text-2xl font-bold text-green-900 mb-6">5-Day Forecast</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {dailyForecasts.map((day: any, index: number) => {
@@ -788,6 +758,36 @@ function App() {
             })}
           </div>
         </div>
+
+        <div className="mb-6">
+          <AIWeatherExplanation
+            weatherData={weather}
+            locationName={location.name}
+            isPremium={hasAccess}
+          />
+        </div>
+
+        <div className="mb-6">
+          <RainRadar
+            lat={location.lat}
+            lon={location.lon}
+            locationName={location.name}
+          />
+        </div>
+
+        <div className="mb-6">
+          <ExtendedForecast forecast={extendedForecast} isPremium={hasAccess} />
+        </div>
+
+        <div className="mb-6">
+          <SoilWorkability predictions={soilWorkability} isPremium={hasAccess} />
+        </div>
+
+        {user && (
+          <div className="mb-6" id="moisture-probes-section">
+            <MoistureProbes initialTab={probeTabMode} />
+          </div>
+        )}
 
         <div className="mt-6 bg-white rounded-xl p-6 border-2 border-green-200">
           <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
