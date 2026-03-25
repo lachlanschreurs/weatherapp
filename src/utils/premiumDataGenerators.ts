@@ -36,6 +36,7 @@ export function generateExtendedForecast(weatherData: any): ExtendedForecastDay[
 export function generateRainProbabilityData(weatherData: any): RainProbabilityHour[] {
   const data: RainProbabilityHour[] = [];
   const now = new Date();
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
   for (let i = 0; i < 48; i++) {
     const time = new Date(now);
@@ -50,12 +51,16 @@ export function generateRainProbabilityData(weatherData: any): RainProbabilityHo
     const baseSpeed = 8 + Math.sin((i / 12) * Math.PI) * 6;
     const windSpeed = baseSpeed + Math.random() * 5;
 
+    const directionIndex = Math.floor((i / 6 + Math.random() * 2) % 8);
+    const windDirection = directions[directionIndex];
+
     data.push({
       time: time.toISOString(),
       probability: Math.min(100, Math.max(0, probability)),
       intensity: parseFloat(intensity.toFixed(2)),
       temperature: parseFloat(temperature.toFixed(1)),
       windSpeed: parseFloat(windSpeed.toFixed(1)),
+      windDirection,
     });
   }
 

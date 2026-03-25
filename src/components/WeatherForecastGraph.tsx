@@ -1,12 +1,23 @@
-import { CloudRain, Wind, Thermometer } from 'lucide-react';
+import { CloudRain, Wind, Thermometer, Navigation } from 'lucide-react';
 import { RainProbabilityHour } from '../types/premium';
+
+interface DailyForecastData {
+  date: string;
+  dayName: string;
+  tempHigh: number;
+  tempLow: number;
+  rainChance: number;
+  windSpeed: number;
+  windDirection: string;
+}
 
 interface WeatherForecastGraphProps {
   rainData: RainProbabilityHour[];
   isPremium: boolean;
+  dailyForecast?: DailyForecastData[];
 }
 
-export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGraphProps) {
+export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }: WeatherForecastGraphProps) {
   const displayData = isPremium ? rainData : rainData.slice(0, 8);
 
   const maxRain = Math.max(...displayData.map(d => d.probability), 100);
@@ -19,6 +30,16 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
 
   const normalizeTemp = (temp: number) => {
     return ((temp - minTemp) / tempRange) * 100;
+  };
+
+  const getWindDirectionRotation = (direction?: string) => {
+    const directions: { [key: string]: number } = {
+      'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
+      'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
+      'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
+      'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
+    };
+    return directions[direction || 'N'] || 0;
   };
 
   return (
@@ -137,12 +158,22 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
                   style={{ maxWidth: '40px' }}
                 >
                   {showLabel && (
-                    <div className="text-xs text-gray-600 font-medium">
-                      {time.toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        hour12: true,
-                      })}
-                    </div>
+                    <>
+                      <div className="text-xs text-gray-600 font-medium">
+                        {time.toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          hour12: true,
+                        })}
+                      </div>
+                      {hour.windDirection && (
+                        <div className="flex justify-center mt-1">
+                          <Navigation
+                            className="w-3 h-3 text-cyan-600"
+                            style={{ transform: `rotate(${getWindDirectionRotation(hour.windDirection)}deg)` }}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );
@@ -182,6 +213,89 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
           </p>
         </div>
       </div>
+
+      {dailyForecast.length > 0 && (
+        <div className="mt-8 pt-8 border-t border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">5-Day Forecast</h3>
+          <div className="relative overflow-x-auto">
+            <div className="min-w-[600px]">
+              <div className="relative h-48 bg-gray-50 rounded-lg p-4">
+                <div className="absolute inset-4 flex items-end justify-between gap-2">
+                  {dailyForecast.slice(0, 5).map((day) => {
+                    const maxDailyTemp = Math.max(...dailyForecast.slice(0, 5).map(d => d.tempHigh));
+                    const minDailyTemp = Math.min(...dailyForecast.slice(0, 5).map(d => d.tempLow));
+                    const dailyTempRange = maxDailyTemp - minDailyTemp || 10;
+                    const maxDailyRain = Math.max(...dailyForecast.slice(0, 5).map(d => d.rainChance), 100);
+                    const maxDailyWind = Math.max(...dailyForecast.slice(0, 5).map(d => d.windSpeed), 30);
+
+                    const highTempHeight = ((day.tempHigh - minDailyTemp) / dailyTempRange) * 100;
+                    const lowTempHeight = ((day.tempLow - minDailyTemp) / dailyTempRange) * 100;
+                    const rainHeight = (day.rainChance / maxDailyRain) * 100;
+                    const windHeight = (day.windSpeed / maxDailyWind) * 100;
+
+                    return (
+                      <div key={day.date} className="flex-1 flex items-end justify-center gap-1 min-w-0">
+                        <div className="relative flex items-end gap-0.5 w-full justify-center">
+                          <div
+                            className="w-3 bg-blue-500 rounded-t transition-all hover:bg-blue-600 relative group"
+                            style={{ height: `${rainHeight}%` }}
+                          >
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                              Rain: {day.rainChance}%
+                            </div>
+                          </div>
+
+                          <div
+                            className="w-3 bg-cyan-500 rounded-t transition-all hover:bg-cyan-600 relative group"
+                            style={{ height: `${windHeight}%` }}
+                          >
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                              Wind: {Math.round(day.windSpeed)} km/h {day.windDirection}
+                            </div>
+                          </div>
+
+                          <div className="relative w-3">
+                            <div
+                              className="absolute bottom-0 w-full bg-orange-500 rounded-t transition-all hover:bg-orange-600 group"
+                              style={{ height: `${highTempHeight}%` }}
+                            >
+                              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                                High: {Math.round(day.tempHigh)}°C
+                              </div>
+                            </div>
+                            <div
+                              className="absolute bottom-0 w-full bg-orange-300 rounded-t"
+                              style={{ height: `${lowTempHeight}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-300"></div>
+              </div>
+
+              <div className="flex justify-between mt-2 px-4">
+                {dailyForecast.slice(0, 5).map((day) => (
+                  <div key={day.date} className="flex-1 text-center min-w-0">
+                    <div className="text-xs font-semibold text-gray-800">{day.dayName}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{day.date}</div>
+                    {day.windDirection && (
+                      <div className="flex justify-center mt-1">
+                        <Navigation
+                          className="w-3 h-3 text-cyan-600"
+                          style={{ transform: `rotate(${getWindDirectionRotation(day.windDirection)}deg)` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
