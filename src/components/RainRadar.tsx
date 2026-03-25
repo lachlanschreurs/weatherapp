@@ -192,14 +192,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }).addTo(map);
 
         if (showWind && windData && windData.current) {
+          if (windAnimationRef.current) {
+            cancelAnimationFrame(windAnimationRef.current);
+          }
+
           const canvas = document.createElement('canvas');
-          const bounds = map.getBounds();
           const size = map.getSize();
           canvas.width = size.x;
           canvas.height = size.y;
           canvas.style.position = 'absolute';
           canvas.style.pointerEvents = 'none';
-          canvas.style.zIndex = '1001';
+          canvas.style.zIndex = '1000';
+          canvas.style.top = '0';
+          canvas.style.left = '0';
 
           const CanvasLayer = L.Layer.extend({
             onAdd: function (map: any) {
@@ -209,11 +214,17 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
               this._map = map;
               map.on('move zoom', this._reset, this);
               this._reset();
+              drawWindParticles(canvas, map, windData.current);
             },
             onRemove: function (map: any) {
               const pane = map.getPane('overlayPane');
-              pane.removeChild(canvas);
+              if (canvas.parentNode === pane) {
+                pane.removeChild(canvas);
+              }
               map.off('move zoom', this._reset, this);
+              if (windAnimationRef.current) {
+                cancelAnimationFrame(windAnimationRef.current);
+              }
               canvasRef.current = null;
             },
             _reset: function () {
@@ -228,8 +239,6 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           const canvasLayer = new CanvasLayer();
           canvasLayer.addTo(map);
           (mapRef.current as any)._canvasLayer = canvasLayer;
-
-          drawWindParticles(canvas, map, windData.current);
         }
 
         L.marker([lat, lon], {
@@ -254,6 +263,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     loadLeaflet();
 
     return () => {
+      if (windAnimationRef.current) {
+        cancelAnimationFrame(windAnimationRef.current);
+      }
+      if (mapRef.current && (mapRef.current as any)._canvasLayer) {
+        const map = (mapRef.current as any)._leafletMap;
+        if (map) {
+          map.removeLayer((mapRef.current as any)._canvasLayer);
+        }
+        (mapRef.current as any)._canvasLayer = null;
+      }
       if (mapRef.current && (mapRef.current as any)._leafletMap) {
         (mapRef.current as any)._leafletMap.remove();
       }
@@ -329,16 +348,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }
 
   function drawWindParticles(canvas: HTMLCanvasElement, map: any, currentWind: any) {
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     const particles: Particle[] = [];
-    const numParticles = 500;
+    const numParticles = 300;
     const windSpeed = currentWind.wind_speed_10m || 0;
     const windDirection = currentWind.wind_direction_10m || 0;
 
     const windRadians = ((windDirection + 180) % 360) * (Math.PI / 180);
-    const speedFactor = windSpeed / 10;
+    const speedFactor = Math.max(windSpeed / 8, 0.5);
 
     for (let i = 0; i < numParticles; i++) {
       particles.push({
@@ -352,8 +371,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     }
 
     function animate() {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach(particle => {
         particle.x += particle.vx;
@@ -368,9 +386,22 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           particle.age = 0;
         }
 
-        const alpha = 1 - (particle.age / particle.maxAge);
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
-        ctx.fillRect(particle.x, particle.y, 2, 2);
+        const alpha = Math.max(0, 1 - (particle.age / particle.maxAge));
+
+        ctx.shadowBlur = 3;
+        ctx.shadowColor = `rgba(255, 255, 255, ${alpha * 0.8})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(particle.x, particle.y);
+        ctx.lineTo(particle.x - particle.vx * 3, particle.y - particle.vy * 3);
+        ctx.stroke();
       });
 
       if (canvasRef.current) {
