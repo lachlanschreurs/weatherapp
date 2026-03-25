@@ -45,7 +45,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     if (radarFrames.length > 0 && isPlaying) {
       animationRef.current = window.setInterval(() => {
         setCurrentFrame((prev) => (prev + 1) % radarFrames.length);
-      }, 400);
+      }, 500);
     }
     return () => {
       if (animationRef.current) {
@@ -61,12 +61,21 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const data: RainViewerResponse = await response.json();
 
       setRadarHost(data.host);
-      const allFrames = [
-        ...data.radar.past.map(f => ({ ...f, isForecast: false })),
-        ...data.radar.nowcast.map(f => ({ ...f, isForecast: true }))
-      ];
+
+      const now = Math.floor(Date.now() / 1000);
+      const oneHourAgo = now - (60 * 60);
+
+      const pastFrames = data.radar.past
+        .filter(f => f.time >= oneHourAgo)
+        .map(f => ({ ...f, isForecast: false }));
+
+      const forecastFrames = data.radar.nowcast
+        .map(f => ({ ...f, isForecast: true }));
+
+      const allFrames = [...pastFrames, ...forecastFrames];
+
       setRadarFrames(allFrames);
-      setCurrentFrame(data.radar.past.length - 1);
+      setCurrentFrame(pastFrames.length > 0 ? pastFrames.length - 1 : 0);
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch radar data:', error);
@@ -351,9 +360,9 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                     className="w-full"
                   />
                   <div className="flex justify-between mt-1 px-1">
-                    <span className="text-xs text-gray-500">-2h</span>
+                    <span className="text-xs text-gray-500">-1h</span>
                     <span className="text-xs text-gray-600 font-medium">Now</span>
-                    <span className="text-xs text-gray-500">+30m</span>
+                    <span className="text-xs text-gray-500">+2h</span>
                   </div>
                 </div>
 
@@ -362,7 +371,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Past 2 hours + 30 min forecast (10 min intervals)
+                Past 1 hour + 2 hour forecast (5-10 min intervals)
               </div>
             </div>
           )}
