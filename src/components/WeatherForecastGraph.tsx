@@ -7,7 +7,7 @@ interface WeatherForecastGraphProps {
 }
 
 export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGraphProps) {
-  const displayData = isPremium ? rainData : rainData.slice(0, 12);
+  const displayData = rainData;
 
   const maxWind = Math.max(...displayData.map(d => d.windSpeed || 0), 30);
   const maxTemp = Math.max(...displayData.map(d => d.temperature || 0));
@@ -29,14 +29,16 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
     return ((value - min) / (max - min)) * height;
   };
 
-  const graphHeight = 320;
-  const graphPadding = { top: 20, bottom: 40, left: 50, right: 20 };
+  const graphHeight = 400;
+  const graphPadding = { top: 30, bottom: 60, left: 60, right: 30 };
   const innerHeight = graphHeight - graphPadding.top - graphPadding.bottom;
-  const pointWidth = isPremium ? 800 / 48 : 800 / 12;
+  const totalWidth = 1200;
+  const innerWidth = totalWidth - graphPadding.left - graphPadding.right;
+  const pointWidth = innerWidth / (displayData.length - 1);
 
   const createPath = (data: number[], min: number, max: number) => {
     const points = data.map((value, index) => {
-      const x = index * pointWidth + pointWidth / 2;
+      const x = index * pointWidth;
       const y = graphPadding.top + innerHeight - scaleValue(value, min, max, innerHeight);
       return `${x},${y}`;
     });
@@ -47,34 +49,24 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
   const windPath = createPath(displayData.map(d => d.windSpeed || 0), 0, maxWind);
   const tempPath = createPath(displayData.map(d => d.temperature || 0), minTemp, maxTemp);
 
+  const yAxisLabels = [
+    { value: 100, label: '100%' },
+    { value: 75, label: '75%' },
+    { value: 50, label: '50%' },
+    { value: 25, label: '25%' },
+    { value: 0, label: '0%' }
+  ];
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 relative">
+    <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <CloudRain className="w-5 h-5 text-blue-600" />
           <h2 className="text-xl font-semibold text-gray-800">
-            {isPremium ? '48-Hour Weather Forecast' : '12-Hour Weather Forecast'}
+            48-Hour Weather Forecast
           </h2>
         </div>
-        {isPremium && (
-          <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">
-            PREMIUM
-          </span>
-        )}
       </div>
-
-      {!isPremium && (
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/60 to-white/95 flex items-end justify-center pb-8 rounded-lg pointer-events-none z-10">
-          <div className="text-center pointer-events-auto">
-            <p className="text-sm font-semibold text-gray-800 mb-2">
-              Upgrade for 48-Hour Detailed Forecast
-            </p>
-            <button className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all">
-              Go Premium
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="mb-6 flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-2">
@@ -99,30 +91,31 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
       </div>
 
       <div className="relative overflow-x-auto">
-        <div className="min-w-[800px]">
-          <svg width="100%" height={graphHeight} className="bg-gray-50 rounded-lg">
+        <div className="min-w-[1200px]">
+          <svg width={totalWidth} height={graphHeight} className="bg-gradient-to-b from-blue-50 to-gray-50 rounded-lg">
             <g>
-              {[0, 25, 50, 75, 100].map((tick) => {
-                const y = graphPadding.top + innerHeight - scaleValue(tick, 0, 100, innerHeight);
+              {yAxisLabels.map((tick) => {
+                const y = graphPadding.top + innerHeight - scaleValue(tick.value, 0, 100, innerHeight);
                 return (
-                  <g key={`rain-tick-${tick}`}>
+                  <g key={`grid-${tick.value}`}>
                     <line
                       x1={graphPadding.left}
                       y1={y}
-                      x2={800 - graphPadding.right}
+                      x2={totalWidth - graphPadding.right}
                       y2={y}
-                      stroke="#e5e7eb"
+                      stroke="#cbd5e1"
                       strokeWidth="1"
                       strokeDasharray="4,4"
                     />
                     <text
-                      x={graphPadding.left - 8}
+                      x={graphPadding.left - 10}
                       y={y + 4}
                       textAnchor="end"
-                      fontSize="10"
-                      fill="#6b7280"
+                      fontSize="12"
+                      fill="#475569"
+                      fontWeight="500"
                     >
-                      {tick}
+                      {tick.label}
                     </text>
                   </g>
                 );
@@ -134,7 +127,7 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
                 d={rainPath}
                 fill="none"
                 stroke="#3b82f6"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -143,7 +136,7 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
                 d={windPath}
                 fill="none"
                 stroke="#06b6d4"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -152,26 +145,26 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
                 d={tempPath}
                 fill="none"
                 stroke="#f97316"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
 
               {displayData.map((hour, index) => {
-                const x = index * pointWidth + pointWidth / 2;
+                const x = index * pointWidth;
                 const rainY = graphPadding.top + innerHeight - scaleValue(hour.probability, 0, 100, innerHeight);
                 const windY = graphPadding.top + innerHeight - scaleValue(hour.windSpeed || 0, 0, maxWind, innerHeight);
                 const tempY = graphPadding.top + innerHeight - scaleValue(hour.temperature || 0, minTemp, maxTemp, innerHeight);
 
                 return (
                   <g key={hour.time}>
-                    <circle cx={x} cy={rainY} r="4" fill="#3b82f6" className="hover:r-6 transition-all cursor-pointer">
+                    <circle cx={x} cy={rainY} r="5" fill="#3b82f6" stroke="white" strokeWidth="2" className="cursor-pointer hover:r-7 transition-all">
                       <title>Rain: {hour.probability}%</title>
                     </circle>
-                    <circle cx={x} cy={windY} r="4" fill="#06b6d4" className="hover:r-6 transition-all cursor-pointer">
+                    <circle cx={x} cy={windY} r="5" fill="#06b6d4" stroke="white" strokeWidth="2" className="cursor-pointer hover:r-7 transition-all">
                       <title>Wind: {Math.round(hour.windSpeed || 0)} km/h {hour.windDirection || ''}</title>
                     </circle>
-                    <circle cx={x} cy={tempY} r="4" fill="#f97316" className="hover:r-6 transition-all cursor-pointer">
+                    <circle cx={x} cy={tempY} r="5" fill="#f97316" stroke="white" strokeWidth="2" className="cursor-pointer hover:r-7 transition-all">
                       <title>Temp: {Math.round(hour.temperature || 0)}°C</title>
                     </circle>
                   </g>
@@ -180,28 +173,31 @@ export function WeatherForecastGraph({ rainData, isPremium }: WeatherForecastGra
             </g>
           </svg>
 
-          <div className="flex justify-between mt-3 px-12">
+          <div className="flex justify-between mt-4" style={{ paddingLeft: `${graphPadding.left}px`, paddingRight: `${graphPadding.right}px` }}>
             {displayData.map((hour, index) => {
               const time = new Date(hour.time);
-              const showLabel = index % (isPremium ? 6 : 2) === 0;
+              const showLabel = index % 4 === 0;
 
               return (
                 <div
                   key={hour.time}
-                  className="flex-1 text-center"
+                  className="flex-1 text-center relative"
                   style={{ maxWidth: `${pointWidth}px` }}
                 >
                   {showLabel && (
                     <div className="flex flex-col items-center">
-                      <div className="text-xs text-gray-700 font-medium">
+                      <div className="text-sm text-gray-800 font-semibold">
                         {time.toLocaleTimeString('en-US', {
                           hour: 'numeric',
                           hour12: true,
                         })}
                       </div>
+                      <div className="text-xs text-gray-500">
+                        {time.toLocaleDateString('en-US', { weekday: 'short' })}
+                      </div>
                       {hour.windDirection && (
                         <Navigation
-                          className="w-4 h-4 text-cyan-600 mt-1"
+                          className="w-5 h-5 text-cyan-600 mt-1"
                           style={{ transform: `rotate(${getWindDirectionRotation(hour.windDirection)}deg)` }}
                         />
                       )}

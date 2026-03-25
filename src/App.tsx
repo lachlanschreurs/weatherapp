@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, LogOut, RefreshCw } from 'lucide-react';
-import { getSprayCondition } from './utils/deltaT';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, LogOut, RefreshCw, Activity } from 'lucide-react';
+import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
 import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay } from './utils/farmingRecommendations';
@@ -366,6 +366,8 @@ function App() {
   const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
   const dewpointC = tempC - ((100 - humidity) / 5);
+  const deltaT = calculateDeltaT(tempC, humidity);
+  const deltaTCondition = getDeltaTCondition(deltaT);
 
   const calculateFeelsLike = (temp: number, humidity: number, windSpeed: number) => {
     if (temp >= 27) {
@@ -642,12 +644,12 @@ function App() {
 
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
-                <Droplets className="w-6 h-6" />
-                <span className="font-semibold">Humidity</span>
+                <Activity className="w-6 h-6" />
+                <span className="font-semibold">Delta T</span>
               </div>
-              <div className="text-3xl font-bold">{humidity}%</div>
+              <div className="text-3xl font-bold">{deltaT.toFixed(1)}°C</div>
               <div className="text-sm opacity-80 mt-1">
-                Dew Point: {Math.round(dewpointC)}°C
+                {deltaTCondition.rating} - {deltaTCondition.reason}
               </div>
             </div>
 
@@ -687,7 +689,7 @@ function App() {
         <div className="mb-6">
           <WeatherForecastGraph
             rainData={rainProbability}
-            isPremium={hasAccess}
+            isPremium={true}
           />
         </div>
 
