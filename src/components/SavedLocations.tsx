@@ -119,6 +119,12 @@ export function SavedLocations({
         .eq('id', id);
 
       if (error) throw error;
+
+      await supabase
+        .from('profiles')
+        .update({ default_location_id: id })
+        .eq('id', userId);
+
       await fetchLocations();
     } catch (error) {
       console.error('Error setting primary location:', error);
