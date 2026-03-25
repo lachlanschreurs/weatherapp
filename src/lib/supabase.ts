@@ -16,6 +16,7 @@ export type Profile = {
   trial_ends_at: string;
   subscription_status: 'trial' | 'active' | 'expired' | 'cancelled';
   subscription_ends_at: string | null;
+  is_admin: boolean;
   created_at: string;
   updated_at: string;
 };

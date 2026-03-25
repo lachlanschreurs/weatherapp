@@ -163,6 +163,12 @@ function App() {
       return;
     }
 
+    if (profile.is_admin) {
+      setHasAccess(true);
+      setDaysRemaining(999);
+      return;
+    }
+
     const now = new Date();
     const trialEnd = new Date(profile.trial_ends_at);
     const subscriptionEnd = profile.subscription_ends_at ? new Date(profile.subscription_ends_at) : null;
