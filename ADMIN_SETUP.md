@@ -1,23 +1,35 @@
 # Admin Setup Guide
 
-## Making a User an Admin
+## Creating the Admin Account
 
-To grant admin access to a user account, you need to update their profile in the database.
+### Step 1: Sign Up
+1. Open the app and click "Sign Up"
+2. Use these credentials:
+   - **Email:** lachlan@farmcast
+   - **Password:** lachlan@farmcast
 
-### Quick Method: Using Supabase Dashboard SQL Editor
-
-1. First, create an account by signing up in the app
-2. Go to your Supabase project dashboard at https://supabase.com/dashboard
-3. Navigate to the SQL Editor
-4. Run this query (replace the email with your account email):
+### Step 2: Grant Admin Access
+1. Go to your Supabase project dashboard at https://supabase.com/dashboard
+2. Navigate to the SQL Editor
+3. Run this query:
 
 ```sql
 UPDATE profiles
 SET is_admin = true
-WHERE email = 'your-email@example.com';
+WHERE email = 'lachlan@farmcast';
 ```
 
-5. Refresh the app - you now have full admin access!
+4. Refresh the app - you now have full admin access!
+
+## Making Other Users Admin
+
+To grant admin access to any other user account:
+
+```sql
+UPDATE profiles
+SET is_admin = true
+WHERE email = 'their-email@example.com';
+```
 
 ### Alternative: Using the API
 
