@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, LogOut } from 'lucide-react';
 import { getSprayCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -7,6 +7,10 @@ import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay
 import { AlertBanner } from './components/AlertBanner';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
+import { supabase, Profile } from './lib/supabase';
+import AuthModal from './components/AuthModal';
+import SubscriptionBanner from './components/SubscriptionBanner';
+import LockedContentOverlay from './components/LockedContentOverlay';
 
 interface WeatherData {
   current: {
@@ -82,9 +86,92 @@ function App() {
     };
   });
 
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState(0);
+
+  useEffect(() => {
+    checkAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setProfile(null);
+        setHasAccess(false);
+        setDaysRemaining(0);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
   useEffect(() => {
     fetchWeather();
   }, [location]);
+
+  useEffect(() => {
+    if (profile) {
+      checkSubscriptionStatus();
+    }
+  }, [profile]);
+
+  async function checkAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user ?? null);
+    if (session?.user) {
+      await loadProfile(session.user.id);
+    }
+  }
+
+  async function loadProfile(userId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (data) {
+      setProfile(data);
+    }
+  }
+
+  function checkSubscriptionStatus() {
+    if (!profile) {
+      setHasAccess(false);
+      setDaysRemaining(0);
+      return;
+    }
+
+    const now = new Date();
+    const trialEnd = new Date(profile.trial_ends_at);
+    const subscriptionEnd = profile.subscription_ends_at ? new Date(profile.subscription_ends_at) : null;
+
+    const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    setDaysRemaining(Math.max(0, daysLeft));
+
+    const inTrial = profile.subscription_status === 'trial' && now < trialEnd;
+    const hasActiveSubscription = profile.subscription_status === 'active' && subscriptionEnd && now < subscriptionEnd;
+
+    setHasAccess(inTrial || hasActiveSubscription);
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
+    setHasAccess(false);
+    setDaysRemaining(0);
+  }
+
+  function handleUpgrade() {
+    alert('Subscription management coming soon! Contact us to upgrade your account.');
+  }
 
   async function fetchWeather() {
     setLoading(true);
@@ -299,6 +386,10 @@ function App() {
   const plantingDays = analyzePlantingDays(dailyData);
   const irrigationDays = analyzeIrrigationNeeds(dailyData);
 
+  const todayOnly = !user || !hasAccess;
+  const visiblePlantingDays = todayOnly ? plantingDays.slice(0, 1) : plantingDays;
+  const visibleIrrigationDays = todayOnly ? irrigationDays.slice(0, 1) : irrigationDays;
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#8FA88E' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -327,12 +418,33 @@ function App() {
                   )}
                 </div>
               </div>
-              <button
-                onClick={fetchWeather}
-                className="px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium shadow-md"
-              >
-                Refresh
-              </button>
+              <div className="flex items-center gap-3">
+                {user ? (
+                  <>
+                    <span className="text-sm text-green-800">{user.email}</span>
+                    <button
+                      onClick={handleSignOut}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium shadow-md flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-md"
+                  >
+                    Start Free Trial
+                  </button>
+                )}
+                <button
+                  onClick={fetchWeather}
+                  className="px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium shadow-md"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
 
             <LocationSearch
@@ -341,6 +453,10 @@ function App() {
             />
           </div>
         </header>
+
+        {user && !hasAccess && (
+          <SubscriptionBanner daysRemaining={daysRemaining} onUpgrade={handleUpgrade} />
+        )}
 
         <AlertBanner alerts={alerts} />
 
@@ -548,15 +664,16 @@ function App() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300 relative">
+            {todayOnly && plantingDays.length > 1 && <LockedContentOverlay onUpgrade={handleUpgrade} />}
             <div className="flex items-center gap-2 mb-4">
               <Sprout className="w-6 h-6 text-green-900" />
               <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
             </div>
 
-            {plantingDays.length > 0 ? (
+            {visiblePlantingDays.length > 0 ? (
               <div className="space-y-3">
-                {plantingDays.map((day, idx) => (
+                {visiblePlantingDays.map((day, idx) => (
                   <div
                     key={idx}
                     className={`p-4 rounded-lg border-2 ${
@@ -599,14 +716,15 @@ function App() {
             )}
           </div>
 
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300">
+          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300 relative">
+            {todayOnly && irrigationDays.length > 1 && <LockedContentOverlay onUpgrade={handleUpgrade} />}
             <div className="flex items-center gap-2 mb-4">
               <Droplets className="w-6 h-6 text-green-900" />
               <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>
             </div>
 
             <div className="space-y-3">
-              {irrigationDays.slice(0, 5).map((day, idx) => (
+              {visibleIrrigationDays.map((day, idx) => (
                 <div
                   key={idx}
                   className={`p-4 rounded-lg border-2 ${
@@ -654,6 +772,15 @@ function App() {
           <div className="font-semibold text-green-700">FarmCast for Agricultural Planning</div>
         </footer>
       </div>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          checkAuth();
+        }}
+      />
     </div>
   );
 }
