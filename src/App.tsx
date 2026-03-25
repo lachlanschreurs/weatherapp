@@ -12,6 +12,8 @@ import { ProbeAPIManager } from './components/ProbeAPIManager';
 import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
+import { NotificationCenter } from './components/NotificationCenter';
+import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -90,11 +92,24 @@ function App() {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
         setUser(session?.user ?? null);
         if (session?.user) {
           checkAdminStatus(session.user.id);
+
+          if (event === 'SIGNED_IN') {
+            await createWeatherUpdateNotification(
+              session.user.id,
+              `${location.name}${location.state ? ', ' + location.state : ''}`,
+              'welcome',
+              'Welcome to FarmCast! You will now receive weather alerts and updates for your location.'
+            );
+
+            if (weather) {
+              processWeatherNotifications(weather);
+            }
+          }
         } else {
           setIsAdmin(false);
           setShowAdminPanel(false);
@@ -103,7 +118,7 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [location, weather]);
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
@@ -119,6 +134,57 @@ function App() {
     await supabase.auth.signOut();
     setUser(null);
   };
+
+  async function processWeatherNotifications(weatherData: any) {
+    if (!user) return;
+
+    const current = weatherData.current;
+    const forecastList = weatherData.forecast.list;
+
+    const tempC = Math.round(current.main.temp);
+    const humidity = current.main.humidity;
+    const rainfall = current.rain?.['1h'] || 0;
+    const weatherCode = current.weather[0]?.main || '';
+
+    const alerts = generateWeatherAlerts(
+      tempC,
+      humidity,
+      current.wind.speed,
+      rainfall,
+      weatherCode,
+      forecastList
+    );
+
+    if (alerts.length > 0) {
+      await checkAndCreateWeatherAlerts(
+        user.id,
+        `${location.name}${location.state ? ', ' + location.state : ''}`,
+        alerts
+      );
+    }
+
+    const upcomingRain = forecastList.slice(0, 8).some((forecast: any) =>
+      forecast.weather[0]?.main === 'Rain' || forecast.rain?.['3h'] > 0
+    );
+
+    if (upcomingRain) {
+      const lastNotifications = await getUserNotifications(user.id);
+
+      const recentRainAlert = lastNotifications.some(n =>
+        n.data?.alert_type === 'rain' &&
+        new Date(n.created_at!).getTime() > Date.now() - 6 * 60 * 60 * 1000
+      );
+
+      if (!recentRainAlert) {
+        await createWeatherUpdateNotification(
+          user.id,
+          `${location.name}${location.state ? ', ' + location.state : ''}`,
+          'rain',
+          'Rain expected in the next 24 hours. Plan accordingly for outdoor activities.'
+        );
+      }
+    }
+  }
 
   async function fetchWeather() {
     setLoading(true);
@@ -138,6 +204,10 @@ function App() {
 
       setWeather(weatherData);
       setLastUpdated(new Date());
+
+      if (user) {
+        processWeatherNotifications(weatherData);
+      }
     } catch (err) {
       console.error('Weather fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -397,12 +467,15 @@ function App() {
               </div>
               <div className="flex items-center gap-3">
                 {user ? (
-                  <UserMenu
-                    user={user}
-                    onSignOut={handleSignOut}
-                    isAdmin={isAdmin}
-                    onAdminPanelToggle={() => setShowAdminPanel(!showAdminPanel)}
-                  />
+                  <>
+                    <NotificationCenter userId={user.id} />
+                    <UserMenu
+                      user={user}
+                      onSignOut={handleSignOut}
+                      isAdmin={isAdmin}
+                      onAdminPanelToggle={() => setShowAdminPanel(!showAdminPanel)}
+                    />
+                  </>
                 ) : (
                   <>
                     <button
