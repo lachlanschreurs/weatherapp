@@ -60,7 +60,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const data: RainViewerResponse = await response.json();
 
       setRadarHost(data.host);
-      setRadarFrames(data.radar.past);
+      const allFrames = [...data.radar.past, ...data.radar.nowcast];
+      setRadarFrames(allFrames);
       setCurrentFrame(data.radar.past.length - 1);
       setIsLoading(false);
     } catch (error) {
@@ -108,14 +109,13 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }).addTo(map);
 
         const currentFrameData = radarFrames[currentFrame];
-        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/6/1_1.png`;
 
         const radarLayer = L.tileLayer(radarTileUrl, {
           opacity: opacity,
           attribution: '© RainViewer',
           tileSize: 256,
-          zIndex: 10,
-          maxZoom: 7
+          zIndex: 10
         }).addTo(map);
 
         L.marker([lat, lon], {
@@ -150,15 +150,14 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       oldLayer.remove();
 
       const currentFrameData = radarFrames[currentFrame];
-      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/2/1_1.png`;
+      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/6/1_1.png`;
 
       const L = (window as any).L;
       const newLayer = L.tileLayer(radarTileUrl, {
         opacity: opacity,
         attribution: '© RainViewer',
         tileSize: 256,
-        zIndex: 10,
-        maxZoom: 7
+        zIndex: 10
       }).addTo(map);
 
       (mapRef.current as any)._radarLayer = newLayer;

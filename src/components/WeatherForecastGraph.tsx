@@ -19,11 +19,16 @@ interface WeatherForecastGraphProps {
 
 export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }: WeatherForecastGraphProps) {
   const displayData = rainData;
+  const now = new Date();
 
   const maxWind = Math.max(...displayData.map(d => d.windSpeed || 0), 30);
   const maxTemp = Math.max(...displayData.map(d => d.temperature || 0));
   const minTemp = Math.min(...displayData.map(d => d.temperature || 0));
   const tempRange = maxTemp - minTemp || 10;
+
+  const nowIndex = displayData.findIndex(d => new Date(d.time) >= now);
+  const barWidth = 1200 / displayData.length;
+  const nowPosition = nowIndex >= 0 ? nowIndex * barWidth : -1;
 
   const getWindDirectionRotation = (direction?: string) => {
     const directions: { [key: string]: number } = {
@@ -67,8 +72,6 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
     { value: 25, label: '25%' },
     { value: 0, label: '0%' }
   ];
-
-  const barWidth = innerWidth / displayData.length;
   const maxDisplayTemp = Math.max(...displayData.map(d => d.temperature || 0));
   const minDisplayTemp = Math.min(...displayData.map(d => d.temperature || 0));
 
@@ -115,6 +118,16 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                     );
                   })}
                 </div>
+                {nowPosition >= 0 && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-600 z-30"
+                    style={{ left: `${16 + nowPosition}px` }}
+                  >
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap font-semibold">
+                      NOW
+                    </div>
+                  </div>
+                )}
                 <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-300"></div>
                 <div className="absolute left-2 top-4 text-xs text-gray-600 font-medium">{Math.round(maxDisplayTemp)}°C</div>
                 <div className="absolute left-2 bottom-4 text-xs text-gray-600 font-medium">{Math.round(minDisplayTemp)}°C</div>
@@ -154,6 +167,16 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                     );
                   })}
                 </div>
+                {nowPosition >= 0 && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-600 z-30"
+                    style={{ left: `${16 + nowPosition}px` }}
+                  >
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap font-semibold">
+                      NOW
+                    </div>
+                  </div>
+                )}
                 <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-300"></div>
                 <div className="absolute left-2 top-4 text-xs text-gray-600 font-medium">{Math.round(maxWind)} km/h</div>
                 <div className="absolute left-2 bottom-4 text-xs text-gray-600 font-medium">0 km/h</div>
@@ -193,6 +216,16 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                     );
                   })}
                 </div>
+                {nowPosition >= 0 && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-red-600 z-30"
+                    style={{ left: `${16 + nowPosition}px` }}
+                  >
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap font-semibold">
+                      NOW
+                    </div>
+                  </div>
+                )}
                 <div className="absolute bottom-0 left-4 right-4 h-px bg-gray-300"></div>
                 <div className="absolute left-2 top-4 text-xs text-gray-600 font-medium">100%</div>
                 <div className="absolute left-2 bottom-4 text-xs text-gray-600 font-medium">0%</div>
