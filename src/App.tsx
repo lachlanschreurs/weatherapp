@@ -310,14 +310,14 @@ function App() {
                   <Sprout className="w-10 h-10 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-5xl font-bold text-green-800 mb-2">FarmCast</h1>
-                  <p className="text-xl text-green-700">
+                  <h1 className="text-5xl font-bold text-green-900 mb-2">FarmCast</h1>
+                  <p className="text-xl text-green-900">
                     {location.name}
                     {location.state && `, ${location.state}`}
                     {location.country && `, ${location.country}`}
                   </p>
                   {lastUpdated && (
-                    <p className="text-sm text-green-600 mt-1">
+                    <p className="text-sm text-green-900 mt-1">
                       Last updated: {lastUpdated.toLocaleTimeString('en-AU', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -448,7 +448,7 @@ function App() {
         <HourlyForecast forecastList={forecastList} />
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
-          <h2 className="text-2xl font-bold text-green-800 mb-6">5-Day Forecast</h2>
+          <h2 className="text-2xl font-bold text-green-900 mb-6">5-Day Forecast</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {dailyForecasts.map((day: any, index: number) => {
               const date = new Date(day.dt * 1000);
@@ -463,8 +463,8 @@ function App() {
                   className="bg-white rounded-xl p-5 border-2 border-green-100 hover:shadow-lg transition-shadow"
                 >
                   <div className="text-center">
-                    <div className="font-bold text-lg text-green-800">{dayName}</div>
-                    <div className="text-sm text-green-600 mb-3">{dayDate}</div>
+                    <div className="font-bold text-lg text-green-900">{dayName}</div>
+                    <div className="text-sm text-green-900 mb-3">{dayDate}</div>
 
                     <div className="flex justify-center mb-3">
                       {getWeatherIcon(day.weather || 'clear', 'w-12 h-12')}
@@ -521,7 +521,7 @@ function App() {
         </div>
 
         <div className="mt-6 bg-white rounded-xl p-6 border-2 border-green-200">
-          <h3 className="text-lg font-bold text-green-800 mb-3">Spray Conditions Guide</h3>
+          <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 bg-green-500 rounded-full"></div>
@@ -550,8 +550,8 @@ function App() {
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
             <div className="flex items-center gap-2 mb-4">
-              <Sprout className="w-6 h-6 text-green-700" />
-              <h3 className="text-xl font-bold text-green-800">Best Planting Days</h3>
+              <Sprout className="w-6 h-6 text-green-900" />
+              <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
             </div>
 
             {plantingDays.length > 0 ? (
@@ -601,8 +601,8 @@ function App() {
 
           <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300">
             <div className="flex items-center gap-2 mb-4">
-              <Droplets className="w-6 h-6 text-blue-700" />
-              <h3 className="text-xl font-bold text-blue-800">Irrigation Schedule</h3>
+              <Droplets className="w-6 h-6 text-green-900" />
+              <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>
             </div>
 
             <div className="space-y-3">

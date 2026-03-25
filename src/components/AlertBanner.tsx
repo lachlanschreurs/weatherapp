@@ -78,7 +78,7 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
 
   return (
     <div className="mb-6 space-y-3">
-      <h2 className="text-2xl font-bold text-green-800 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-green-900 flex items-center gap-2">
         <AlertTriangle className="w-6 h-6" />
         Weather Alerts
       </h2>
