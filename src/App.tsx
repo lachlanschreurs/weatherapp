@@ -499,6 +499,11 @@ function App() {
             </div>
           </div>
         </div>
+
+        <footer className="mt-8 text-center text-sm text-gray-600 pb-6">
+          <div className="mb-1">Data updates every hour. Powered by OpenWeather.</div>
+          <div className="font-semibold text-green-700">FarmCast for Agricultural Planning</div>
+        </footer>
       </div>
     </div>
   );
