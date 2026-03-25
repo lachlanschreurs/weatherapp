@@ -115,10 +115,10 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 {isFirstOfDay && (
                   <span className="text-xs font-bold text-slate-300 mb-1">{hour.day}</span>
                 )}
+                <span className="text-xs text-slate-400 font-medium">{hour.displayTime}</span>
                 <div className="w-8 h-8 flex items-center justify-center">
                   {getWeatherIcon(hour.weatherIcon)}
                 </div>
-                <span className="text-sm text-slate-300 font-medium">{hour.displayTime}</span>
                 <div className="flex items-center gap-1 mt-1">
                   <CloudRain className="w-3 h-3 text-cyan-400" />
                   <span className="text-xs text-cyan-300 font-medium">{hour.rainChance}%</span>

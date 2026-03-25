@@ -10,6 +10,7 @@ interface RainRadarProps {
 interface RadarFrame {
   path: string;
   time: number;
+  isForecast?: boolean;
 }
 
 interface RainViewerResponse {
@@ -60,7 +61,10 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const data: RainViewerResponse = await response.json();
 
       setRadarHost(data.host);
-      const allFrames = [...data.radar.past, ...data.radar.nowcast];
+      const allFrames = [
+        ...data.radar.past.map(f => ({ ...f, isForecast: false })),
+        ...data.radar.nowcast.map(f => ({ ...f, isForecast: true }))
+      ];
       setRadarFrames(allFrames);
       setCurrentFrame(data.radar.past.length - 1);
       setIsLoading(false);
@@ -109,7 +113,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }).addTo(map);
 
         const currentFrameData = radarFrames[currentFrame];
-        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/6/1_1.png`;
+        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/2/1_1.png`;
 
         const radarLayer = L.tileLayer(radarTileUrl, {
           opacity: opacity,
@@ -150,7 +154,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       oldLayer.remove();
 
       const currentFrameData = radarFrames[currentFrame];
-      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/6/1_1.png`;
+      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/2/1_1.png`;
 
       const L = (window as any).L;
       const newLayer = L.tileLayer(radarTileUrl, {
@@ -203,7 +207,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     const frame = radarFrames[currentFrame];
     return {
       time: formatTime(frame.time),
-      isForecast: (frame as any).isForecast
+      isForecast: frame.isForecast || false
     };
   };
 
@@ -349,6 +353,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                   <div className="flex justify-between mt-1 px-1">
                     <span className="text-xs text-gray-500">-2h</span>
                     <span className="text-xs text-gray-600 font-medium">Now</span>
+                    <span className="text-xs text-gray-500">+30m</span>
                   </div>
                 </div>
 
@@ -357,7 +362,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Past 2 hours of live radar images (10 min intervals)
+                Past 2 hours + 30 min forecast (10 min intervals)
               </div>
             </div>
           )}
