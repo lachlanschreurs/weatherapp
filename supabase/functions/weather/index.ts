@@ -13,33 +13,45 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const clientId = Deno.env.get('XWEATHER_CLIENT_ID') || 'm0UPu81Ap8ZGomG745Gtf';
-    const clientSecret = Deno.env.get('XWEATHER_CLIENT_SECRET') || 'DdZEfUCjn4BtUAMoqWVL4kOmZYecDx0pjz7Hd0Dr';
+    const apiKey = Deno.env.get('OPENWEATHER_API_KEY');
+
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ error: 'OpenWeather API key not configured' }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
 
     const url = new URL(req.url);
-    const lat = url.searchParams.get('lat') || '-38.6341';
-    const lon = url.searchParams.get('lon') || '146.0489';
+    const lat = url.searchParams.get('lat') || '-38.699';
+    const lon = url.searchParams.get('lon') || '146.463';
 
-    const forecastUrl = `https://api.aerisapi.com/forecasts/${lat},${lon}?format=json&filter=day&limit=5&client_id=${clientId}&client_secret=${clientSecret}`;
-    const observationsUrl = `https://api.aerisapi.com/observations/${lat},${lon}?format=json&client_id=${clientId}&client_secret=${clientSecret}`;
+    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
 
-    const [forecastResponse, observationsResponse] = await Promise.all([
+    const [currentResponse, forecastResponse] = await Promise.all([
+      fetch(currentUrl),
       fetch(forecastUrl),
-      fetch(observationsUrl),
     ]);
 
-    if (!forecastResponse.ok || !observationsResponse.ok) {
+    if (!currentResponse.ok || !forecastResponse.ok) {
+      const currentError = !currentResponse.ok ? await currentResponse.text() : null;
       const forecastError = !forecastResponse.ok ? await forecastResponse.text() : null;
-      const observationsError = !observationsResponse.ok ? await observationsResponse.text() : null;
 
       return new Response(
         JSON.stringify({
-          error: 'Failed to fetch weather data from XWeather',
+          error: 'Failed to fetch weather data from OpenWeather',
           details: {
+            current: currentError,
             forecast: forecastError,
-            observations: observationsError,
+            currentStatus: currentResponse.status,
             forecastStatus: forecastResponse.status,
-            observationsStatus: observationsResponse.status,
           }
         }),
         {
@@ -52,13 +64,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const currentData = await currentResponse.json();
     const forecastData = await forecastResponse.json();
-    const observationsData = await observationsResponse.json();
 
     return new Response(
       JSON.stringify({
+        current: currentData,
         forecast: forecastData,
-        observations: observationsData,
       }),
       {
         headers: {
