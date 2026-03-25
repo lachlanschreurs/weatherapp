@@ -56,7 +56,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         const pastFrames = data.radar.past.slice(-36);
         pastFrames.forEach((frame: any) => {
           frames.push({
-            url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/6/1_1.png`,
+            url: `https://tilecache.rainviewer.com/v2/radar${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
             time: frame.time,
             isForecast: false
           });
@@ -66,7 +66,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           const forecastFrames = data.radar.nowcast.slice(0, 36);
           forecastFrames.forEach((frame: any) => {
             frames.push({
-              url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/6/1_1.png`,
+              url: `https://tilecache.rainviewer.com/v2/radar${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
               time: frame.time,
               isForecast: true
             });
@@ -119,6 +119,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           opacity: opacity,
           zIndex: 1000,
           tileSize: 256,
+          attribution: 'Rain data © RainViewer',
         }).addTo(map);
 
         L.marker([lat, lon]).addTo(map);
