@@ -11,14 +11,29 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRadar, setShowRadar] = useState(true);
   const [radarFrames, setRadarFrames] = useState<string[]>([]);
+  const [currentFrame, setCurrentFrame] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<number>();
 
   useEffect(() => {
     fetchRadarData();
     const interval = setInterval(fetchRadarData, 10 * 60 * 1000); // Refresh every 10 minutes
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (radarFrames.length > 0) {
+      animationRef.current = window.setInterval(() => {
+        setCurrentFrame((prev) => (prev + 1) % radarFrames.length);
+      }, 1000);
+    }
+    return () => {
+      if (animationRef.current) {
+        clearInterval(animationRef.current);
+      }
+    };
+  }, [radarFrames.length]);
 
 
   async function fetchRadarData() {
@@ -27,10 +42,31 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
       const data = await response.json();
 
-      if (data.radar && data.radar.past && data.radar.past.length > 0) {
-        const latestFrame = data.radar.past[data.radar.past.length - 1];
-        const frameUrl = `https://tilecache.rainviewer.com${latestFrame.path}/256/{z}/{x}/{y}/4/1_1.png`;
-        setRadarFrames([frameUrl]);
+      if (data.radar) {
+        const frames: string[] = [];
+
+        // Add current frame (last frame from past)
+        if (data.radar.past && data.radar.past.length > 0) {
+          const currentFrame = data.radar.past[data.radar.past.length - 1];
+          frames.push(`https://tilecache.rainviewer.com${currentFrame.path}/256/{z}/{x}/{y}/4/1_1.png`);
+        }
+
+        // Add forecast frames (up to 2 hours = 120 minutes)
+        if (data.radar.nowcast) {
+          const forecastFrames = data.radar.nowcast
+            .filter((frame: any) => {
+              const forecastTime = frame.time;
+              const currentTime = data.radar.past[data.radar.past.length - 1]?.time || Date.now() / 1000;
+              const timeDiff = (forecastTime - currentTime) / 60; // difference in minutes
+              return timeDiff <= 120; // only include up to 2 hours
+            })
+            .map((frame: any) =>
+              `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/4/1_1.png`
+            );
+          frames.push(...forecastFrames);
+        }
+
+        setRadarFrames(frames);
       }
       setIsLoading(false);
     } catch (error) {
@@ -71,7 +107,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           maxZoom: 19,
         }).addTo(map);
 
-        const radarLayer = L.tileLayer(radarFrames[0], {
+        const radarLayer = L.tileLayer(radarFrames[currentFrame], {
           opacity: 0.6,
           zIndex: 1000,
         }).addTo(map);
@@ -93,10 +129,10 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }, [showRadar, lat, lon, isExpanded, radarFrames.length]);
 
   useEffect(() => {
-    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[0]) {
-      (mapRef.current as any)._radarLayer.setUrl(radarFrames[0]);
+    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame]) {
+      (mapRef.current as any)._radarLayer.setUrl(radarFrames[currentFrame]);
     }
-  }, [radarFrames]);
+  }, [currentFrame, radarFrames]);
 
   return (
     <div className={`bg-white rounded-xl shadow-lg overflow-hidden border-2 border-blue-300 ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
@@ -166,11 +202,18 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
       {showRadar && !isLoading && (
         <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
-          <p className="text-xs text-gray-600 text-center">
-            {radarFrames.length > 0
-              ? 'Current precipitation radar. Updates every 10 minutes.'
-              : 'Radar data temporarily unavailable'}
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-600">
+              {radarFrames.length > 0
+                ? 'Showing current conditions and 2-hour forecast'
+                : 'Radar data temporarily unavailable'}
+            </p>
+            {radarFrames.length > 0 && (
+              <div className="text-xs font-medium text-blue-600">
+                Frame {currentFrame + 1} / {radarFrames.length}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
