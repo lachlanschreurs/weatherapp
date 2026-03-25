@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar } from 'lucide-react';
 import { getSprayCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
+import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay } from './utils/farmingRecommendations';
 import { AlertBanner } from './components/AlertBanner';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
@@ -266,6 +267,19 @@ function App() {
     forecastList
   );
 
+  const dailyData = dailyForecasts.map(day => ({
+    date: new Date(day.dt * 1000),
+    tempMax: day.tempMax,
+    tempMin: day.tempMin,
+    humidity: day.humidity,
+    windSpeed: day.windSpeed,
+    rain: day.rain,
+    weather: day.weather,
+  }));
+
+  const plantingDays = analyzePlantingDays(dailyData);
+  const irrigationDays = analyzeIrrigationNeeds(dailyData);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -496,6 +510,108 @@ function App() {
                 <span className="font-semibold text-red-800">Poor:</span>
                 <span className="text-gray-700"> Wind &gt;25 km/h or rain</span>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300">
+            <div className="flex items-center gap-2 mb-4">
+              <Sprout className="w-6 h-6 text-green-700" />
+              <h3 className="text-xl font-bold text-green-800">Best Planting Days</h3>
+            </div>
+
+            {plantingDays.length > 0 ? (
+              <div className="space-y-3">
+                {plantingDays.map((day, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-lg border-2 ${
+                      day.rating === 'Excellent'
+                        ? 'bg-green-50 border-green-400'
+                        : day.rating === 'Good'
+                        ? 'bg-emerald-50 border-emerald-300'
+                        : 'bg-lime-50 border-lime-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                        <span className="font-bold text-gray-800">{day.dayName}</span>
+                        <span className="text-sm text-gray-600">{day.date}</span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${
+                        day.rating === 'Excellent'
+                          ? 'bg-green-600 text-white'
+                          : day.rating === 'Good'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-lime-600 text-white'
+                      }`}>
+                        {day.rating}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {day.reasons.map((reason, i) => (
+                        <div key={i} className="text-sm text-gray-700 flex items-start gap-1">
+                          <span className="text-green-600 mt-0.5">•</span>
+                          <span>{reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-center py-4">No favorable planting days in forecast</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300">
+            <div className="flex items-center gap-2 mb-4">
+              <Droplets className="w-6 h-6 text-blue-700" />
+              <h3 className="text-xl font-bold text-blue-800">Irrigation Schedule</h3>
+            </div>
+
+            <div className="space-y-3">
+              {irrigationDays.slice(0, 5).map((day, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-lg border-2 ${
+                    day.level === 'High'
+                      ? 'bg-red-50 border-red-300'
+                      : day.level === 'Medium'
+                      ? 'bg-yellow-50 border-yellow-300'
+                      : day.level === 'Low'
+                      ? 'bg-blue-50 border-blue-300'
+                      : 'bg-gray-50 border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-600" />
+                      <span className="font-bold text-gray-800">{day.dayName}</span>
+                      <span className="text-sm text-gray-600">{day.date}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {day.rainAmount > 0 && (
+                        <span className="text-xs text-gray-600">{day.rainAmount.toFixed(1)}mm</span>
+                      )}
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${
+                        day.level === 'High'
+                          ? 'bg-red-600 text-white'
+                          : day.level === 'Medium'
+                          ? 'bg-yellow-600 text-white'
+                          : day.level === 'Low'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-600 text-white'
+                      }`}>
+                        {day.level}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-700">{day.recommendation}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
