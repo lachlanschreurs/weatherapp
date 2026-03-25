@@ -94,13 +94,47 @@ export function generateWeatherAlerts(
     });
   }
 
+  if (currentWeather.toLowerCase().includes('hail')) {
+    alerts.push({
+      id: 'hail',
+      severity: 'warning',
+      title: 'Hail Alert',
+      message: 'Hail detected or forecast. Severe crop damage risk. Secure equipment and take protective measures immediately.',
+      icon: 'cloud-hail'
+    });
+  }
+
   if (currentWeather.toLowerCase().includes('thunder') || currentWeather.toLowerCase().includes('storm')) {
     alerts.push({
       id: 'storm',
       severity: 'warning',
       title: 'Storm Alert',
-      message: 'Thunderstorm activity detected. Lightning risk present. Seek shelter and avoid field work.',
+      message: 'Thunderstorm activity detected. Lightning risk present. Potential hail risk. Seek shelter and avoid field work.',
       icon: 'zap'
+    });
+  }
+
+  const hasHailForecast = next24Hours.some(item =>
+    item.weather[0]?.main.toLowerCase().includes('hail') ||
+    item.weather[0]?.description.toLowerCase().includes('hail')
+  );
+
+  if (hasHailForecast && !alerts.find(a => a.id === 'hail')) {
+    const hailTime = next24Hours.find(item =>
+      item.weather[0]?.main.toLowerCase().includes('hail') ||
+      item.weather[0]?.description.toLowerCase().includes('hail')
+    );
+    const timeStr = hailTime ? new Date(hailTime.dt * 1000).toLocaleTimeString('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit'
+    }) : '';
+
+    alerts.push({
+      id: 'hail-forecast',
+      severity: 'warning',
+      title: 'Hail Forecast',
+      message: `Hail forecast within 24 hours${timeStr ? ` around ${timeStr}` : ''}. Prepare protective measures for crops and equipment.`,
+      icon: 'cloud-hail'
     });
   }
 
@@ -114,7 +148,7 @@ export function generateWeatherAlerts(
       id: 'storm-forecast',
       severity: 'warning',
       title: 'Severe Weather Forecast',
-      message: 'Thunderstorms forecast within 24 hours. Monitor conditions closely.',
+      message: 'Thunderstorms forecast within 24 hours. Possible hail risk. Monitor conditions closely.',
       icon: 'zap'
     });
   }
