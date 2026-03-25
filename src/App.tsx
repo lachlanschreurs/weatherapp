@@ -73,6 +73,7 @@ function App() {
   });
   const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
   useEffect(() => {
     fetchWeather();
@@ -376,13 +377,27 @@ function App() {
                 {user ? (
                   <UserMenu user={user} onSignOut={handleSignOut} />
                 ) : (
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-shadow"
-                  >
-                    <LogIn className="w-5 h-5 text-green-700" />
-                    <span className="font-semibold text-gray-800">Sign In</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        setAuthMode('login');
+                        setShowAuthModal(true);
+                      }}
+                      className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-green-700"
+                    >
+                      <LogIn className="w-5 h-5 text-green-700" />
+                      <span className="font-semibold text-green-700">Sign In</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAuthMode('signup');
+                        setShowAuthModal(true);
+                      }}
+                      className="flex items-center gap-2 bg-green-700 px-4 py-2 rounded-lg shadow-md hover:shadow-lg hover:bg-green-800 transition-colors"
+                    >
+                      <span className="font-semibold text-white">Sign Up</span>
+                    </button>
+                  </>
                 )}
                 <button
                   onClick={fetchWeather}
@@ -592,13 +607,54 @@ function App() {
           />
         </div>
 
-        <div className="mb-6">
-          <ExtendedForecast location={location} />
-        </div>
+        {user ? (
+          <>
+            <div className="mb-6">
+              <ExtendedForecast location={location} />
+            </div>
 
-        <div className="mb-6">
-          <ProbeAPIManager user={user} />
-        </div>
+            <div className="mb-6">
+              <ProbeAPIManager user={user} />
+            </div>
+          </>
+        ) : (
+          <div className="mb-6 bg-white rounded-2xl shadow-xl p-8 border-2 border-green-200">
+            <div className="text-center">
+              <div className="flex justify-center gap-4 mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Calendar className="w-10 h-10 text-green-700" />
+                </div>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Activity className="w-10 h-10 text-green-700" />
+                </div>
+              </div>
+              <h3 className="text-2xl font-bold text-green-900 mb-3">Unlock Premium Features</h3>
+              <p className="text-gray-600 mb-6">
+                Sign up to access 30-day extended forecasts, probe API management, and personalized farming insights
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setShowAuthModal(true);
+                  }}
+                  className="bg-green-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-800 transition-colors"
+                >
+                  Create Free Account
+                </button>
+                <button
+                  onClick={() => {
+                    setAuthMode('login');
+                    setShowAuthModal(true);
+                  }}
+                  className="bg-white text-green-700 px-8 py-3 rounded-lg font-semibold border-2 border-green-700 hover:bg-green-50 transition-colors"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 bg-white rounded-xl p-6 border-2 border-green-200">
           <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
@@ -627,24 +683,77 @@ function App() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300 relative">
-            <div className="flex items-center gap-2 mb-4">
-              <Sprout className="w-6 h-6 text-green-900" />
-              <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
+        {user && (
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300 relative">
+              <div className="flex items-center gap-2 mb-4">
+                <Sprout className="w-6 h-6 text-green-900" />
+                <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
+              </div>
+
+              {plantingDays.length > 0 ? (
+                <div className="space-y-3">
+                  {plantingDays.map((day, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-lg border-2 ${
+                        day.rating === 'Excellent'
+                          ? 'bg-green-50 border-green-400'
+                          : day.rating === 'Good'
+                          ? 'bg-emerald-50 border-emerald-300'
+                          : 'bg-lime-50 border-lime-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <Calendar className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                          <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
+                          <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
+                        </div>
+                        <span className={`text-xs font-bold px-2 py-1 rounded ${
+                          day.rating === 'Excellent'
+                            ? 'bg-green-600 text-white'
+                            : day.rating === 'Good'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-lime-600 text-white'
+                        }`}>
+                          {day.rating}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {day.reasons.map((reason, i) => (
+                          <div key={i} className="text-sm text-gray-700 flex items-start gap-1">
+                            <span className="text-green-600 mt-0.5">•</span>
+                            <span>{reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-600 text-center py-4">No favorable planting days in forecast</p>
+              )}
             </div>
 
-            {plantingDays.length > 0 ? (
+            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300 relative">
+              <div className="flex items-center gap-2 mb-4">
+                <Droplets className="w-6 h-6 text-green-900" />
+                <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>
+              </div>
+
               <div className="space-y-3">
-                {plantingDays.map((day, idx) => (
+                {irrigationDays.map((day, idx) => (
                   <div
                     key={idx}
                     className={`p-4 rounded-lg border-2 ${
-                      day.rating === 'Excellent'
-                        ? 'bg-green-50 border-green-400'
-                        : day.rating === 'Good'
-                        ? 'bg-emerald-50 border-emerald-300'
-                        : 'bg-lime-50 border-lime-300'
+                      day.level === 'High'
+                        ? 'bg-red-50 border-red-300'
+                        : day.level === 'Medium'
+                        ? 'bg-yellow-50 border-yellow-300'
+                        : day.level === 'Low'
+                        ? 'bg-blue-50 border-blue-300'
+                        : 'bg-gray-50 border-gray-300'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -653,81 +762,30 @@ function App() {
                         <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
                         <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
                       </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${
-                        day.rating === 'Excellent'
-                          ? 'bg-green-600 text-white'
-                          : day.rating === 'Good'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-lime-600 text-white'
-                      }`}>
-                        {day.rating}
-                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {day.rainAmount > 0 && (
+                          <span className="text-xs text-gray-600">{day.rainAmount.toFixed(1)}mm</span>
+                        )}
+                        <span className={`text-xs font-bold px-2 py-1 rounded ${
+                          day.level === 'High'
+                            ? 'bg-red-600 text-white'
+                            : day.level === 'Medium'
+                            ? 'bg-yellow-600 text-white'
+                            : day.level === 'Low'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-600 text-white'
+                        }`}>
+                          {day.level}
+                        </span>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      {day.reasons.map((reason, i) => (
-                        <div key={i} className="text-sm text-gray-700 flex items-start gap-1">
-                          <span className="text-green-600 mt-0.5">•</span>
-                          <span>{reason}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-sm text-gray-700">{day.recommendation}</p>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-gray-600 text-center py-4">No favorable planting days in forecast</p>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300 relative">
-            <div className="flex items-center gap-2 mb-4">
-              <Droplets className="w-6 h-6 text-green-900" />
-              <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>
-            </div>
-
-            <div className="space-y-3">
-              {irrigationDays.map((day, idx) => (
-                <div
-                  key={idx}
-                  className={`p-4 rounded-lg border-2 ${
-                    day.level === 'High'
-                      ? 'bg-red-50 border-red-300'
-                      : day.level === 'Medium'
-                      ? 'bg-yellow-50 border-yellow-300'
-                      : day.level === 'Low'
-                      ? 'bg-blue-50 border-blue-300'
-                      : 'bg-gray-50 border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 flex-1">
-                      <Calendar className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                      <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
-                      <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {day.rainAmount > 0 && (
-                        <span className="text-xs text-gray-600">{day.rainAmount.toFixed(1)}mm</span>
-                      )}
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${
-                        day.level === 'High'
-                          ? 'bg-red-600 text-white'
-                          : day.level === 'Medium'
-                          ? 'bg-yellow-600 text-white'
-                          : day.level === 'Low'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-600 text-white'
-                      }`}>
-                        {day.level}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-700">{day.recommendation}</p>
-                </div>
-              ))}
             </div>
           </div>
-        </div>
+        )}
 
         <footer className="mt-8 text-center text-sm text-gray-600 pb-6">
           <div className="mb-1">Data updates every hour. Powered by OpenWeather.</div>
@@ -741,6 +799,7 @@ function App() {
         onSuccess={() => {
           setShowAuthModal(false);
         }}
+        initialMode={authMode}
       />
     </div>
   );
