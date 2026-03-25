@@ -61,29 +61,9 @@ export function AIWeatherExplanation({
             <p className="text-blue-100 text-sm">Personalized insights for your farm</p>
           </div>
         </div>
-        <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
-          PREMIUM
-        </span>
       </div>
 
-      {!isPremium ? (
-        <div className="p-8 text-center bg-gradient-to-br from-gray-50 to-blue-50">
-          <div className="mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <p className="text-gray-800 font-semibold mb-2 text-lg">
-              Get AI-powered weather insights
-            </p>
-            <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
-              Receive personalized farming recommendations based on current and forecasted weather conditions
-            </p>
-          </div>
-          <button className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl">
-            Upgrade to Premium
-          </button>
-        </div>
-      ) : isLoading ? (
+      {isLoading ? (
         <div className="p-8">
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">

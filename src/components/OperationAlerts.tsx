@@ -27,25 +27,9 @@ export function OperationAlerts({ alerts, isPremium }: OperationAlertsProps) {
           <AlertTriangle className="w-5 h-5 text-orange-600" />
           <h2 className="text-xl font-semibold text-gray-800">Operation Alerts</h2>
         </div>
-        <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">
-          PREMIUM
-        </span>
       </div>
 
-      {!isPremium ? (
-        <div className="text-center py-8">
-          <AlertCircle className="w-12 h-12 text-orange-400 mx-auto mb-3" />
-          <p className="text-gray-700 font-medium mb-2">
-            Get real-time operation alerts
-          </p>
-          <p className="text-sm text-gray-600 mb-4">
-            Stay informed about optimal windows for spraying, harvesting, planting, and more
-          </p>
-          <button className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all">
-            Upgrade to Premium
-          </button>
-        </div>
-      ) : alerts.length === 0 ? (
+      {alerts.length === 0 ? (
         <div className="text-center py-8">
           <Info className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-600">No active alerts at this time</p>

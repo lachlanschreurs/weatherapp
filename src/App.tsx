@@ -10,8 +10,6 @@ import { HourlyForecast } from './components/HourlyForecast';
 import { RainRadar } from './components/RainRadar';
 import { supabase, Profile } from './lib/supabase';
 import AuthModal from './components/AuthModal';
-import SubscriptionBanner from './components/SubscriptionBanner';
-import LockedContentOverlay from './components/LockedContentOverlay';
 import { ExtendedForecast } from './components/ExtendedForecast';
 import { AIWeatherExplanation } from './components/AIWeatherExplanation';
 import { OperationAlerts } from './components/OperationAlerts';
@@ -176,23 +174,8 @@ function App() {
       return;
     }
 
-    if (profile.is_admin) {
-      setHasAccess(true);
-      setDaysRemaining(999);
-      return;
-    }
-
-    const now = new Date();
-    const trialEnd = new Date(profile.trial_ends_at);
-    const subscriptionEnd = profile.subscription_ends_at ? new Date(profile.subscription_ends_at) : null;
-
-    const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    setDaysRemaining(Math.max(0, daysLeft));
-
-    const inTrial = profile.subscription_status === 'trial' && now < trialEnd;
-    const hasActiveSubscription = profile.subscription_status === 'active' && subscriptionEnd && now < subscriptionEnd;
-
-    setHasAccess(Boolean(inTrial || hasActiveSubscription));
+    setHasAccess(true);
+    setDaysRemaining(999);
   }
 
   async function handleSignOut() {
@@ -204,7 +187,7 @@ function App() {
   }
 
   function handleUpgrade() {
-    alert('Subscription management coming soon! Contact us to upgrade your account.');
+    setShowAuthModal(true);
   }
 
   async function getUserLocation() {
@@ -457,9 +440,8 @@ function App() {
   const plantingDays = analyzePlantingDays(dailyData);
   const irrigationDays = analyzeIrrigationNeeds(dailyData);
 
-  const todayOnly = !user || !hasAccess;
-  const visiblePlantingDays = todayOnly ? plantingDays.slice(0, 1) : plantingDays;
-  const visibleIrrigationDays = todayOnly ? irrigationDays.slice(0, 1) : irrigationDays;
+  const visiblePlantingDays = user ? plantingDays : plantingDays.slice(0, 1);
+  const visibleIrrigationDays = user ? irrigationDays : irrigationDays.slice(0, 1);
 
   const extendedForecast = generateExtendedForecast(weather);
   const rainProbability = generateRainProbabilityData(weather);
@@ -528,9 +510,9 @@ function App() {
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => setShowAuthModal(true)}
-                      className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-md"
+                      className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-md"
                     >
-                      Start Free Trial
+                      Sign In / Sign Up
                     </button>
                     <button
                       onClick={() => {
@@ -557,9 +539,6 @@ function App() {
           </div>
         </header>
 
-        {user && !hasAccess && (
-          <SubscriptionBanner daysRemaining={daysRemaining} onUpgrade={handleUpgrade} />
-        )}
 
         <div className="mb-6">
           <LocationSearch
@@ -818,7 +797,6 @@ function App() {
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300 relative">
-            {todayOnly && plantingDays.length > 1 && <LockedContentOverlay onUpgrade={handleUpgrade} />}
             <div className="flex items-center gap-2 mb-4">
               <Sprout className="w-6 h-6 text-green-900" />
               <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
@@ -870,7 +848,6 @@ function App() {
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300 relative">
-            {todayOnly && irrigationDays.length > 1 && <LockedContentOverlay onUpgrade={handleUpgrade} />}
             <div className="flex items-center gap-2 mb-4">
               <Droplets className="w-6 h-6 text-green-900" />
               <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>

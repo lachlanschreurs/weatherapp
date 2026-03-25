@@ -35,7 +35,7 @@ const workabilityConfig = {
 };
 
 export function SoilWorkability({ predictions, isPremium }: SoilWorkabilityProps) {
-  const displayData = isPremium ? predictions : predictions.slice(0, 7);
+  const displayData = predictions;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 relative">
@@ -43,28 +43,10 @@ export function SoilWorkability({ predictions, isPremium }: SoilWorkabilityProps
         <div className="flex items-center gap-2">
           <Leaf className="w-5 h-5 text-green-700" />
           <h2 className="text-xl font-semibold text-gray-800">
-            {isPremium ? '14-Day Soil Workability' : 'Soil Workability (Limited)'}
+            14-Day Soil Workability
           </h2>
         </div>
-        {isPremium && (
-          <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">
-            PREMIUM
-          </span>
-        )}
       </div>
-
-      {!isPremium && (
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/60 to-white/95 flex items-end justify-center pb-8 rounded-lg pointer-events-none z-10">
-          <div className="text-center pointer-events-auto">
-            <p className="text-sm font-semibold text-gray-800 mb-2">
-              Upgrade for 14-Day Soil Predictions
-            </p>
-            <button className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all">
-              Go Premium
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
         <p className="text-xs text-amber-800">
@@ -78,9 +60,7 @@ export function SoilWorkability({ predictions, isPremium }: SoilWorkabilityProps
           return (
             <div
               key={day.date}
-              className={`p-4 rounded-lg border-2 transition-all ${config.color} ${
-                index >= 7 && !isPremium ? 'opacity-40 blur-sm' : ''
-              }`}
+              className={`p-4 rounded-lg border-2 transition-all ${config.color}`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
