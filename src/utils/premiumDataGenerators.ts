@@ -44,10 +44,18 @@ export function generateRainProbabilityData(weatherData: any): RainProbabilityHo
     const probability = Math.round(20 + Math.sin((i / 24) * Math.PI * 2) * 30 + Math.random() * 20);
     const intensity = (probability / 100) * (0.3 + Math.random() * 0.4);
 
+    const baseTemp = 18 + Math.sin((i / 24) * Math.PI * 2) * 6;
+    const temperature = baseTemp + Math.random() * 4 - 2;
+
+    const baseSpeed = 8 + Math.sin((i / 12) * Math.PI) * 6;
+    const windSpeed = baseSpeed + Math.random() * 5;
+
     data.push({
       time: time.toISOString(),
       probability: Math.min(100, Math.max(0, probability)),
       intensity: parseFloat(intensity.toFixed(2)),
+      temperature: parseFloat(temperature.toFixed(1)),
+      windSpeed: parseFloat(windSpeed.toFixed(1)),
     });
   }
 

@@ -24,6 +24,8 @@ export interface RainProbabilityHour {
   time: string;
   probability: number;
   intensity: number;
+  windSpeed?: number;
+  temperature?: number;
 }
 
 export interface WindTimingHour {
