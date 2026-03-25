@@ -34,7 +34,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     if (radarFrames.length > 0 && isPlaying) {
       animationRef.current = window.setInterval(() => {
         setCurrentFrame((prev) => (prev + 1) % radarFrames.length);
-      }, 800);
+      }, 400);
     }
     return () => {
       if (animationRef.current) {
@@ -53,7 +53,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (data.radar && data.radar.past) {
         const frames: RadarFrame[] = [];
 
-        const pastFrames = data.radar.past.slice(-6);
+        const pastFrames = data.radar.past.slice(-12);
         pastFrames.forEach((frame: any) => {
           frames.push({
             url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/6/1_1.png`,
@@ -128,7 +128,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
   useEffect(() => {
     if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame]) {
-      (mapRef.current as any)._radarLayer.setUrl(radarFrames[currentFrame].url);
+      const radarLayer = (mapRef.current as any)._radarLayer;
+      const newUrl = radarFrames[currentFrame].url;
+
+      radarLayer.setUrl(newUrl);
+      radarLayer.getContainer().style.transition = 'opacity 0.3s ease-in-out';
     }
   }, [currentFrame, radarFrames]);
 
