@@ -158,6 +158,29 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   };
 
+  const formatRelativeTime = (timestamp: number) => {
+    const now = Date.now() / 1000;
+    const diffMinutes = Math.round((timestamp - now) / 60);
+
+    if (diffMinutes === 0) {
+      return 'Now';
+    } else if (diffMinutes > 0) {
+      const hours = Math.floor(diffMinutes / 60);
+      const mins = diffMinutes % 60;
+      if (hours > 0) {
+        return `+${hours}h ${mins}m`;
+      }
+      return `+${diffMinutes}m`;
+    } else {
+      const hours = Math.floor(Math.abs(diffMinutes) / 60);
+      const mins = Math.abs(diffMinutes) % 60;
+      if (hours > 0) {
+        return `-${hours}h ${mins}m`;
+      }
+      return `-${Math.abs(diffMinutes)}m`;
+    }
+  };
+
   const getCurrentFrameInfo = () => {
     if (radarFrames.length === 0 || !radarFrames[currentFrame]) return null;
     const frame = radarFrames[currentFrame];
@@ -219,11 +242,14 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
             {!isLoading && radarFrames.length > 0 && frameInfo && (
               <>
                 <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1">
                     <Clock className="w-4 h-4 text-gray-700" />
                     <span className="text-sm font-semibold text-gray-700">
                       {frameInfo.time}
                     </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-2">
+                    {formatRelativeTime(radarFrames[currentFrame].time)}
                   </div>
                   {frameInfo.isForecast && (
                     <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium">
@@ -294,7 +320,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                   </button>
                 </div>
 
-                <div className="flex-1 max-w-md">
+                <div className="flex-1 max-w-2xl">
                   <input
                     type="range"
                     min="0"
@@ -303,6 +329,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                     onChange={(e) => setCurrentFrame(parseInt(e.target.value))}
                     className="w-full"
                   />
+                  <div className="flex justify-between mt-1 px-1">
+                    <span className="text-xs text-gray-500">-3h</span>
+                    <span className="text-xs text-gray-600 font-medium">Now</span>
+                    <span className="text-xs text-amber-600 font-medium">+3h</span>
+                  </div>
                 </div>
 
                 <div className="text-xs font-medium text-gray-600 min-w-fit">
