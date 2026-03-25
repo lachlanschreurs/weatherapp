@@ -29,9 +29,13 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
   const [opacity, setOpacity] = useState(0.9);
+  const [showWind, setShowWind] = useState(true);
   const [nearestRadar, setNearestRadar] = useState<BOMRadar | null>(null);
+  const [windData, setWindData] = useState<any>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const windAnimationRef = useRef<number>();
 
   const bomRadars: BOMRadar[] = [
     { id: '02', name: 'Brisbane (Marburg)', lat: -27.6, lon: 152.5 },
@@ -74,10 +78,26 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   useEffect(() => {
     if (nearestRadar) {
       fetchRadarData();
-      const interval = setInterval(fetchRadarData, 5 * 60 * 1000);
+      fetchWindData();
+      const interval = setInterval(() => {
+        fetchRadarData();
+        fetchWindData();
+      }, 5 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [nearestRadar]);
+
+  async function fetchWindData() {
+    try {
+      const response = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,wind_direction_10m&forecast_days=1`
+      );
+      const data = await response.json();
+      setWindData(data);
+    } catch (error) {
+      console.error('Failed to fetch wind data:', error);
+    }
+  }
 
   useEffect(() => {
     if (radarFrames.length > 0 && isPlaying) {
@@ -171,6 +191,47 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           attribution: 'Rain data © Bureau of Meteorology',
         }).addTo(map);
 
+        if (showWind && windData && windData.current) {
+          const canvas = document.createElement('canvas');
+          const bounds = map.getBounds();
+          const size = map.getSize();
+          canvas.width = size.x;
+          canvas.height = size.y;
+          canvas.style.position = 'absolute';
+          canvas.style.pointerEvents = 'none';
+          canvas.style.zIndex = '1001';
+
+          const CanvasLayer = L.Layer.extend({
+            onAdd: function (map: any) {
+              const pane = map.getPane('overlayPane');
+              pane.appendChild(canvas);
+              canvasRef.current = canvas;
+              this._map = map;
+              map.on('move zoom', this._reset, this);
+              this._reset();
+            },
+            onRemove: function (map: any) {
+              const pane = map.getPane('overlayPane');
+              pane.removeChild(canvas);
+              map.off('move zoom', this._reset, this);
+              canvasRef.current = null;
+            },
+            _reset: function () {
+              const size = this._map.getSize();
+              canvas.width = size.x;
+              canvas.height = size.y;
+              const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+              L.DomUtil.setPosition(canvas, topLeft);
+            }
+          });
+
+          const canvasLayer = new CanvasLayer();
+          canvasLayer.addTo(map);
+          (mapRef.current as any)._canvasLayer = canvasLayer;
+
+          drawWindParticles(canvas, map, windData.current);
+        }
+
         L.marker([lat, lon], {
           title: locationName
         }).addTo(map);
@@ -197,7 +258,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         (mapRef.current as any)._leafletMap.remove();
       }
     };
-  }, [showRadar, lat, lon, isExpanded, radarFrames.length]);
+  }, [showRadar, lat, lon, isExpanded, radarFrames.length, showWind, windData]);
 
   useEffect(() => {
     if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame] && nearestRadar) {
@@ -257,6 +318,76 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       return `-${Math.abs(diffMinutes)}m`;
     }
   };
+
+  interface Particle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    age: number;
+    maxAge: number;
+  }
+
+  function drawWindParticles(canvas: HTMLCanvasElement, map: any, currentWind: any) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const particles: Particle[] = [];
+    const numParticles = 500;
+    const windSpeed = currentWind.wind_speed_10m || 0;
+    const windDirection = currentWind.wind_direction_10m || 0;
+
+    const windRadians = ((windDirection + 180) % 360) * (Math.PI / 180);
+    const speedFactor = windSpeed / 10;
+
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: Math.cos(windRadians) * speedFactor,
+        vy: Math.sin(windRadians) * speedFactor,
+        age: Math.random() * 100,
+        maxAge: 100 + Math.random() * 50
+      });
+    }
+
+    function animate() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      particles.forEach(particle => {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.age++;
+
+        if (particle.x < 0 || particle.x > canvas.width ||
+            particle.y < 0 || particle.y > canvas.height ||
+            particle.age > particle.maxAge) {
+          particle.x = Math.random() * canvas.width;
+          particle.y = Math.random() * canvas.height;
+          particle.age = 0;
+        }
+
+        const alpha = 1 - (particle.age / particle.maxAge);
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+        ctx.fillRect(particle.x, particle.y, 2, 2);
+      });
+
+      if (canvasRef.current) {
+        windAnimationRef.current = requestAnimationFrame(animate);
+      }
+    }
+
+    animate();
+  }
+
+  useEffect(() => {
+    return () => {
+      if (windAnimationRef.current) {
+        cancelAnimationFrame(windAnimationRef.current);
+      }
+    };
+  }, []);
 
   const getCurrentFrameInfo = () => {
     if (radarFrames.length === 0 || !radarFrames[currentFrame]) return null;
@@ -334,6 +465,18 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                       Forecast
                     </div>
                   )}
+                  {windData && windData.current && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="text-xs font-semibold text-gray-700 mb-1">Current Wind</div>
+                      <div className="text-xs text-gray-600">
+                        <div>Speed: {windData.current.wind_speed_10m} km/h</div>
+                        <div>Direction: {windData.current.wind_direction_10m}°</div>
+                        {windData.current.wind_gusts_10m && (
+                          <div>Gusts: {windData.current.wind_gusts_10m} km/h</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
@@ -355,16 +498,32 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
 
                 <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">Opacity</div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={opacity}
-                    onChange={(e) => setOpacity(parseFloat(e.target.value))}
-                    className="w-24"
-                  />
+                  <div className="text-xs font-semibold text-gray-700 mb-2">Layers</div>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-600 block mb-1">Radar Opacity</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={opacity}
+                        onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                        className="w-24"
+                      />
+                    </div>
+                    <div className="pt-2 border-t border-gray-200">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={showWind}
+                          onChange={(e) => setShowWind(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-xs text-gray-700 font-medium">Wind Flow</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
