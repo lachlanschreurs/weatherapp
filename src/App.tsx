@@ -3,6 +3,7 @@ import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap } from 
 import { getSprayCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { AlertBanner } from './components/AlertBanner';
+import { LocationSearch, Location } from './components/LocationSearch';
 
 interface WeatherData {
   current: {
@@ -53,10 +54,17 @@ function App() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<Location>({
+    name: 'Middle Tarwin',
+    lat: -38.699,
+    lon: 146.463,
+    country: 'AU',
+    state: 'Victoria',
+  });
 
   useEffect(() => {
     fetchWeather();
-  }, []);
+  }, [location]);
 
   async function fetchWeather() {
     setLoading(true);
@@ -67,7 +75,7 @@ function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       const timestamp = Date.now();
-      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=-38.699&lon=146.463&t=${timestamp}`;
+      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}&t=${timestamp}`;
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -192,6 +200,10 @@ function App() {
   };
   const windDirection = getWindDirection(windDegrees);
 
+  const handleLocationSelect = (newLocation: Location) => {
+    setLocation(newLocation);
+  };
+
   const rainfall = current.rain?.['1h'] || 0;
   const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
@@ -252,17 +264,28 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-5xl font-bold text-green-800 mb-2">FarmCast</h1>
-              <p className="text-xl text-green-700">Middle Tarwin, Victoria</p>
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-5xl font-bold text-green-800 mb-2">FarmCast</h1>
+                <p className="text-xl text-green-700">
+                  {location.name}
+                  {location.state && `, ${location.state}`}
+                  {location.country && `, ${location.country}`}
+                </p>
+              </div>
+              <button
+                onClick={fetchWeather}
+                className="px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium shadow-md"
+              >
+                Refresh
+              </button>
             </div>
-            <button
-              onClick={fetchWeather}
-              className="px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium shadow-md"
-            >
-              Refresh
-            </button>
+
+            <LocationSearch
+              onLocationSelect={handleLocationSelect}
+              currentLocation={location.name}
+            />
           </div>
         </header>
 
