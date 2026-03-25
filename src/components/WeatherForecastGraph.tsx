@@ -234,7 +234,7 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
               <div className="flex justify-between mt-3">
                 {displayData.map((hour, index) => {
                   const time = new Date(hour.time);
-                  const showLabel = index % 6 === 0;
+                  const showLabel = index % 3 === 0;
 
                   return (
                     <div
@@ -244,13 +244,13 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                     >
                       {showLabel && (
                         <div className="flex flex-col items-center">
-                          <div className="text-xs text-gray-800 font-semibold">
+                          <div className="text-xs text-gray-600 font-medium">
                             {time.toLocaleTimeString('en-US', {
                               hour: 'numeric',
                               hour12: true,
                             })}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-800 font-semibold">
                             {time.toLocaleDateString('en-US', { weekday: 'short' })}
                           </div>
                           {hour.windDirection && (
