@@ -75,27 +75,18 @@ function App() {
     setError(null);
 
     try {
-      const apiKey = '205a644e0f57ecf98260a957076e46db';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
 
-      const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&units=metric&appid=${apiKey}`;
-      const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${location.lat}&lon=${location.lon}&units=metric&appid=${apiKey}`;
+      const response = await fetch(weatherUrl);
 
-      const [currentResponse, forecastResponse] = await Promise.all([
-        fetch(currentUrl),
-        fetch(forecastUrl),
-      ]);
-
-      if (!currentResponse.ok || !forecastResponse.ok) {
+      if (!response.ok) {
         throw new Error('Failed to fetch weather data');
       }
 
-      const currentData = await currentResponse.json();
-      const forecastData = await forecastResponse.json();
+      const weatherData = await response.json();
 
-      setWeather({
-        current: currentData,
-        forecast: forecastData,
-      });
+      setWeather(weatherData);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Weather fetch error:', err);
