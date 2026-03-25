@@ -112,7 +112,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         mapRef.current.innerHTML = '';
         const L = (window as any).L;
 
-        const zoom = isExpanded ? 7 : 6;
+        const zoom = isExpanded ? 9 : 8;
         const map = L.map(mapRef.current).setView([lat, lon], zoom);
 
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -288,30 +288,29 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }
 
   function getWindColor(speed: number): string {
-    if (speed < 10) return '#4ade80';
-    if (speed < 20) return '#facc15';
-    if (speed < 30) return '#fb923c';
-    return '#ef4444';
+    return '#ffffff';
   }
 
-  function drawWindArrow(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, length: number, color: string, alpha: number) {
+  function drawWindArrow(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, length: number, color: string) {
     ctx.save();
-    ctx.globalAlpha = alpha * 0.9;
+    ctx.globalAlpha = 0.85;
 
     ctx.translate(x, y);
     ctx.rotate(angle);
 
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 2;
 
     ctx.beginPath();
     ctx.moveTo(-length / 2, 0);
     ctx.lineTo(length / 2, 0);
     ctx.stroke();
 
-    const arrowSize = 7;
+    const arrowSize = 8;
     ctx.beginPath();
     ctx.moveTo(length / 2, 0);
     ctx.lineTo(length / 2 - arrowSize, -arrowSize / 2);
@@ -326,64 +325,41 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    const particles: Particle[] = [];
-    const gridSize = 50;
     const windSpeed = currentWind.wind_speed_10m || 0;
     const windDirection = currentWind.wind_direction_10m || 0;
 
     const windFromRadians = (windDirection * Math.PI) / 180;
     const windToRadians = windFromRadians + Math.PI;
-    const speedFactor = Math.max(windSpeed / 8, 0.5);
-    const arrowLength = 25 + (windSpeed / 2);
+    const arrowLength = 30 + (windSpeed / 2);
     const windColor = getWindColor(windSpeed);
 
+    const gridSize = 60;
     const cols = Math.ceil(canvas.width / gridSize);
     const rows = Math.ceil(canvas.height / gridSize);
 
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < cols; col++) {
-        const x = col * gridSize + (Math.random() - 0.5) * gridSize * 0.3;
-        const y = row * gridSize + (Math.random() - 0.5) * gridSize * 0.3;
-
-        particles.push({
-          x: x,
-          y: y,
-          vx: Math.sin(windToRadians) * speedFactor,
-          vy: -Math.cos(windToRadians) * speedFactor,
-          age: Math.random() * 150,
-          maxAge: 150
-        });
-      }
-    }
-
-    function animate() {
+    function drawStaticArrows() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach(particle => {
-        particle.x += particle.vx;
-        particle.y += particle.vy;
-        particle.age++;
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = col * gridSize + gridSize / 2;
+          const y = row * gridSize + gridSize / 2;
 
-        if (particle.x < -50 || particle.x > canvas.width + 50 ||
-            particle.y < -50 || particle.y > canvas.height + 50 ||
-            particle.age > particle.maxAge) {
-          const col = Math.floor(Math.random() * cols);
-          const row = Math.floor(Math.random() * rows);
-          particle.x = col * gridSize + (Math.random() - 0.5) * gridSize * 0.3;
-          particle.y = row * gridSize + (Math.random() - 0.5) * gridSize * 0.3;
-          particle.age = 0;
+          drawWindArrow(ctx, x, y, windToRadians, arrowLength, windColor);
         }
-
-        const alpha = Math.max(0, 1 - (particle.age / particle.maxAge));
-        drawWindArrow(ctx, particle.x, particle.y, windToRadians, arrowLength, windColor, alpha);
-      });
-
-      if (canvasRef.current) {
-        windAnimationRef.current = requestAnimationFrame(animate);
       }
     }
 
-    animate();
+    drawStaticArrows();
+
+    const resizeHandler = () => {
+      const size = map.getSize();
+      canvas.width = size.x;
+      canvas.height = size.y;
+      drawStaticArrows();
+    };
+
+    map.on('move zoom', resizeHandler);
   }
 
   useEffect(() => {
