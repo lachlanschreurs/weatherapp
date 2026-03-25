@@ -331,7 +331,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     const windSpeed = currentWind.wind_speed_10m || 0;
     const windDirection = currentWind.wind_direction_10m || 0;
 
-    const windRadians = (windDirection * Math.PI) / 180;
+    const windFromRadians = (windDirection * Math.PI) / 180;
+    const windToRadians = windFromRadians + Math.PI;
     const speedFactor = Math.max(windSpeed / 8, 0.5);
     const arrowLength = 25 + (windSpeed / 2);
     const windColor = getWindColor(windSpeed);
@@ -347,8 +348,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         particles.push({
           x: x,
           y: y,
-          vx: Math.sin(windRadians) * speedFactor,
-          vy: -Math.cos(windRadians) * speedFactor,
+          vx: Math.sin(windToRadians) * speedFactor,
+          vy: -Math.cos(windToRadians) * speedFactor,
           age: Math.random() * 150,
           maxAge: 150
         });
@@ -374,7 +375,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }
 
         const alpha = Math.max(0, 1 - (particle.age / particle.maxAge));
-        drawWindArrow(ctx, particle.x, particle.y, windRadians, arrowLength, windColor, alpha);
+        drawWindArrow(ctx, particle.x, particle.y, windToRadians, arrowLength, windColor, alpha);
       });
 
       if (canvasRef.current) {
