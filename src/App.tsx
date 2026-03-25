@@ -19,6 +19,7 @@ import { SavedLocations } from './components/SavedLocations';
 import { RainProbabilityBreakdown } from './components/RainProbabilityBreakdown';
 import { WindTiming } from './components/WindTiming';
 import { SoilWorkability } from './components/SoilWorkability';
+import MoistureProbes from './components/MoistureProbes';
 import {
   generateExtendedForecast,
   generateRainProbabilityData,
@@ -725,6 +726,12 @@ function App() {
         <div className="mb-6">
           <SoilWorkability predictions={soilWorkability} isPremium={hasAccess} />
         </div>
+
+        {user && (
+          <div className="mb-6">
+            <MoistureProbes />
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-2xl font-bold text-green-900 mb-6">5-Day Forecast</h2>
