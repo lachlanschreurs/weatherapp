@@ -3,8 +3,46 @@ import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap } from 
 import { calculateDeltaT, getSprayCondition } from './utils/deltaT';
 
 interface WeatherData {
-  forecast: any;
-  observations: any;
+  current: {
+    main: {
+      temp: number;
+      humidity: number;
+      pressure: number;
+    };
+    weather: Array<{
+      main: string;
+      description: string;
+    }>;
+    wind: {
+      speed: number;
+      deg: number;
+    };
+    rain?: {
+      '1h'?: number;
+    };
+  };
+  forecast: {
+    list: Array<{
+      dt: number;
+      main: {
+        temp: number;
+        temp_min: number;
+        temp_max: number;
+        humidity: number;
+      };
+      weather: Array<{
+        main: string;
+        description: string;
+      }>;
+      wind: {
+        speed: number;
+      };
+      rain?: {
+        '3h'?: number;
+      };
+      dt_txt: string;
+    }>;
+  };
 }
 
 function App() {
@@ -25,7 +63,7 @@ function App() {
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       const timestamp = Date.now();
-      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=-38.6341&lon=146.0489&t=${timestamp}`;
+      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=-38.699&lon=146.463&t=${timestamp}`;
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -121,8 +159,8 @@ function App() {
     );
   }
 
-  const current = weather?.observations?.response?.[0]?.ob;
-  const forecasts = weather?.forecast?.response?.[0]?.periods || [];
+  const current = weather?.current;
+  const forecastList = weather?.forecast?.list || [];
 
   if (!current) {
     return (
@@ -134,11 +172,53 @@ function App() {
     );
   }
 
-  const deltaT = calculateDeltaT(current.tempC, current.humidity);
+  const tempC = current.main.temp;
+  const humidity = current.main.humidity;
+  const deltaT = calculateDeltaT(tempC, humidity);
   const sprayCondition = getSprayCondition(deltaT);
-  const weatherCode = current.weather || 'clear';
+  const weatherCode = current.weather[0]?.main || 'clear';
+  const weatherDescription = current.weather[0]?.description || 'clear';
   const bgGradient = getBackgroundGradient(weatherCode);
   const textColor = getTextColor(weatherCode);
+
+  const windSpeedKmh = current.wind.speed * 3.6;
+  const windDegrees = current.wind.deg;
+  const getWindDirection = (deg: number) => {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return directions[Math.round(deg / 45) % 8];
+  };
+  const windDirection = getWindDirection(windDegrees);
+
+  const rainfall = current.rain?.['1h'] || 0;
+  const pressure = current.main.pressure;
+
+  const dewpointC = tempC - ((100 - humidity) / 5);
+
+  const dailyForecasts = forecastList.reduce((acc: any[], item: any) => {
+    const date = new Date(item.dt * 1000).toLocaleDateString('en-AU');
+    const existing = acc.find(f => f.date === date);
+
+    if (!existing) {
+      acc.push({
+        date,
+        dt: item.dt,
+        temps: [item.main.temp],
+        tempMin: item.main.temp_min,
+        tempMax: item.main.temp_max,
+        humidity: item.main.humidity,
+        weather: item.weather[0]?.main || 'clear',
+        windSpeed: item.wind.speed * 3.6,
+        rain: item.rain?.['3h'] || 0,
+      });
+    } else {
+      existing.temps.push(item.main.temp);
+      existing.tempMin = Math.min(existing.tempMin, item.main.temp_min);
+      existing.tempMax = Math.max(existing.tempMax, item.main.temp_max);
+      existing.rain += item.rain?.['3h'] || 0;
+    }
+
+    return acc;
+  }, []).slice(0, 5);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
@@ -164,10 +244,10 @@ function App() {
               {getWeatherIcon(weatherCode, 'w-24 h-24')}
               <div>
                 <div className="text-7xl font-bold mb-2">
-                  {Math.round(current.tempC)}°C
+                  {Math.round(tempC)}°C
                 </div>
                 <div className="text-2xl capitalize opacity-90">
-                  {current.weatherPrimary || current.weather}
+                  {weatherDescription}
                 </div>
               </div>
             </div>
@@ -194,10 +274,10 @@ function App() {
                 <span className="font-semibold">Wind Speed</span>
               </div>
               <div className="text-3xl font-bold">
-                {Math.round(current.windKPH)} km/h
+                {Math.round(windSpeedKmh)} km/h
               </div>
               <div className="text-sm opacity-80 mt-1">
-                {current.windDir || 'N/A'}
+                {windDirection}
               </div>
             </div>
 
@@ -207,7 +287,7 @@ function App() {
                 <span className="font-semibold">Rainfall</span>
               </div>
               <div className="text-3xl font-bold">
-                {current.precipMM || 0} mm
+                {rainfall.toFixed(1)} mm
               </div>
               <div className="text-sm opacity-80 mt-1">Last hour</div>
             </div>
@@ -217,9 +297,9 @@ function App() {
                 <Droplets className="w-6 h-6" />
                 <span className="font-semibold">Humidity</span>
               </div>
-              <div className="text-3xl font-bold">{current.humidity}%</div>
+              <div className="text-3xl font-bold">{humidity}%</div>
               <div className="text-sm opacity-80 mt-1">
-                Dew Point: {Math.round(current.dewpointC)}°C
+                Dew Point: {Math.round(dewpointC)}°C
               </div>
             </div>
 
@@ -229,10 +309,10 @@ function App() {
                 <span className="font-semibold">Pressure</span>
               </div>
               <div className="text-3xl font-bold">
-                {Math.round(current.pressureMB)} hPa
+                {Math.round(pressure)} hPa
               </div>
               <div className="text-sm opacity-80 mt-1">
-                {current.pressureTendency || 'Steady'}
+                Steady
               </div>
             </div>
           </div>
@@ -241,11 +321,12 @@ function App() {
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-2xl font-bold text-green-800 mb-6">5-Day Forecast</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {forecasts.slice(0, 5).map((day: any, index: number) => {
-              const date = new Date(day.timestamp * 1000);
+            {dailyForecasts.map((day: any, index: number) => {
+              const date = new Date(day.dt * 1000);
               const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
               const dayDate = date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-              const forecastDeltaT = calculateDeltaT(day.avgTempC, day.humidity || 50);
+              const avgTemp = day.temps.reduce((a: number, b: number) => a + b, 0) / day.temps.length;
+              const forecastDeltaT = calculateDeltaT(avgTemp, day.humidity);
               const forecastSpray = getSprayCondition(forecastDeltaT);
 
               return (
@@ -262,24 +343,24 @@ function App() {
                     </div>
 
                     <div className="text-3xl font-bold text-gray-800 mb-1">
-                      {Math.round(day.maxTempC)}°
+                      {Math.round(day.tempMax)}°
                     </div>
                     <div className="text-lg text-gray-600 mb-3">
-                      {Math.round(day.minTempC)}°
+                      {Math.round(day.tempMin)}°
                     </div>
 
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Wind:</span>
-                        <span className="font-semibold">{Math.round(day.windSpeedMaxKPH || 0)} km/h</span>
+                        <span className="font-semibold">{Math.round(day.windSpeed)} km/h</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Rain:</span>
-                        <span className="font-semibold">{day.precipMM || 0} mm</span>
+                        <span className="font-semibold">{day.rain.toFixed(1)} mm</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-gray-600">Humidity:</span>
-                        <span className="font-semibold">{day.humidity || 'N/A'}%</span>
+                        <span className="font-semibold">{day.humidity}%</span>
                       </div>
                     </div>
 
