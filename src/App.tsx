@@ -24,13 +24,15 @@ function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=-38.6341&lon=146.0489`;
+      const timestamp = Date.now();
+      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=-38.6341&lon=146.0489&t=${timestamp}`;
 
       const response = await fetch(apiUrl, {
         headers: {
           'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
       });
 
       if (!response.ok) {
