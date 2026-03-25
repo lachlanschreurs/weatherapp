@@ -108,15 +108,15 @@ function App() {
     const code = weatherCode?.toLowerCase() || '';
 
     if (code.includes('thunder') || code.includes('storm')) {
-      return 'from-gray-700 via-gray-600 to-gray-800';
+      return 'from-gray-800 via-slate-700 to-gray-900';
     }
-    if (code.includes('rain') || code.includes('shower')) {
-      return 'from-blue-400 via-blue-300 to-gray-400';
+    if (code.includes('rain') || code.includes('shower') || code.includes('drizzle')) {
+      return 'from-slate-600 via-gray-500 to-slate-600';
     }
     if (code.includes('cloud') || code.includes('overcast')) {
-      return 'from-gray-300 via-gray-200 to-gray-400';
+      return 'from-gray-400 via-gray-300 to-gray-500';
     }
-    return 'from-sky-300 via-blue-200 to-yellow-100';
+    return 'from-amber-300 via-yellow-200 to-sky-400';
   }
 
   function getTextColor(weatherCode: string) {
@@ -238,8 +238,26 @@ function App() {
           </div>
         </header>
 
-        <div className={`bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
+          {weatherCode.toLowerCase().includes('rain') && (
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(30)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute animate-rain opacity-40"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `-${Math.random() * 20}%`,
+                    animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${0.5 + Math.random() * 0.5}s`,
+                  }}
+                >
+                  <div className="w-0.5 h-4 bg-blue-200 rounded-full"></div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="flex items-center gap-6">
               {getWeatherIcon(weatherCode, 'w-24 h-24')}
               <div>
@@ -267,7 +285,7 @@ function App() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/30">
+          <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/30">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
                 <Wind className="w-6 h-6" />

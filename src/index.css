@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes rain {
+  0% {
+    transform: translateY(0) scaleY(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(100vh) scaleY(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-rain {
+  animation: rain 1s linear infinite;
+}
