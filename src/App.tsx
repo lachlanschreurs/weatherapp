@@ -295,8 +295,6 @@ function App() {
 
         <AlertBanner alerts={alerts} />
 
-        <HourlyForecast forecastList={forecastList} />
-
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
           {weatherCode.toLowerCase().includes('rain') && (
             <div className="absolute inset-0 pointer-events-none">
@@ -411,6 +409,8 @@ function App() {
             </div>
           </div>
         </div>
+
+        <HourlyForecast forecastList={forecastList} />
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-2xl font-bold text-green-800 mb-6">5-Day Forecast</h2>
