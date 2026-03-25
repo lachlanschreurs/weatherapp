@@ -195,7 +195,7 @@ function App() {
     const inTrial = profile.subscription_status === 'trial' && now < trialEnd;
     const hasActiveSubscription = profile.subscription_status === 'active' && subscriptionEnd && now < subscriptionEnd;
 
-    setHasAccess(inTrial || hasActiveSubscription);
+    setHasAccess(Boolean(inTrial || hasActiveSubscription));
   }
 
   async function handleSignOut() {
