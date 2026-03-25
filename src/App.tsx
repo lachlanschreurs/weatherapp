@@ -16,7 +16,6 @@ import { ExtendedForecast } from './components/ExtendedForecast';
 import { AIWeatherExplanation } from './components/AIWeatherExplanation';
 import { OperationAlerts } from './components/OperationAlerts';
 import { SavedLocations } from './components/SavedLocations';
-import { WeatherForecastGraph } from './components/WeatherForecastGraph';
 import { SoilWorkability } from './components/SoilWorkability';
 import MoistureProbes from './components/MoistureProbes';
 import {
@@ -686,14 +685,6 @@ function App() {
         </div>
 
         <HourlyForecast forecastList={forecastList} />
-
-        <div className="mb-6">
-          <WeatherForecastGraph
-            rainData={rainProbability}
-            isPremium={true}
-            dailyForecast={dailyForecastData}
-          />
-        </div>
 
         <div className="mb-6">
           <AIWeatherExplanation

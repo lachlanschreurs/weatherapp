@@ -7,7 +7,7 @@ interface ExtendedForecastProps {
 }
 
 export function ExtendedForecast({ forecast, isPremium }: ExtendedForecastProps) {
-  const displayData = isPremium ? forecast : forecast.slice(0, 7);
+  const displayData = isPremium ? forecast.slice(0, 14) : forecast.slice(0, 7);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 relative">
@@ -15,7 +15,7 @@ export function ExtendedForecast({ forecast, isPremium }: ExtendedForecastProps)
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-blue-600" />
           <h2 className="text-xl font-semibold text-gray-800">
-            {isPremium ? '30-Day Extended Forecast' : '7-Day Forecast'}
+            {isPremium ? '14-Day Extended Forecast' : '7-Day Forecast'}
           </h2>
         </div>
         {isPremium && (
@@ -29,7 +29,7 @@ export function ExtendedForecast({ forecast, isPremium }: ExtendedForecastProps)
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/60 to-white/95 flex items-end justify-center pb-8 rounded-lg pointer-events-none">
           <div className="text-center pointer-events-auto">
             <p className="text-sm font-semibold text-gray-800 mb-2">
-              Upgrade for 30-Day Forecast
+              Upgrade for 14-Day Forecast
             </p>
             <button className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all">
               Go Premium
