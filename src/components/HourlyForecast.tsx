@@ -148,15 +148,26 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
               const x = i * (1000 / (hourlyData.length - 1));
               const yTemp = 400 - normalize(d.temp, maxTemp, minTemp) * 3.5 - 50;
               return (
-                <circle
-                  key={`temp-dot-${i}`}
-                  cx={x}
-                  cy={yTemp}
-                  r="5"
-                  fill="#f97316"
-                  stroke="white"
-                  strokeWidth="2"
-                />
+                <g key={`temp-${i}`}>
+                  <circle
+                    cx={x}
+                    cy={yTemp}
+                    r="5"
+                    fill="#f97316"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                  <text
+                    x={x}
+                    y={yTemp - 12}
+                    textAnchor="middle"
+                    fontSize="12"
+                    fontWeight="600"
+                    fill="#f97316"
+                  >
+                    {d.temp}°
+                  </text>
+                </g>
               );
             })}
 
@@ -164,15 +175,46 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
               const x = i * (1000 / (hourlyData.length - 1));
               const yWind = 400 - normalize(d.windSpeed, maxWind) * 3.5 - 50;
               return (
-                <circle
-                  key={`wind-dot-${i}`}
-                  cx={x}
-                  cy={yWind}
-                  r="5"
-                  fill="#06b6d4"
-                  stroke="white"
-                  strokeWidth="2"
-                />
+                <g key={`wind-${i}`}>
+                  <circle
+                    cx={x}
+                    cy={yWind}
+                    r="5"
+                    fill="#06b6d4"
+                    stroke="white"
+                    strokeWidth="2"
+                  />
+                  <text
+                    x={x}
+                    y={yWind - 12}
+                    textAnchor="middle"
+                    fontSize="12"
+                    fontWeight="600"
+                    fill="#06b6d4"
+                  >
+                    {d.windSpeed}
+                  </text>
+                </g>
+              );
+            })}
+
+            {hourlyData.map((d, i) => {
+              if (d.rainChance === 0) return null;
+              const x = i * (1000 / (hourlyData.length - 1));
+              const barHeight = normalize(d.rainChance, maxRain) * 3.5;
+              const y = 400 - barHeight - 50;
+              return (
+                <text
+                  key={`rain-label-${i}`}
+                  x={x}
+                  y={y - 5}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight="600"
+                  fill="#3b82f6"
+                >
+                  {d.rainChance}%
+                </text>
               );
             })}
           </svg>
