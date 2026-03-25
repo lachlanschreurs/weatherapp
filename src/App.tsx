@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, LogOut } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, LogOut, RefreshCw } from 'lucide-react';
 import { getSprayCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -461,9 +461,10 @@ function App() {
                 )}
                 <button
                   onClick={fetchWeather}
-                  className="px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors font-medium shadow-md"
+                  className="p-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors shadow-md"
+                  title="Refresh weather data"
                 >
-                  Refresh
+                  <RefreshCw className="w-5 h-5" />
                 </button>
               </div>
             </div>
