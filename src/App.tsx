@@ -12,6 +12,20 @@ import { supabase, Profile } from './lib/supabase';
 import AuthModal from './components/AuthModal';
 import SubscriptionBanner from './components/SubscriptionBanner';
 import LockedContentOverlay from './components/LockedContentOverlay';
+import { ExtendedForecast } from './components/ExtendedForecast';
+import { AIWeatherExplanation } from './components/AIWeatherExplanation';
+import { OperationAlerts } from './components/OperationAlerts';
+import { SavedLocations } from './components/SavedLocations';
+import { RainProbabilityBreakdown } from './components/RainProbabilityBreakdown';
+import { WindTiming } from './components/WindTiming';
+import { SoilWorkability } from './components/SoilWorkability';
+import {
+  generateExtendedForecast,
+  generateRainProbabilityData,
+  generateWindTimingData,
+  generateSoilWorkabilityData,
+  generateOperationAlerts,
+} from './utils/premiumDataGenerators';
 
 interface WeatherData {
   current: {
@@ -391,6 +405,12 @@ function App() {
   const visiblePlantingDays = todayOnly ? plantingDays.slice(0, 1) : plantingDays;
   const visibleIrrigationDays = todayOnly ? irrigationDays.slice(0, 1) : irrigationDays;
 
+  const extendedForecast = generateExtendedForecast(weather);
+  const rainProbability = generateRainProbabilityData(weather);
+  const windTiming = generateWindTimingData(weather);
+  const soilWorkability = generateSoilWorkabilityData(weather, extendedForecast);
+  const operationAlerts = generateOperationAlerts(weather, extendedForecast);
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#8FA88E' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -460,6 +480,22 @@ function App() {
         )}
 
         <AlertBanner alerts={alerts} />
+
+        {hasAccess && (
+          <div className="mb-6">
+            <SavedLocations
+              currentUserId={user?.id || null}
+              isPremium={hasAccess}
+              onLocationSelect={handleLocationSelect}
+            />
+          </div>
+        )}
+
+        {hasAccess && operationAlerts.length > 0 && (
+          <div className="mb-6">
+            <OperationAlerts alerts={operationAlerts} isPremium={hasAccess} />
+          </div>
+        )}
 
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
           {weatherCode.toLowerCase().includes('rain') && (
@@ -565,11 +601,32 @@ function App() {
         <HourlyForecast forecastList={forecastList} />
 
         <div className="mb-6">
+          <AIWeatherExplanation
+            weatherData={weather}
+            locationName={location.name}
+            isPremium={hasAccess}
+          />
+        </div>
+
+        <div className="mb-6">
           <RainRadar
             lat={location.lat}
             lon={location.lon}
             locationName={location.name}
           />
+        </div>
+
+        <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RainProbabilityBreakdown hourlyData={rainProbability} isPremium={hasAccess} />
+          <WindTiming hourlyData={windTiming} isPremium={hasAccess} />
+        </div>
+
+        <div className="mb-6">
+          <ExtendedForecast forecast={extendedForecast} isPremium={hasAccess} />
+        </div>
+
+        <div className="mb-6">
+          <SoilWorkability predictions={soilWorkability} isPremium={hasAccess} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
