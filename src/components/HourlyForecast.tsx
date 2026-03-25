@@ -35,7 +35,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
         hour: 'numeric',
         hour12: true
       }),
-      displayTime: date.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: false }).replace(':00', ''),
+      displayTime: `${date.getHours() % 12 || 12}${date.getHours() >= 12 ? 'pm' : 'am'}`,
       temp: Math.round(temp),
       windSpeed: Math.round(windSpeed),
       windDirection,
