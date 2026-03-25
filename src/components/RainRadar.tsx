@@ -125,10 +125,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         const frameTime = new Date(now.getTime() - i * 10 * 60 * 1000);
         const timestamp = Math.floor(frameTime.getTime() / 1000);
 
-        const timeStr = frameTime.toISOString().replace(/[-:]/g, '').split('.')[0];
-
         frames.push({
-          url: `https://api.weather.bom.gov.au/v1/imagery/radar/IDR${nearestRadar.id}.T.{timestamp}.png?timestamp=${timeStr}`,
+          url: `https://api.weather.bom.gov.au/v1/imagery/radar/IDR${nearestRadar.id}.T.${timestamp}.png`,
           time: timestamp,
           isForecast: false,
           radarId: nearestRadar.id
@@ -179,16 +177,18 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }).addTo(map);
 
         const currentFrameData = radarFrames[currentFrame];
-        const imageUrl = currentFrameData.url.replace('{timestamp}', '');
+        const imageUrl = currentFrameData.url;
 
         const radarImageBounds = [
-          [nearestRadar.lat - 4, nearestRadar.lon - 4],
-          [nearestRadar.lat + 4, nearestRadar.lon + 4]
+          [nearestRadar.lat - 2.5, nearestRadar.lon - 2.5],
+          [nearestRadar.lat + 2.5, nearestRadar.lon + 2.5]
         ];
 
         const radarLayer = L.imageOverlay(imageUrl, radarImageBounds, {
           opacity: opacity,
           attribution: 'Rain data © Bureau of Meteorology',
+          crossOrigin: 'anonymous',
+          errorOverlayUrl: ''
         }).addTo(map);
 
         if (showWind && windData && windData.current) {
@@ -287,17 +287,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       oldLayer.remove();
 
       const currentFrameData = radarFrames[currentFrame];
-      const imageUrl = currentFrameData.url.replace('{timestamp}', '');
+      const imageUrl = currentFrameData.url;
 
       const radarImageBounds = [
-        [nearestRadar.lat - 4, nearestRadar.lon - 4],
-        [nearestRadar.lat + 4, nearestRadar.lon + 4]
+        [nearestRadar.lat - 2.5, nearestRadar.lon - 2.5],
+        [nearestRadar.lat + 2.5, nearestRadar.lon + 2.5]
       ];
 
       const L = (window as any).L;
       const newLayer = L.imageOverlay(imageUrl, radarImageBounds, {
         opacity: opacity,
         attribution: 'Rain data © Bureau of Meteorology',
+        crossOrigin: 'anonymous',
+        errorOverlayUrl: ''
       }).addTo(map);
 
       (mapRef.current as any)._radarLayer = newLayer;
@@ -347,26 +349,62 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     maxAge: number;
   }
 
+  function getWindColor(speed: number): string {
+    if (speed < 10) return '#4ade80';
+    if (speed < 20) return '#facc15';
+    if (speed < 30) return '#fb923c';
+    return '#ef4444';
+  }
+
+  function drawWindArrow(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, length: number, color: string, alpha: number) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(length, 0);
+    ctx.stroke();
+
+    const arrowSize = 6;
+    ctx.beginPath();
+    ctx.moveTo(length, 0);
+    ctx.lineTo(length - arrowSize, -arrowSize / 2);
+    ctx.lineTo(length - arrowSize, arrowSize / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   function drawWindParticles(canvas: HTMLCanvasElement, map: any, currentWind: any) {
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     const particles: Particle[] = [];
-    const numParticles = 300;
+    const numParticles = 200;
     const windSpeed = currentWind.wind_speed_10m || 0;
     const windDirection = currentWind.wind_direction_10m || 0;
 
-    const windRadians = ((windDirection + 180) % 360) * (Math.PI / 180);
-    const speedFactor = Math.max(windSpeed / 8, 0.5);
+    const windRadians = (windDirection * Math.PI) / 180;
+    const speedFactor = Math.max(windSpeed / 10, 0.3);
+    const arrowLength = 15 + (windSpeed / 3);
+    const windColor = getWindColor(windSpeed);
 
     for (let i = 0; i < numParticles; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: Math.cos(windRadians) * speedFactor,
-        vy: Math.sin(windRadians) * speedFactor,
-        age: Math.random() * 100,
-        maxAge: 100 + Math.random() * 50
+        vx: Math.sin(windRadians) * speedFactor,
+        vy: -Math.cos(windRadians) * speedFactor,
+        age: Math.random() * 120,
+        maxAge: 120
       });
     }
 
@@ -378,8 +416,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         particle.y += particle.vy;
         particle.age++;
 
-        if (particle.x < 0 || particle.x > canvas.width ||
-            particle.y < 0 || particle.y > canvas.height ||
+        if (particle.x < -20 || particle.x > canvas.width + 20 ||
+            particle.y < -20 || particle.y > canvas.height + 20 ||
             particle.age > particle.maxAge) {
           particle.x = Math.random() * canvas.width;
           particle.y = Math.random() * canvas.height;
@@ -387,21 +425,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }
 
         const alpha = Math.max(0, 1 - (particle.age / particle.maxAge));
-
-        ctx.shadowBlur = 3;
-        ctx.shadowColor = `rgba(255, 255, 255, ${alpha * 0.8})`;
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.4})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(particle.x, particle.y);
-        ctx.lineTo(particle.x - particle.vx * 3, particle.y - particle.vy * 3);
-        ctx.stroke();
+        drawWindArrow(ctx, particle.x, particle.y, windRadians, arrowLength, windColor, alpha * 0.8);
       });
 
       if (canvasRef.current) {
