@@ -43,24 +43,25 @@ export function LocationSearch({ onLocationSelect, currentLocation }: LocationSe
     setIsSearching(true);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const apiKey = '205a644e0f57ecf98260a957076e46db';
+      const apiUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(searchQuery)}&limit=5&appid=${apiKey}`;
 
-      const apiUrl = `${supabaseUrl}/functions/v1/geocode?q=${encodeURIComponent(searchQuery)}`;
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetch(apiUrl);
 
       if (!response.ok) {
         throw new Error('Failed to search locations');
       }
 
       const data = await response.json();
-      setResults(data);
+      const locations = data.map((item: any) => ({
+        name: item.name,
+        lat: item.lat,
+        lon: item.lon,
+        country: item.country,
+        state: item.state,
+      }));
+
+      setResults(locations);
       setShowResults(true);
     } catch (error) {
       console.error('Error searching location:', error);

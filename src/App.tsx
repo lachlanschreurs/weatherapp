@@ -1,27 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, LogOut, RefreshCw, Activity } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
 import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay } from './utils/farmingRecommendations';
-import { AlertBanner } from './components/AlertBanner';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
 import { RainRadar } from './components/RainRadar';
-import { supabase, Profile } from './lib/supabase';
-import AuthModal from './components/AuthModal';
-import { ExtendedForecast } from './components/ExtendedForecast';
-import { AIWeatherExplanation } from './components/AIWeatherExplanation';
-import { OperationAlerts } from './components/OperationAlerts';
-import { SavedLocations } from './components/SavedLocations';
-import { SoilWorkability } from './components/SoilWorkability';
-import MoistureProbes from './components/MoistureProbes';
-import {
-  generateExtendedForecast,
-  generateRainProbabilityData,
-  generateSoilWorkabilityData,
-  generateOperationAlerts,
-} from './utils/premiumDataGenerators';
 
 interface WeatherData {
   current: {
@@ -81,153 +66,36 @@ function App() {
     state: 'Victoria',
   });
 
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [daysRemaining, setDaysRemaining] = useState(0);
-  const [locationInitialized, setLocationInitialized] = useState(true);
-  const [probeTabMode, setProbeTabMode] = useState<'probes' | 'apis'>('probes');
-  const [shouldShowProbeApis, setShouldShowProbeApis] = useState(false);
   useEffect(() => {
-    checkAuth();
-    getUserLocation();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-        if (shouldShowProbeApis) {
-          setProbeTabMode('apis');
-          setShouldShowProbeApis(false);
-          setTimeout(() => {
-            const probeSection = document.getElementById('moisture-probes-section');
-            if (probeSection) {
-              probeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }, 500);
-        }
-      } else {
-        setProfile(null);
-        setHasAccess(false);
-        setDaysRemaining(0);
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [shouldShowProbeApis]);
-
-  useEffect(() => {
-    if (locationInitialized) {
-      fetchWeather();
-    }
-  }, [location, locationInitialized]);
-
-  useEffect(() => {
-    if (profile) {
-      checkSubscriptionStatus();
-    }
-  }, [profile]);
-
-  async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    setUser(session?.user ?? null);
-    if (session?.user) {
-      await loadProfile(session.user.id);
-    }
-  }
-
-  async function loadProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        default_location:saved_locations(id, name, latitude, longitude)
-      `)
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (data) {
-      setProfile(data);
-
-      if (data.default_location) {
-        const defaultLoc = data.default_location as any;
-        const userLocation = {
-          name: defaultLoc.name,
-          lat: Number(defaultLoc.latitude),
-          lon: Number(defaultLoc.longitude),
-          country: 'AU',
-          state: '',
-        };
-        setLocation(userLocation);
-        localStorage.setItem('farmcast-location', JSON.stringify(userLocation));
-      }
-    }
-  }
-
-  function checkSubscriptionStatus() {
-    if (!profile) {
-      setHasAccess(false);
-      setDaysRemaining(0);
-      return;
-    }
-
-    setHasAccess(true);
-    setDaysRemaining(999);
-  }
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
-    setHasAccess(false);
-    setDaysRemaining(0);
-  }
-
-  function handleUpgrade() {
-    setShowAuthModal(true);
-  }
-
-  async function getUserLocation() {
-    setLocationInitialized(true);
-  }
+    fetchWeather();
+  }, [location]);
 
   async function fetchWeather() {
     setLoading(true);
     setError(null);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const apiKey = '205a644e0f57ecf98260a957076e46db';
 
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase configuration missing');
+      const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&units=metric&appid=${apiKey}`;
+      const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${location.lat}&lon=${location.lon}&units=metric&appid=${apiKey}`;
+
+      const [currentResponse, forecastResponse] = await Promise.all([
+        fetch(currentUrl),
+        fetch(forecastUrl),
+      ]);
+
+      if (!currentResponse.ok || !forecastResponse.ok) {
+        throw new Error('Failed to fetch weather data');
       }
 
-      const timestamp = Date.now();
-      const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}&t=${timestamp}`;
+      const currentData = await currentResponse.json();
+      const forecastData = await forecastResponse.json();
 
-      console.log('Fetching weather from:', apiUrl);
-
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
+      setWeather({
+        current: currentData,
+        forecast: forecastData,
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Weather API error:', response.status, errorText);
-        throw new Error(`Failed to fetch weather data: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Weather data received:', data);
-      setWeather(data);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('Weather fetch error:', err);
@@ -440,14 +308,6 @@ function App() {
   const plantingDays = analyzePlantingDays(dailyData);
   const irrigationDays = analyzeIrrigationNeeds(dailyData);
 
-  const visiblePlantingDays = plantingDays;
-  const visibleIrrigationDays = irrigationDays;
-
-  const extendedForecast = generateExtendedForecast(weather);
-  const rainProbability = generateRainProbabilityData(weather);
-  const soilWorkability = generateSoilWorkabilityData(weather, extendedForecast);
-  const operationAlerts = generateOperationAlerts(weather, extendedForecast);
-
   const dailyForecastData = dailyForecasts.map((day: any) => {
     const date = new Date(day.dt * 1000);
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -495,37 +355,6 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {user ? (
-                  <>
-                    <span className="text-sm text-green-800">{user.email}</span>
-                    <button
-                      onClick={handleSignOut}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium shadow-md flex items-center gap-2"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </button>
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => setShowAuthModal(true)}
-                      className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-md"
-                    >
-                      Sign In / Sign Up
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShouldShowProbeApis(true);
-                        setShowAuthModal(true);
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-md flex items-center gap-2"
-                    >
-                      <Droplets className="w-4 h-4" />
-                      Configure Probe APIs
-                    </button>
-                  </div>
-                )}
                 <button
                   onClick={fetchWeather}
                   className="p-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors shadow-md"
@@ -545,19 +374,7 @@ function App() {
             onLocationSelect={handleLocationSelect}
             currentLocation={location.name}
           />
-          {user && (
-            <SavedLocations
-              userId={user.id}
-              onLocationSelect={handleLocationSelect}
-              currentLocation={location}
-            />
-          )}
         </div>
-        {hasAccess && operationAlerts.length > 0 && (
-          <div className="mb-6">
-            <OperationAlerts alerts={operationAlerts} isPremium={hasAccess} />
-          </div>
-        )}
 
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
           {weatherCode.toLowerCase().includes('rain') && (
@@ -739,34 +556,12 @@ function App() {
         </div>
 
         <div className="mb-6">
-          <AIWeatherExplanation
-            weatherData={weather}
-            locationName={location.name}
-            isPremium={hasAccess}
-          />
-        </div>
-
-        <div className="mb-6">
           <RainRadar
             lat={location.lat}
             lon={location.lon}
             locationName={location.name}
           />
         </div>
-
-        <div className="mb-6">
-          <ExtendedForecast forecast={extendedForecast} isPremium={hasAccess} />
-        </div>
-
-        <div className="mb-6">
-          <SoilWorkability predictions={soilWorkability} isPremium={hasAccess} />
-        </div>
-
-        {user && (
-          <div className="mb-6" id="moisture-probes-section">
-            <MoistureProbes initialTab={probeTabMode} />
-          </div>
-        )}
 
         <div className="mt-6 bg-white rounded-xl p-6 border-2 border-green-200">
           <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
@@ -802,9 +597,9 @@ function App() {
               <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
             </div>
 
-            {visiblePlantingDays.length > 0 ? (
+            {plantingDays.length > 0 ? (
               <div className="space-y-3">
-                {visiblePlantingDays.map((day, idx) => (
+                {plantingDays.map((day, idx) => (
                   <div
                     key={idx}
                     className={`p-4 rounded-lg border-2 ${
@@ -854,7 +649,7 @@ function App() {
             </div>
 
             <div className="space-y-3">
-              {visibleIrrigationDays.map((day, idx) => (
+              {irrigationDays.map((day, idx) => (
                 <div
                   key={idx}
                   className={`p-4 rounded-lg border-2 ${
@@ -902,15 +697,6 @@ function App() {
           <div className="font-semibold text-green-700">FarmCast for Agricultural Planning</div>
         </footer>
       </div>
-
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          setShowAuthModal(false);
-          checkAuth();
-        }}
-      />
     </div>
   );
 }
