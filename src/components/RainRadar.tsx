@@ -20,7 +20,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [opacity, setOpacity] = useState(0.7);
+  const [opacity, setOpacity] = useState(0.9);
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
 
@@ -56,7 +56,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         const pastFrames = data.radar.past.slice(-6);
         pastFrames.forEach((frame: any) => {
           frames.push({
-            url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
+            url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/6/1_1.png`,
             time: frame.time,
             isForecast: false
           });
