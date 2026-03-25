@@ -57,6 +57,7 @@ function App() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [location, setLocation] = useState<Location>({
     name: 'Middle Tarwin',
     lat: -38.699,
@@ -94,6 +95,7 @@ function App() {
 
       const data = await response.json();
       setWeather(data);
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -286,13 +288,27 @@ function App() {
         <header className="mb-8">
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-5xl font-bold text-green-800 mb-2">FarmCast</h1>
-                <p className="text-xl text-green-700">
-                  {location.name}
-                  {location.state && `, ${location.state}`}
-                  {location.country && `, ${location.country}`}
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center w-16 h-16 bg-green-700 rounded-xl shadow-lg">
+                  <Sprout className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-5xl font-bold text-green-800 mb-2">FarmCast</h1>
+                  <p className="text-xl text-green-700">
+                    {location.name}
+                    {location.state && `, ${location.state}`}
+                    {location.country && `, ${location.country}`}
+                  </p>
+                  {lastUpdated && (
+                    <p className="text-sm text-green-600 mt-1">
+                      Last updated: {lastUpdated.toLocaleTimeString('en-AU', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </p>
+                  )}
+                </div>
               </div>
               <button
                 onClick={fetchWeather}
