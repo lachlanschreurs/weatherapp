@@ -42,8 +42,19 @@ Deno.serve(async (req: Request) => {
     ]);
 
     if (!forecastResponse.ok || !observationsResponse.ok) {
+      const forecastError = !forecastResponse.ok ? await forecastResponse.text() : null;
+      const observationsError = !observationsResponse.ok ? await observationsResponse.text() : null;
+
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch weather data from XWeather' }),
+        JSON.stringify({
+          error: 'Failed to fetch weather data from XWeather',
+          details: {
+            forecast: forecastError,
+            observations: observationsError,
+            forecastStatus: forecastResponse.status,
+            observationsStatus: observationsResponse.status,
+          }
+        }),
         {
           status: 500,
           headers: {
