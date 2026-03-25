@@ -60,19 +60,20 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
       const data: RainViewerResponse = await response.json();
 
+      console.log('RainViewer API Response:', data);
+
       setRadarHost(data.host);
 
-      const now = Math.floor(Date.now() / 1000);
-      const oneHourAgo = now - (60 * 60);
-
-      const pastFrames = data.radar.past
-        .filter(f => f.time >= oneHourAgo)
+      const pastFrames = (data.radar.past || [])
+        .slice(-6)
         .map(f => ({ ...f, isForecast: false }));
 
-      const forecastFrames = data.radar.nowcast
+      const forecastFrames = (data.radar.nowcast || [])
         .map(f => ({ ...f, isForecast: true }));
 
       const allFrames = [...pastFrames, ...forecastFrames];
+
+      console.log('Total frames:', allFrames.length, 'Past:', pastFrames.length, 'Forecast:', forecastFrames.length);
 
       setRadarFrames(allFrames);
       setCurrentFrame(pastFrames.length > 0 ? pastFrames.length - 1 : 0);
@@ -122,13 +123,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         }).addTo(map);
 
         const currentFrameData = radarFrames[currentFrame];
-        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/4/1_1.png`;
+
+        console.log('Loading radar tile:', radarTileUrl);
 
         const radarLayer = L.tileLayer(radarTileUrl, {
           opacity: opacity,
           attribution: '© RainViewer',
           tileSize: 256,
-          zIndex: 10
+          zIndex: 10,
+          maxNativeZoom: 12
         }).addTo(map);
 
         L.marker([lat, lon], {
@@ -163,14 +167,17 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       oldLayer.remove();
 
       const currentFrameData = radarFrames[currentFrame];
-      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/2/1_1.png`;
+      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/4/1_1.png`;
+
+      console.log('Updating radar tile:', radarTileUrl);
 
       const L = (window as any).L;
       const newLayer = L.tileLayer(radarTileUrl, {
         opacity: opacity,
         attribution: '© RainViewer',
         tileSize: 256,
-        zIndex: 10
+        zIndex: 10,
+        maxNativeZoom: 12
       }).addTo(map);
 
       (mapRef.current as any)._radarLayer = newLayer;
@@ -360,9 +367,9 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                     className="w-full"
                   />
                   <div className="flex justify-between mt-1 px-1">
-                    <span className="text-xs text-gray-500">-1h</span>
+                    <span className="text-xs text-gray-500">Past</span>
                     <span className="text-xs text-gray-600 font-medium">Now</span>
-                    <span className="text-xs text-gray-500">+2h</span>
+                    <span className="text-xs text-gray-500">Future</span>
                   </div>
                 </div>
 
@@ -371,7 +378,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Past 1 hour + 2 hour forecast (5-10 min intervals)
+                Live radar with past hour + 2 hour forecast
               </div>
             </div>
           )}
