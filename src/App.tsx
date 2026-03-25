@@ -106,9 +106,11 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
+  const [locationInitialized, setLocationInitialized] = useState(false);
 
   useEffect(() => {
     checkAuth();
+    getUserLocation();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
@@ -127,8 +129,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    fetchWeather();
-  }, [location]);
+    if (locationInitialized) {
+      fetchWeather();
+    }
+  }, [location, locationInitialized]);
 
   useEffect(() => {
     if (profile) {
@@ -192,6 +196,72 @@ function App() {
 
   function handleUpgrade() {
     alert('Subscription management coming soon! Contact us to upgrade your account.');
+  }
+
+  async function getUserLocation() {
+    const savedLocation = localStorage.getItem('farmcast-location');
+
+    if (savedLocation) {
+      setLocationInitialized(true);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLocationInitialized(true);
+      return;
+    }
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+
+          try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            const response = await fetch(
+              `${supabaseUrl}/functions/v1/geocode?lat=${latitude}&lon=${longitude}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${supabaseAnonKey}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+
+            if (response.ok) {
+              const locationData = await response.json();
+              const newLocation = {
+                name: locationData.name || 'Current Location',
+                lat: latitude,
+                lon: longitude,
+                country: locationData.country || '',
+                state: locationData.state || '',
+              };
+
+              setLocation(newLocation);
+              localStorage.setItem('farmcast-location', JSON.stringify(newLocation));
+            }
+          } catch (err) {
+            console.error('Failed to reverse geocode location:', err);
+          } finally {
+            setLocationInitialized(true);
+          }
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+          setLocationInitialized(true);
+        },
+        {
+          timeout: 10000,
+          maximumAge: 0,
+        }
+      );
+    } catch (err) {
+      console.error('Error accessing geolocation:', err);
+      setLocationInitialized(true);
+    }
   }
 
   async function fetchWeather() {
