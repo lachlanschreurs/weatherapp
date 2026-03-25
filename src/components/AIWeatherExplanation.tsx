@@ -1,4 +1,4 @@
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Bot, Loader2, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface AIWeatherExplanationProps {
@@ -50,39 +50,69 @@ export function AIWeatherExplanation({
   };
 
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-md p-6 relative">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-purple-600" />
-          <h2 className="text-xl font-semibold text-gray-800">AI Weather Insights</h2>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
+            <Bot className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">AI Weather Assistant</h2>
+            <p className="text-blue-100 text-sm">Personalized insights for your farm</p>
+          </div>
         </div>
-        <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">
+        <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full shadow-lg">
           PREMIUM
         </span>
       </div>
 
       {!isPremium ? (
-        <div className="text-center py-8">
+        <div className="p-8 text-center bg-gradient-to-br from-gray-50 to-blue-50">
           <div className="mb-4">
-            <Sparkles className="w-12 h-12 text-purple-400 mx-auto mb-3" />
-            <p className="text-gray-700 font-medium mb-2">
-              Get AI-powered weather insights tailored for farming
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <p className="text-gray-800 font-semibold mb-2 text-lg">
+              Get AI-powered weather insights
             </p>
-            <p className="text-sm text-gray-600 mb-4">
-              Understand complex weather patterns in plain English with actionable recommendations
+            <p className="text-sm text-gray-600 mb-4 max-w-md mx-auto">
+              Receive personalized farming recommendations based on current and forecasted weather conditions
             </p>
           </div>
-          <button className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all">
+          <button className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl">
             Upgrade to Premium
           </button>
         </div>
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+        <div className="p-8">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 bg-gray-50 rounded-2xl rounded-tl-none p-4">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                <span className="text-gray-600">Analyzing weather data...</span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
-        <div className="prose prose-sm max-w-none">
-          <p className="text-gray-700 leading-relaxed whitespace-pre-line">{explanation}</p>
+        <div className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
+              <Bot className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl rounded-tl-none p-5 shadow-sm border border-gray-100">
+                <p className="text-gray-800 leading-relaxed whitespace-pre-line">{explanation}</p>
+              </div>
+              <div className="mt-2 ml-2 text-xs text-gray-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Powered by AI</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
