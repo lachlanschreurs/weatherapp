@@ -107,6 +107,7 @@ function App() {
   const [hasAccess, setHasAccess] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [locationInitialized, setLocationInitialized] = useState(false);
+  const [showLocationsTab, setShowLocationsTab] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -566,10 +567,28 @@ function App() {
               </div>
             </div>
 
-            <LocationSearch
-              onLocationSelect={handleLocationSelect}
-              currentLocation={location.name}
-            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLocationsTab(false)}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                  !showLocationsTab
+                    ? 'bg-green-700 text-white shadow-md'
+                    : 'bg-white text-green-900 hover:bg-green-50'
+                }`}
+              >
+                Weather
+              </button>
+              <button
+                onClick={() => setShowLocationsTab(true)}
+                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                  showLocationsTab
+                    ? 'bg-green-700 text-white shadow-md'
+                    : 'bg-white text-green-900 hover:bg-green-50'
+                }`}
+              >
+                Saved Locations
+              </button>
+            </div>
           </div>
         </header>
 
@@ -577,16 +596,29 @@ function App() {
           <SubscriptionBanner daysRemaining={daysRemaining} onUpgrade={handleUpgrade} />
         )}
 
-        {hasAccess && (
-          <div className="mb-6">
-            <SavedLocations
-              currentUserId={user?.id || null}
-              isPremium={hasAccess}
-              onLocationSelect={handleLocationSelect}
+        {showLocationsTab ? (
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Saved Locations</h2>
+            <LocationSearch
+              onLocationSelect={(newLocation) => {
+                handleLocationSelect(newLocation);
+                setShowLocationsTab(false);
+              }}
+              currentLocation={location.name}
             />
+            {user && (
+              <SavedLocations
+                userId={user.id}
+                onLocationSelect={(newLocation) => {
+                  handleLocationSelect(newLocation);
+                  setShowLocationsTab(false);
+                }}
+                currentLocation={location}
+              />
+            )}
           </div>
-        )}
-
+        ) : (
+          <>
         {hasAccess && operationAlerts.length > 0 && (
           <div className="mb-6">
             <OperationAlerts alerts={operationAlerts} isPremium={hasAccess} />
@@ -936,6 +968,8 @@ function App() {
           <div className="mb-1">Data updates every hour. Powered by OpenWeather.</div>
           <div className="font-semibold text-green-700">FarmCast for Agricultural Planning</div>
         </footer>
+        </>
+        )}
       </div>
 
       <AuthModal
