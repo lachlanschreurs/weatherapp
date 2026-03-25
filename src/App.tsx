@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -7,6 +7,12 @@ import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
 import { RainRadar } from './components/RainRadar';
+import { ExtendedForecast } from './components/ExtendedForecast';
+import { ProbeAPIManager } from './components/ProbeAPIManager';
+import { AuthModal } from './components/AuthModal';
+import { UserMenu } from './components/UserMenu';
+import { supabase } from './lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 interface WeatherData {
   current: {
@@ -65,10 +71,31 @@ function App() {
     country: 'AU',
     state: 'Victoria',
   });
+  const [user, setUser] = useState<User | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     fetchWeather();
   }, [location]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      (async () => {
+        setUser(session?.user ?? null);
+      })();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   async function fetchWeather() {
     setLoading(true);
@@ -346,6 +373,17 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {user ? (
+                  <UserMenu user={user} onSignOut={handleSignOut} />
+                ) : (
+                  <button
+                    onClick={() => setShowAuthModal(true)}
+                    className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  >
+                    <LogIn className="w-5 h-5 text-green-700" />
+                    <span className="font-semibold text-gray-800">Sign In</span>
+                  </button>
+                )}
                 <button
                   onClick={fetchWeather}
                   className="p-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors shadow-md"
@@ -554,6 +592,14 @@ function App() {
           />
         </div>
 
+        <div className="mb-6">
+          <ExtendedForecast location={location} />
+        </div>
+
+        <div className="mb-6">
+          <ProbeAPIManager user={user} />
+        </div>
+
         <div className="mt-6 bg-white rounded-xl p-6 border-2 border-green-200">
           <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -688,6 +734,14 @@ function App() {
           <div className="font-semibold text-green-700">FarmCast for Agricultural Planning</div>
         </footer>
       </div>
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+        }}
+      />
     </div>
   );
 }
