@@ -215,16 +215,24 @@ function App() {
         weather: item.weather[0]?.main || 'clear',
         windSpeed: item.wind.speed * 3.6,
         rain: item.rain?.['3h'] || 0,
+        rainCount: item.rain?.['3h'] ? 1 : 0,
+        totalForecasts: 1,
       });
     } else {
       existing.temps.push(item.main.temp);
       existing.tempMin = Math.min(existing.tempMin, item.main.temp_min);
       existing.tempMax = Math.max(existing.tempMax, item.main.temp_max);
       existing.rain += item.rain?.['3h'] || 0;
+      existing.rainCount += item.rain?.['3h'] ? 1 : 0;
+      existing.totalForecasts += 1;
     }
 
     return acc;
   }, []).slice(0, 5);
+
+  const todayForecast = dailyForecasts[0];
+  const todayRainChance = todayForecast ? Math.round((todayForecast.rainCount / todayForecast.totalForecasts) * 100) : 0;
+  const todayExpectedRain = todayForecast ? todayForecast.rain : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
@@ -308,12 +316,14 @@ function App() {
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
                 <CloudRain className="w-6 h-6" />
-                <span className="font-semibold">Rainfall</span>
+                <span className="font-semibold">Rain Today</span>
               </div>
               <div className="text-3xl font-bold">
-                {rainfall.toFixed(1)} mm
+                {todayRainChance}%
               </div>
-              <div className="text-sm opacity-80 mt-1">Last hour</div>
+              <div className="text-sm opacity-80 mt-1">
+                Expected: {todayExpectedRain.toFixed(1)} mm
+              </div>
             </div>
 
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
