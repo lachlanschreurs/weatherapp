@@ -440,8 +440,8 @@ function App() {
   const plantingDays = analyzePlantingDays(dailyData);
   const irrigationDays = analyzeIrrigationNeeds(dailyData);
 
-  const visiblePlantingDays = user ? plantingDays : plantingDays.slice(0, 1);
-  const visibleIrrigationDays = user ? irrigationDays : irrigationDays.slice(0, 1);
+  const visiblePlantingDays = plantingDays;
+  const visibleIrrigationDays = irrigationDays;
 
   const extendedForecast = generateExtendedForecast(weather);
   const rainProbability = generateRainProbabilityData(weather);

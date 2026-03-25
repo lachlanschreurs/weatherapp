@@ -16,10 +16,10 @@ export function AIWeatherExplanation({
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (isPremium && weatherData) {
+    if (weatherData) {
       fetchExplanation();
     }
-  }, [isPremium, weatherData]);
+  }, [weatherData]);
 
   const fetchExplanation = async () => {
     setIsLoading(true);

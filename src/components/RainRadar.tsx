@@ -53,7 +53,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (data.radar && data.radar.past) {
         const frames: RadarFrame[] = [];
 
-        const pastFrames = data.radar.past.slice(-12);
+        const pastFrames = data.radar.past.slice(-36);
         pastFrames.forEach((frame: any) => {
           frames.push({
             url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/6/1_1.png`,
@@ -62,8 +62,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           });
         });
 
+        if (data.radar.nowcast) {
+          const forecastFrames = data.radar.nowcast.slice(0, 36);
+          forecastFrames.forEach((frame: any) => {
+            frames.push({
+              url: `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/6/1_1.png`,
+              time: frame.time,
+              isForecast: true
+            });
+          });
+        }
+
         setRadarFrames(frames);
-        setCurrentFrame(frames.length - 1);
+        setCurrentFrame(pastFrames.length - 1);
       }
       setIsLoading(false);
     } catch (error) {
@@ -299,7 +310,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Live global radar - Last hour
+                Past 3 hours + 3 hours forecast
               </div>
             </div>
           )}
