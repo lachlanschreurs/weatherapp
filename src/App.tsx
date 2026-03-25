@@ -58,12 +58,28 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [location, setLocation] = useState<Location>({
-    name: 'Middle Tarwin',
-    lat: -38.699,
-    lon: 146.463,
-    country: 'AU',
-    state: 'Victoria',
+  const [location, setLocation] = useState<Location>(() => {
+    const savedLocation = localStorage.getItem('farmcast-location');
+    if (savedLocation) {
+      try {
+        return JSON.parse(savedLocation);
+      } catch {
+        return {
+          name: 'Middle Tarwin',
+          lat: -38.699,
+          lon: 146.463,
+          country: 'AU',
+          state: 'Victoria',
+        };
+      }
+    }
+    return {
+      name: 'Middle Tarwin',
+      lat: -38.699,
+      lon: 146.463,
+      country: 'AU',
+      state: 'Victoria',
+    };
   });
 
   useEffect(() => {
@@ -207,6 +223,7 @@ function App() {
 
   const handleLocationSelect = (newLocation: Location) => {
     setLocation(newLocation);
+    localStorage.setItem('farmcast-location', JSON.stringify(newLocation));
   };
 
   const rainfall = current.rain?.['1h'] || 0;
