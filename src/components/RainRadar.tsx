@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudRain, Minimize2, Maximize2, Play, Pause } from 'lucide-react';
+import { CloudRain, Minimize2, Maximize2 } from 'lucide-react';
 
 interface RainRadarProps {
   lat: number;
@@ -10,12 +10,9 @@ interface RainRadarProps {
 export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRadar, setShowRadar] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [radarFrames, setRadarFrames] = useState<string[]>([]);
-  const [currentFrame, setCurrentFrame] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>();
 
   useEffect(() => {
     fetchRadarData();
@@ -23,22 +20,6 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (isPlaying && radarFrames.length > 0) {
-      animationRef.current = window.setInterval(() => {
-        setCurrentFrame((prev) => (prev + 1) % radarFrames.length);
-      }, 500);
-    } else {
-      if (animationRef.current) {
-        clearInterval(animationRef.current);
-      }
-    }
-    return () => {
-      if (animationRef.current) {
-        clearInterval(animationRef.current);
-      }
-    };
-  }, [isPlaying, radarFrames.length]);
 
   async function fetchRadarData() {
     try {
@@ -46,18 +27,10 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
       const data = await response.json();
 
-      if (data.radar && data.radar.past) {
-        const frames = data.radar.past.map((frame: any) =>
-          `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/4/1_1.png`
-        );
-        if (data.radar.nowcast) {
-          const nowcastFrames = data.radar.nowcast.map((frame: any) =>
-            `https://tilecache.rainviewer.com${frame.path}/256/{z}/{x}/{y}/4/1_1.png`
-          );
-          setRadarFrames([...frames, ...nowcastFrames]);
-        } else {
-          setRadarFrames(frames);
-        }
+      if (data.radar && data.radar.past && data.radar.past.length > 0) {
+        const latestFrame = data.radar.past[data.radar.past.length - 1];
+        const frameUrl = `https://tilecache.rainviewer.com${latestFrame.path}/256/{z}/{x}/{y}/4/1_1.png`;
+        setRadarFrames([frameUrl]);
       }
       setIsLoading(false);
     } catch (error) {
@@ -98,7 +71,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           maxZoom: 19,
         }).addTo(map);
 
-        const radarLayer = L.tileLayer(radarFrames[currentFrame], {
+        const radarLayer = L.tileLayer(radarFrames[0], {
           opacity: 0.6,
           zIndex: 1000,
         }).addTo(map);
@@ -120,10 +93,10 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }, [showRadar, lat, lon, isExpanded, radarFrames.length]);
 
   useEffect(() => {
-    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame]) {
-      (mapRef.current as any)._radarLayer.setUrl(radarFrames[currentFrame]);
+    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[0]) {
+      (mapRef.current as any)._radarLayer.setUrl(radarFrames[0]);
     }
-  }, [currentFrame, radarFrames]);
+  }, [radarFrames]);
 
   return (
     <div className={`bg-white rounded-xl shadow-lg overflow-hidden border-2 border-blue-300 ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
@@ -136,15 +109,6 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {showRadar && radarFrames.length > 0 && (
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="p-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-            </button>
-          )}
           <button
             onClick={() => setShowRadar(!showRadar)}
             className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium"
@@ -204,7 +168,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
           <p className="text-xs text-gray-600 text-center">
             {radarFrames.length > 0
-              ? 'Animated radar showing past precipitation and forecast. Click play/pause to control animation.'
+              ? 'Current precipitation radar. Updates every 10 minutes.'
               : 'Radar data temporarily unavailable'}
           </p>
         </div>
