@@ -91,16 +91,17 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-1 bg-blue-500 rounded"></div>
-            <Wind className="w-4 h-4 text-blue-400" />
+            <CloudRain className="w-4 h-4 text-cyan-400" />
+            <span className="text-slate-300">Rain %</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-1 bg-white rounded"></div>
+            <Wind className="w-4 h-4 text-white" />
             <span className="text-slate-300">Wind Speed</span>
           </div>
           <div className="flex items-center gap-2">
             <Navigation className="w-4 h-4 text-white" />
             <span className="text-slate-300">Wind Direction</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CloudRain className="w-4 h-4 text-cyan-400" />
-            <span className="text-slate-300">Rain %</span>
           </div>
         </div>
       </div>
@@ -138,7 +139,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
             <span className="text-right">{minTemp}°</span>
           </div>
 
-          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-cyan-400 font-semibold pl-3 w-16 text-right">
+          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-white font-semibold pl-3 w-16 text-right">
             <span>{maxWind}</span>
             <span>{Math.round(maxWind / 2)}</span>
             <span>0 km/h</span>
@@ -147,7 +148,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
           <div className="mx-14">
             <svg className="w-full h-full" viewBox="0 0 1000 400" preserveAspectRatio="none">
               <defs>
-                <linearGradient id="windGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <linearGradient id="rainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
                 </linearGradient>
@@ -183,17 +184,17 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 d={
                   hourlyData.map((d, i) => {
                     const x = i * (1000 / (hourlyData.length - 1));
-                    const y = 400 - normalize(d.windSpeed, maxWind) * 3.6;
+                    const y = 400 - normalize(d.rainChance, maxRain) * 3.6;
                     return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
                   }).join(' ') + ' L 1000,400 L 0,400 Z'
                 }
-                fill="url(#windGradient)"
+                fill="url(#rainGradient)"
               />
 
               <path
                 d={hourlyData.map((d, i) => {
                   const x = i * (1000 / (hourlyData.length - 1));
-                  const y = 400 - normalize(d.windSpeed, maxWind) * 3.6;
+                  const y = 400 - normalize(d.rainChance, maxRain) * 3.6;
                   return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
                 }).join(' ')}
                 stroke="#3b82f6"
@@ -211,6 +212,19 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 }).join(' ')}
                 stroke="#f59e0b"
                 strokeWidth="4"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              <path
+                d={hourlyData.map((d, i) => {
+                  const x = i * (1000 / (hourlyData.length - 1));
+                  const y = 400 - normalize(d.windSpeed, maxWind) * 3.6;
+                  return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
+                }).join(' ')}
+                stroke="white"
+                strokeWidth="3"
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
