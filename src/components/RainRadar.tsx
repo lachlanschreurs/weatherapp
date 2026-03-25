@@ -29,34 +29,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
   const [opacity, setOpacity] = useState(0.7);
-  const [showWind, setShowWind] = useState(true);
-  const [windData, setWindData] = useState<any>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const windAnimationRef = useRef<number>();
 
   useEffect(() => {
     fetchRadarData();
-    fetchWindData();
     const interval = setInterval(() => {
       fetchRadarData();
-      fetchWindData();
     }, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [lat, lon]);
-
-  async function fetchWindData() {
-    try {
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,wind_direction_10m&forecast_days=1`
-      );
-      const data = await response.json();
-      setWindData(data);
-    } catch (error) {
-      console.error('Failed to fetch wind data:', error);
-    }
-  }
 
   useEffect(() => {
     if (radarFrames.length > 0 && isPlaying) {
@@ -71,7 +53,6 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     };
   }, [radarFrames.length, isPlaying]);
 
-
   async function fetchRadarData() {
     try {
       setIsLoading(true);
@@ -83,7 +64,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       setCurrentFrame(data.radar.past.length - 1);
       setIsLoading(false);
     } catch (error) {
-      console.error('Failed to fetch BOM radar data:', error);
+      console.error('Failed to fetch radar data:', error);
       setIsLoading(false);
     }
   }
@@ -112,7 +93,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         mapRef.current.innerHTML = '';
         const L = (window as any).L;
 
-        const zoom = isExpanded ? 9 : 8;
+        const zoom = isExpanded ? 10 : 9;
         const map = L.map(mapRef.current).setView([lat, lon], zoom);
 
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -120,7 +101,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           maxZoom: 19,
         }).addTo(map);
 
-        const darkOverlay = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
           attribution: '© CartoDB',
           maxZoom: 19,
           subdomains: 'abcd'
@@ -136,56 +117,6 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           zIndex: 10,
           maxZoom: 7
         }).addTo(map);
-
-        if (showWind && windData && windData.current) {
-          if (windAnimationRef.current) {
-            cancelAnimationFrame(windAnimationRef.current);
-          }
-
-          const canvas = document.createElement('canvas');
-          const size = map.getSize();
-          canvas.width = size.x;
-          canvas.height = size.y;
-          canvas.style.position = 'absolute';
-          canvas.style.pointerEvents = 'none';
-          canvas.style.zIndex = '1000';
-          canvas.style.top = '0';
-          canvas.style.left = '0';
-
-          const CanvasLayer = L.Layer.extend({
-            onAdd: function (map: any) {
-              const pane = map.getPane('overlayPane');
-              pane.appendChild(canvas);
-              canvasRef.current = canvas;
-              this._map = map;
-              map.on('move zoom', this._reset, this);
-              this._reset();
-              drawWindParticles(canvas, map, windData.current);
-            },
-            onRemove: function (map: any) {
-              const pane = map.getPane('overlayPane');
-              if (canvas.parentNode === pane) {
-                pane.removeChild(canvas);
-              }
-              map.off('move zoom', this._reset, this);
-              if (windAnimationRef.current) {
-                cancelAnimationFrame(windAnimationRef.current);
-              }
-              canvasRef.current = null;
-            },
-            _reset: function () {
-              const size = this._map.getSize();
-              canvas.width = size.x;
-              canvas.height = size.y;
-              const topLeft = this._map.containerPointToLayerPoint([0, 0]);
-              L.DomUtil.setPosition(canvas, topLeft);
-            }
-          });
-
-          const canvasLayer = new CanvasLayer();
-          canvasLayer.addTo(map);
-          (mapRef.current as any)._canvasLayer = canvasLayer;
-        }
 
         L.marker([lat, lon], {
           icon: L.divIcon({
@@ -205,21 +136,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     loadLeaflet();
 
     return () => {
-      if (windAnimationRef.current) {
-        cancelAnimationFrame(windAnimationRef.current);
-      }
-      if (mapRef.current && (mapRef.current as any)._canvasLayer) {
-        const map = (mapRef.current as any)._leafletMap;
-        if (map) {
-          map.removeLayer((mapRef.current as any)._canvasLayer);
-        }
-        (mapRef.current as any)._canvasLayer = null;
-      }
       if (mapRef.current && (mapRef.current as any)._leafletMap) {
         (mapRef.current as any)._leafletMap.remove();
       }
     };
-  }, [showRadar, lat, lon, isExpanded, radarFrames.length, showWind, windData, radarHost]);
+  }, [showRadar, lat, lon, isExpanded, radarFrames.length, radarHost]);
 
   useEffect(() => {
     if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame] && radarHost) {
@@ -278,104 +199,12 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     }
   };
 
-  interface Particle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    age: number;
-    maxAge: number;
-  }
-
-  function getWindColor(speed: number): string {
-    return '#ffffff';
-  }
-
-  function drawWindArrow(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, length: number, color: string) {
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-
-    ctx.translate(x, y);
-    ctx.rotate(angle);
-
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 2;
-
-    ctx.beginPath();
-    ctx.moveTo(-length / 2, 0);
-    ctx.lineTo(length / 2, 0);
-    ctx.stroke();
-
-    const arrowSize = 8;
-    ctx.beginPath();
-    ctx.moveTo(length / 2, 0);
-    ctx.lineTo(length / 2 - arrowSize, -arrowSize / 2);
-    ctx.lineTo(length / 2 - arrowSize, arrowSize / 2);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  function drawWindParticles(canvas: HTMLCanvasElement, map: any, currentWind: any) {
-    const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) return;
-
-    const windSpeed = currentWind.wind_speed_10m || 0;
-    const windDirection = currentWind.wind_direction_10m || 0;
-
-    const windFromRadians = (windDirection * Math.PI) / 180;
-    const windToRadians = windFromRadians + Math.PI;
-    const arrowLength = 30 + (windSpeed / 2);
-    const windColor = getWindColor(windSpeed);
-
-    const gridSize = 60;
-    const cols = Math.ceil(canvas.width / gridSize);
-    const rows = Math.ceil(canvas.height / gridSize);
-
-    function drawStaticArrows() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const x = col * gridSize + gridSize / 2;
-          const y = row * gridSize + gridSize / 2;
-
-          drawWindArrow(ctx, x, y, windToRadians, arrowLength, windColor);
-        }
-      }
-    }
-
-    drawStaticArrows();
-
-    const resizeHandler = () => {
-      const size = map.getSize();
-      canvas.width = size.x;
-      canvas.height = size.y;
-      drawStaticArrows();
-    };
-
-    map.on('move zoom', resizeHandler);
-  }
-
-  useEffect(() => {
-    return () => {
-      if (windAnimationRef.current) {
-        cancelAnimationFrame(windAnimationRef.current);
-      }
-    };
-  }, []);
-
   const getCurrentFrameInfo = () => {
     if (radarFrames.length === 0 || !radarFrames[currentFrame]) return null;
     const frame = radarFrames[currentFrame];
     return {
       time: formatTime(frame.time),
-      isForecast: frame.isForecast
+      isForecast: (frame as any).isForecast
     };
   };
 
@@ -437,25 +266,13 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                       {frameInfo.time}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-500 mb-2">
+                  <div className="text-xs text-gray-500">
                     {formatRelativeTime(radarFrames[currentFrame].time)}
                   </div>
                   {frameInfo.isForecast && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium mt-2">
                       <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
                       Forecast
-                    </div>
-                  )}
-                  {windData && windData.current && (
-                    <div className="mt-3 pt-3 border-t border-gray-200">
-                      <div className="text-xs font-semibold text-gray-700 mb-1">Current Wind</div>
-                      <div className="text-xs text-gray-600">
-                        <div>Speed: {windData.current.wind_speed_10m} km/h</div>
-                        <div>Direction: {windData.current.wind_direction_10m}°</div>
-                        {windData.current.wind_gusts_10m && (
-                          <div>Gusts: {windData.current.wind_gusts_10m} km/h</div>
-                        )}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -479,32 +296,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
 
                 <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">Layers</div>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-xs text-gray-600 block mb-1">Radar Opacity</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={opacity}
-                        onChange={(e) => setOpacity(parseFloat(e.target.value))}
-                        className="w-24"
-                      />
-                    </div>
-                    <div className="pt-2 border-t border-gray-200">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={showWind}
-                          onChange={(e) => setShowWind(e.target.checked)}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-xs text-gray-700 font-medium">Wind Flow</span>
-                      </label>
-                    </div>
-                  </div>
+                  <div className="text-xs font-semibold text-gray-700 mb-2">Radar Opacity</div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={opacity}
+                    onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                    className="w-24"
+                  />
                 </div>
               </>
             )}
