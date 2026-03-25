@@ -11,6 +11,14 @@ interface RadarFrame {
   url: string;
   time: number;
   isForecast: boolean;
+  radarId?: string;
+}
+
+interface BOMRadar {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
 }
 
 export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
@@ -21,14 +29,55 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
   const [opacity, setOpacity] = useState(0.9);
+  const [nearestRadar, setNearestRadar] = useState<BOMRadar | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
 
+  const bomRadars: BOMRadar[] = [
+    { id: '02', name: 'Brisbane (Marburg)', lat: -27.6, lon: 152.5 },
+    { id: '03', name: 'Sydney (Terrey Hills)', lat: -33.7, lon: 151.2 },
+    { id: '04', name: 'Melbourne (Laverton)', lat: -37.9, lon: 144.8 },
+    { id: '14', name: 'Adelaide (Buckland Park)', lat: -34.6, lon: 138.5 },
+    { id: '15', name: 'Perth (Serpentine)', lat: -32.4, lon: 116.0 },
+    { id: '16', name: 'Hobart (Mt Koonya)', lat: -42.8, lon: 147.6 },
+    { id: '29', name: 'Canberra (Captains Flat)', lat: -35.7, lon: 149.5 },
+    { id: '50', name: 'Wollongong (Appin)', lat: -34.3, lon: 150.9 },
+    { id: '63', name: 'Newcastle', lat: -32.7, lon: 152.0 },
+    { id: '66', name: 'Grafton', lat: -29.6, lon: 152.9 },
+    { id: '71', name: 'Cairns', lat: -16.8, lon: 145.7 },
+    { id: '73', name: 'Townsville', lat: -19.2, lon: 146.8 },
+    { id: '76', name: 'Mackay', lat: -21.1, lon: 149.2 },
+  ];
+
+  const findNearestRadar = (latitude: number, longitude: number): BOMRadar => {
+    let nearest = bomRadars[0];
+    let minDistance = Number.MAX_VALUE;
+
+    bomRadars.forEach(radar => {
+      const distance = Math.sqrt(
+        Math.pow(radar.lat - latitude, 2) + Math.pow(radar.lon - longitude, 2)
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = radar;
+      }
+    });
+
+    return nearest;
+  };
+
   useEffect(() => {
-    fetchRadarData();
-    const interval = setInterval(fetchRadarData, 10 * 60 * 1000); // Refresh every 10 minutes
-    return () => clearInterval(interval);
-  }, []);
+    const radar = findNearestRadar(lat, lon);
+    setNearestRadar(radar);
+  }, [lat, lon]);
+
+  useEffect(() => {
+    if (nearestRadar) {
+      fetchRadarData();
+      const interval = setInterval(fetchRadarData, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [nearestRadar]);
 
   useEffect(() => {
     if (radarFrames.length > 0 && isPlaying) {
@@ -45,40 +94,32 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
 
   async function fetchRadarData() {
+    if (!nearestRadar) return;
+
     try {
       setIsLoading(true);
-      const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-      const data = await response.json();
+      const frames: RadarFrame[] = [];
+      const now = new Date();
 
-      if (data.radar && data.radar.past) {
-        const frames: RadarFrame[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const frameTime = new Date(now.getTime() - i * 10 * 60 * 1000);
+        const timestamp = Math.floor(frameTime.getTime() / 1000);
 
-        const pastFrames = data.radar.past.slice(-36);
-        pastFrames.forEach((frame: any) => {
-          frames.push({
-            url: `https://tilecache.rainviewer.com/v2/radar${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
-            time: frame.time,
-            isForecast: false
-          });
+        const timeStr = frameTime.toISOString().replace(/[-:]/g, '').split('.')[0];
+
+        frames.push({
+          url: `https://api.weather.bom.gov.au/v1/imagery/radar/IDR${nearestRadar.id}.T.{timestamp}.png?timestamp=${timeStr}`,
+          time: timestamp,
+          isForecast: false,
+          radarId: nearestRadar.id
         });
-
-        if (data.radar.nowcast) {
-          const forecastFrames = data.radar.nowcast.slice(0, 36);
-          forecastFrames.forEach((frame: any) => {
-            frames.push({
-              url: `https://tilecache.rainviewer.com/v2/radar${frame.path}/256/{z}/{x}/{y}/2/1_1.png`,
-              time: frame.time,
-              isForecast: true
-            });
-          });
-        }
-
-        setRadarFrames(frames);
-        setCurrentFrame(pastFrames.length - 1);
       }
+
+      setRadarFrames(frames);
+      setCurrentFrame(frames.length - 1);
       setIsLoading(false);
     } catch (error) {
-      console.error('Failed to fetch radar data:', error);
+      console.error('Failed to fetch BOM radar data:', error);
       setIsLoading(false);
     }
   }
@@ -103,26 +144,46 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         });
       }
 
-      if (mapRef.current && (window as any).L) {
+      if (mapRef.current && (window as any).L && nearestRadar) {
         mapRef.current.innerHTML = '';
         const L = (window as any).L;
 
         const zoom = isExpanded ? 8 : 7;
-        const map = L.map(mapRef.current).setView([lat, lon], zoom);
+        const centerLat = (lat + nearestRadar.lat) / 2;
+        const centerLon = (lon + nearestRadar.lon) / 2;
+        const map = L.map(mapRef.current).setView([centerLat, centerLon], zoom);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '© OpenStreetMap contributors',
           maxZoom: 19,
         }).addTo(map);
 
-        const radarLayer = L.tileLayer(radarFrames[currentFrame].url, {
+        const currentFrameData = radarFrames[currentFrame];
+        const imageUrl = currentFrameData.url.replace('{timestamp}', '');
+
+        const radarImageBounds = [
+          [nearestRadar.lat - 4, nearestRadar.lon - 4],
+          [nearestRadar.lat + 4, nearestRadar.lon + 4]
+        ];
+
+        const radarLayer = L.imageOverlay(imageUrl, radarImageBounds, {
           opacity: opacity,
-          zIndex: 1000,
-          tileSize: 256,
-          attribution: 'Rain data © RainViewer',
+          attribution: 'Rain data © Bureau of Meteorology',
         }).addTo(map);
 
-        L.marker([lat, lon]).addTo(map);
+        L.marker([lat, lon], {
+          title: locationName
+        }).addTo(map);
+
+        L.marker([nearestRadar.lat, nearestRadar.lon], {
+          icon: L.divIcon({
+            className: 'radar-station-marker',
+            html: '<div style="background: #3b82f6; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6]
+          }),
+          title: nearestRadar.name
+        }).addTo(map);
 
         (mapRef.current as any)._leafletMap = map;
         (mapRef.current as any)._radarLayer = radarLayer;
@@ -139,14 +200,29 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }, [showRadar, lat, lon, isExpanded, radarFrames.length]);
 
   useEffect(() => {
-    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame]) {
-      const radarLayer = (mapRef.current as any)._radarLayer;
-      const newUrl = radarFrames[currentFrame].url;
+    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame] && nearestRadar) {
+      const map = (mapRef.current as any)._leafletMap;
+      const oldLayer = (mapRef.current as any)._radarLayer;
 
-      radarLayer.setUrl(newUrl);
-      radarLayer.getContainer().style.transition = 'opacity 0.3s ease-in-out';
+      oldLayer.remove();
+
+      const currentFrameData = radarFrames[currentFrame];
+      const imageUrl = currentFrameData.url.replace('{timestamp}', '');
+
+      const radarImageBounds = [
+        [nearestRadar.lat - 4, nearestRadar.lon - 4],
+        [nearestRadar.lat + 4, nearestRadar.lon + 4]
+      ];
+
+      const L = (window as any).L;
+      const newLayer = L.imageOverlay(imageUrl, radarImageBounds, {
+        opacity: opacity,
+        attribution: 'Rain data © Bureau of Meteorology',
+      }).addTo(map);
+
+      (mapRef.current as any)._radarLayer = newLayer;
     }
-  }, [currentFrame, radarFrames]);
+  }, [currentFrame, radarFrames, nearestRadar]);
 
   useEffect(() => {
     if (mapRef.current && (mapRef.current as any)._radarLayer) {
@@ -202,7 +278,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Live Rain Radar</h3>
-            <p className="text-sm text-cyan-100">{locationName}</p>
+            <p className="text-sm text-cyan-100">{nearestRadar ? nearestRadar.name : locationName}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -331,9 +407,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                     className="w-full"
                   />
                   <div className="flex justify-between mt-1 px-1">
-                    <span className="text-xs text-gray-500">-3h</span>
+                    <span className="text-xs text-gray-500">-2h</span>
                     <span className="text-xs text-gray-600 font-medium">Now</span>
-                    <span className="text-xs text-amber-600 font-medium">+3h</span>
                   </div>
                 </div>
 
@@ -342,7 +417,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Past 3 hours + 3 hours forecast
+                Past 2 hours of live radar images (10 min intervals)
               </div>
             </div>
           )}
