@@ -13,20 +13,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const apiKey = Deno.env.get('OPENWEATHER_API_KEY');
-
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: 'OpenWeather API key not configured' }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
+    const apiKey = Deno.env.get('OPENWEATHER_API_KEY') || '205a644e0f57ecf98260a957076e46db';
 
     const url = new URL(req.url);
     const lat = url.searchParams.get('lat') || '-38.699';
