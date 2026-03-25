@@ -413,7 +413,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Live Rain Radar</h3>
-            <p className="text-sm text-cyan-100">{nearestRadar ? nearestRadar.name : locationName}</p>
+            <p className="text-sm text-cyan-100">{locationName}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
