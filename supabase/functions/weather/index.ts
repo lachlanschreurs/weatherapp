@@ -32,19 +32,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiKey = Deno.env.get("OPENWEATHER_API_KEY");
-    if (!apiKey) {
-      return new Response(
-        JSON.stringify({ error: "OpenWeather API key not configured" }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
+    const apiKey = Deno.env.get("OPENWEATHER_API_KEY") || "205a644e0f57ecf98260a957076e46db";
 
     const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
     const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
