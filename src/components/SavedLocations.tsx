@@ -26,6 +26,7 @@ export function SavedLocations({
 }: SavedLocationsProps) {
   const [locations, setLocations] = useState<SavedLocationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -131,6 +132,17 @@ export function SavedLocations({
     }
   };
 
+  const handleLocationClick = (location: SavedLocationData) => {
+    onLocationSelect({
+      name: location.name,
+      lat: location.latitude,
+      lon: location.longitude,
+      country: '',
+      state: '',
+    });
+    setIsExpanded(false);
+  };
+
   const formatLastAccessed = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -148,80 +160,82 @@ export function SavedLocations({
 
   return (
     <div className="mt-6">
-      <div className="flex items-center gap-2 mb-4">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center gap-2 mb-4 w-full text-left hover:opacity-70 transition-opacity"
+      >
         <History className="w-5 h-5 text-gray-600" />
         <h3 className="text-lg font-semibold text-gray-800">Search History</h3>
-      </div>
+        {locations.length > 0 && (
+          <span className="text-sm text-gray-500">({locations.length})</span>
+        )}
+      </button>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
-        </div>
-      ) : locations.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <MapPin className="w-12 h-12 mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No location history yet</p>
-          <p className="text-xs mt-1">Search for locations to build your history</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {locations.map((location) => (
-            <div
-              key={location.id}
-              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all group"
-            >
-              <button
-                onClick={() =>
-                  onLocationSelect({
-                    name: location.name,
-                    lat: location.latitude,
-                    lon: location.longitude,
-                    country: '',
-                    state: '',
-                  })
-                }
-                className="flex items-center gap-3 flex-1 text-left"
-              >
-                {location.is_primary && (
-                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-800 group-hover:text-green-700 truncate">
-                    {location.name}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{formatLastAccessed(location.last_accessed_at)}</span>
+      {isExpanded && (
+        <>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
+            </div>
+          ) : locations.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <MapPin className="w-12 h-12 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No location history yet</p>
+              <p className="text-xs mt-1">Search for locations to build your history</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {locations.map((location) => (
+                <div
+                  key={location.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-green-500 hover:bg-green-50 transition-all group"
+                >
+                  <button
+                    onClick={() => handleLocationClick(location)}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    {location.is_primary && (
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-800 group-hover:text-green-700 truncate">
+                        {location.name}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatLastAccessed(location.last_accessed_at)}</span>
+                      </div>
+                    </div>
+                  </button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {!location.is_primary && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPrimary(location.id);
+                        }}
+                        className="p-2 hover:bg-yellow-100 rounded-lg transition-all"
+                        title="Set as primary location"
+                      >
+                        <Star className="w-4 h-4 text-gray-400 hover:text-yellow-500" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteLocation(location.id);
+                      }}
+                      className="p-2 hover:bg-red-100 rounded-lg transition-all"
+                      title="Remove from history"
+                    >
+                      <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                    </button>
                   </div>
                 </div>
-              </button>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {!location.is_primary && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPrimary(location.id);
-                    }}
-                    className="p-2 hover:bg-yellow-100 rounded-lg transition-all"
-                    title="Set as primary location"
-                  >
-                    <Star className="w-4 h-4 text-gray-400 hover:text-yellow-500" />
-                  </button>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteLocation(location.id);
-                  }}
-                  className="p-2 hover:bg-red-100 rounded-lg transition-all"
-                  title="Remove from history"
-                >
-                  <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

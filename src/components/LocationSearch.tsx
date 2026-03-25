@@ -19,12 +19,14 @@ export function LocationSearch({ onLocationSelect, currentLocation }: LocationSe
   const [results, setResults] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowResults(false);
+        setIsExpanded(false);
       }
     };
 
@@ -79,52 +81,66 @@ export function LocationSearch({ onLocationSelect, currentLocation }: LocationSe
     setQuery('');
     setResults([]);
     setShowResults(false);
+    setIsExpanded(false);
   };
 
   return (
     <div ref={searchRef} className="relative w-full max-w-md">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={handleInputChange}
-          onFocus={() => results.length > 0 && setShowResults(true)}
-          placeholder="Search for a location..."
-          className="w-full pl-10 pr-10 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 bg-white shadow-sm"
-        />
-        {isSearching && (
-          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-600 animate-spin" />
-        )}
-      </div>
+      {!isExpanded ? (
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg bg-white shadow-sm hover:border-green-500 transition-colors flex items-center gap-3 text-left"
+        >
+          <Search className="w-5 h-5 text-gray-400" />
+          <span className="text-gray-600">Search for a location...</span>
+        </button>
+      ) : (
+        <>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={handleInputChange}
+              onFocus={() => results.length > 0 && setShowResults(true)}
+              placeholder="Search for a location..."
+              className="w-full pl-10 pr-10 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 bg-white shadow-sm"
+              autoFocus
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-600 animate-spin" />
+            )}
+          </div>
 
-      {showResults && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-green-200 rounded-lg shadow-xl max-h-80 overflow-y-auto">
-          {results.map((location, index) => (
-            <button
-              key={index}
-              onClick={() => handleSelectLocation(location)}
-              className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors border-b border-green-100 last:border-0 flex items-center gap-3"
-            >
-              <MapPin className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <div>
-                <div className="font-semibold text-gray-800">
-                  {location.name}
-                  {location.state && `, ${location.state}`}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {location.country}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+          {showResults && results.length > 0 && (
+            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-green-200 rounded-lg shadow-xl max-h-80 overflow-y-auto">
+              {results.map((location, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSelectLocation(location)}
+                  className="w-full px-4 py-3 text-left hover:bg-green-50 transition-colors border-b border-green-100 last:border-0 flex items-center gap-3"
+                >
+                  <MapPin className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div>
+                    <div className="font-semibold text-gray-800">
+                      {location.name}
+                      {location.state && `, ${location.state}`}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {location.country}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
 
-      {showResults && query.length >= 2 && results.length === 0 && !isSearching && (
-        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-green-200 rounded-lg shadow-xl p-4 text-center text-gray-600">
-          No locations found
-        </div>
+          {showResults && query.length >= 2 && results.length === 0 && !isSearching && (
+            <div className="absolute z-50 w-full mt-2 bg-white border-2 border-green-200 rounded-lg shadow-xl p-4 text-center text-gray-600">
+              No locations found
+            </div>
+          )}
+        </>
       )}
     </div>
   );
