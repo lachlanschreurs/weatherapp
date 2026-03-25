@@ -2,14 +2,11 @@ export function calculateDeltaT(
   temperature: number,
   humidity: number
 ): number {
-  const tempF = temperature * 9/5 + 32;
-
   const es = 6.112 * Math.exp((17.67 * temperature) / (temperature + 243.5));
   const ea = (humidity / 100) * es;
   const dewPoint = (243.5 * Math.log(ea / 6.112)) / (17.67 - Math.log(ea / 6.112));
-  const dewPointF = dewPoint * 9/5 + 32;
 
-  const deltaT = tempF - dewPointF;
+  const deltaT = temperature - dewPoint;
 
   return Math.round(deltaT * 10) / 10;
 }
