@@ -671,6 +671,14 @@ function App() {
         <HourlyForecast forecastList={forecastList} />
 
         <div className="mb-6">
+          <WeatherForecastGraph
+            rainData={rainProbability}
+            isPremium={true}
+            dailyForecast={dailyForecastData}
+          />
+        </div>
+
+        <div className="mb-6">
           <AIWeatherExplanation
             weatherData={weather}
             locationName={location.name}
@@ -683,13 +691,6 @@ function App() {
             lat={location.lat}
             lon={location.lon}
             locationName={location.name}
-          />
-        </div>
-
-        <div className="mb-6">
-          <WeatherForecastGraph
-            rainData={rainProbability}
-            isPremium={true}
           />
         </div>
 
