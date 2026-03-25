@@ -91,7 +91,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
-  const [locationInitialized, setLocationInitialized] = useState(false);
+  const [locationInitialized, setLocationInitialized] = useState(true);
   const [probeTabMode, setProbeTabMode] = useState<'probes' | 'apis'>('probes');
   const [shouldShowProbeApis, setShouldShowProbeApis] = useState(false);
   useEffect(() => {
@@ -222,8 +222,14 @@ function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
       const timestamp = Date.now();
       const apiUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}&t=${timestamp}`;
+
+      console.log('Fetching weather from:', apiUrl);
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -234,13 +240,17 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch weather data');
+        const errorText = await response.text();
+        console.error('Weather API error:', response.status, errorText);
+        throw new Error(`Failed to fetch weather data: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Weather data received:', data);
       setWeather(data);
       setLastUpdated(new Date());
     } catch (err) {
+      console.error('Weather fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
