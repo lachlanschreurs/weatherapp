@@ -586,7 +586,7 @@ function App() {
                     : 'bg-white text-green-900 hover:bg-green-50'
                 }`}
               >
-                Saved Locations
+                Search / Saved Locations
               </button>
             </div>
           </div>
@@ -598,7 +598,7 @@ function App() {
 
         {showLocationsTab ? (
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Saved Locations</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Search / Saved Locations</h2>
             <LocationSearch
               onLocationSelect={(newLocation) => {
                 handleLocationSelect(newLocation);
