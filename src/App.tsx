@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap } from 'lucide-react';
-import { calculateDeltaT, getSprayCondition } from './utils/deltaT';
+import { getSprayCondition } from './utils/deltaT';
 
 interface WeatherData {
   current: {
@@ -174,8 +174,6 @@ function App() {
 
   const tempC = current.main.temp;
   const humidity = current.main.humidity;
-  const deltaT = calculateDeltaT(tempC, humidity);
-  const sprayCondition = getSprayCondition(deltaT);
   const weatherCode = current.weather[0]?.main || 'clear';
   const weatherDescription = current.weather[0]?.description || 'clear';
   const bgGradient = getBackgroundGradient(weatherCode);
@@ -191,6 +189,7 @@ function App() {
 
   const rainfall = current.rain?.['1h'] || 0;
   const pressure = current.main.pressure;
+  const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
   const dewpointC = tempC - ((100 - humidity) / 5);
 
@@ -278,8 +277,8 @@ function App() {
                 <div className={`text-4xl font-bold ${sprayCondition.color} mb-2`}>
                   {sprayCondition.rating}
                 </div>
-                <div className="text-lg font-medium text-gray-700">
-                  Delta T: {deltaT}°F
+                <div className="text-sm font-medium text-gray-700">
+                  {sprayCondition.reason}
                 </div>
               </div>
             </div>
@@ -343,9 +342,7 @@ function App() {
               const date = new Date(day.dt * 1000);
               const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
               const dayDate = date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-              const avgTemp = day.temps.reduce((a: number, b: number) => a + b, 0) / day.temps.length;
-              const forecastDeltaT = calculateDeltaT(avgTemp, day.humidity);
-              const forecastSpray = getSprayCondition(forecastDeltaT);
+              const forecastSpray = getSprayCondition(day.windSpeed, day.rain);
 
               return (
                 <div
@@ -401,22 +398,22 @@ function App() {
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 bg-green-500 rounded-full"></div>
               <div>
-                <span className="font-semibold text-green-800">Good (2-8):</span>
-                <span className="text-gray-700"> Ideal spraying conditions</span>
+                <span className="font-semibold text-green-800">Good:</span>
+                <span className="text-gray-700"> Wind &lt;15 km/h, no rain</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
               <div>
-                <span className="font-semibold text-yellow-800">Moderate (8-10):</span>
-                <span className="text-gray-700"> Acceptable conditions</span>
+                <span className="font-semibold text-yellow-800">Moderate:</span>
+                <span className="text-gray-700"> Wind 15-25 km/h</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-4 h-4 bg-red-500 rounded-full"></div>
               <div>
-                <span className="font-semibold text-red-800">Poor (&lt;2 or &gt;10):</span>
-                <span className="text-gray-700"> Avoid spraying</span>
+                <span className="font-semibold text-red-800">Poor:</span>
+                <span className="text-gray-700"> Wind &gt;25 km/h or rain</span>
               </div>
             </div>
           </div>

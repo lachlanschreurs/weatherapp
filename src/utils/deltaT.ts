@@ -1,38 +1,40 @@
-export function calculateDeltaT(
-  temperature: number,
-  humidity: number
-): number {
-  const es = 6.112 * Math.exp((17.67 * temperature) / (temperature + 243.5));
-  const ea = (humidity / 100) * es;
-  const dewPoint = (243.5 * Math.log(ea / 6.112)) / (17.67 - Math.log(ea / 6.112));
-
-  const deltaT = temperature - dewPoint;
-
-  return Math.round(deltaT * 10) / 10;
-}
-
-export function getSprayCondition(deltaT: number): {
+export function getSprayCondition(windSpeedKmh: number, rainfallMm: number): {
   rating: 'Good' | 'Moderate' | 'Poor';
   color: string;
   bgColor: string;
+  reason: string;
 } {
-  if (deltaT >= 2 && deltaT <= 8) {
-    return {
-      rating: 'Good',
-      color: 'text-green-700',
-      bgColor: 'bg-green-100',
-    };
-  } else if (deltaT > 8 && deltaT <= 10) {
-    return {
-      rating: 'Moderate',
-      color: 'text-yellow-700',
-      bgColor: 'bg-yellow-100',
-    };
-  } else {
+  if (rainfallMm > 0.5) {
     return {
       rating: 'Poor',
       color: 'text-red-700',
       bgColor: 'bg-red-100',
+      reason: 'Rain present',
     };
   }
+
+  if (windSpeedKmh > 25) {
+    return {
+      rating: 'Poor',
+      color: 'text-red-700',
+      bgColor: 'bg-red-100',
+      reason: 'Wind too strong',
+    };
+  }
+
+  if (windSpeedKmh > 15) {
+    return {
+      rating: 'Moderate',
+      color: 'text-yellow-700',
+      bgColor: 'bg-yellow-100',
+      reason: 'Moderate wind',
+    };
+  }
+
+  return {
+    rating: 'Good',
+    color: 'text-green-700',
+    bgColor: 'bg-green-100',
+    reason: 'Ideal conditions',
+  };
 }
