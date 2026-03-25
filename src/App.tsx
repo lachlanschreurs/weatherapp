@@ -333,6 +333,27 @@ function App() {
 
   const dewpointC = tempC - ((100 - humidity) / 5);
 
+  const calculateFeelsLike = (temp: number, humidity: number, windSpeed: number) => {
+    if (temp >= 27) {
+      const heatIndex = -8.78469475556 +
+        1.61139411 * temp +
+        2.33854883889 * humidity +
+        -0.14611605 * temp * humidity +
+        -0.012308094 * temp * temp +
+        -0.0164248277778 * humidity * humidity +
+        0.002211732 * temp * temp * humidity +
+        0.00072546 * temp * humidity * humidity +
+        -0.000003582 * temp * temp * humidity * humidity;
+      return heatIndex;
+    } else if (temp <= 10 && windSpeed > 4.8) {
+      const windChill = 13.12 + 0.6215 * temp - 11.37 * Math.pow(windSpeed, 0.16) + 0.3965 * temp * Math.pow(windSpeed, 0.16);
+      return windChill;
+    }
+    return temp;
+  };
+
+  const feelsLike = calculateFeelsLike(tempC, humidity, windSpeedKmh);
+
   const currentTime = Date.now() / 1000;
   const last12Hours = forecastList.filter((item: any) => {
     const timeDiff = currentTime - item.dt;
@@ -521,6 +542,9 @@ function App() {
               <div>
                 <div className="text-7xl font-bold mb-2">
                   {Math.round(tempC)}°C
+                </div>
+                <div className="text-lg opacity-80 mb-2">
+                  Feels like {Math.round(feelsLike)}°C
                 </div>
                 <div className="text-2xl capitalize opacity-90">
                   {weatherDescription}
