@@ -1,4 +1,5 @@
 import { Wind, CloudRain, Thermometer, Navigation, Cloud, CloudDrizzle, Sun } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface HourlyData {
   time: string;
@@ -10,6 +11,7 @@ interface HourlyData {
   weatherIcon: string;
   hour: number;
   day: string;
+  timestamp: number;
 }
 
 interface HourlyForecastProps {
@@ -18,6 +20,12 @@ interface HourlyForecastProps {
 
 export function HourlyForecast({ forecastList }: HourlyForecastProps) {
   const hourlyData: HourlyData[] = [];
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [nowPosition, setNowPosition] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, scrollLeft: 0 });
+
+  const now = Date.now();
 
   for (let i = 0; i < 16 && i < forecastList.length; i++) {
     const item = forecastList[i];
@@ -43,8 +51,46 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
       weatherIcon,
       hour: date.getHours(),
       day: date.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase(),
+      timestamp: item.dt * 1000,
     });
   }
+
+  useEffect(() => {
+    if (hourlyData.length < 2) return;
+
+    const firstTime = hourlyData[0].timestamp;
+    const lastTime = hourlyData[hourlyData.length - 1].timestamp;
+    const totalDuration = lastTime - firstTime;
+    const nowOffset = now - firstTime;
+    const percentage = Math.max(0, Math.min(100, (nowOffset / totalDuration) * 100));
+
+    setNowPosition(percentage);
+  }, [hourlyData.length]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    setIsDragging(true);
+    setDragStart({
+      x: e.pageX,
+      scrollLeft: scrollContainerRef.current.scrollLeft
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX;
+    const walk = (x - dragStart.x) * 2;
+    scrollContainerRef.current.scrollLeft = dragStart.scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   const maxTemp = Math.max(...hourlyData.map(d => d.temp));
   const minTemp = Math.min(...hourlyData.map(d => d.temp));
@@ -106,47 +152,59 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
         </div>
       </div>
 
-      <div className="relative bg-slate-900 rounded-xl p-6 border border-slate-700">
-        <div className="flex justify-between mb-4 px-2">
-          {hourlyData.map((hour, idx) => {
-            const isFirstOfDay = idx === 0 || hour.day !== hourlyData[idx - 1].day;
-            return (
-              <div key={idx} className="flex flex-col items-center gap-1" style={{ width: `${100 / hourlyData.length}%` }}>
-                {isFirstOfDay && (
-                  <span className="text-xs font-bold text-slate-300 mb-1">{hour.day}</span>
-                )}
-                <span className="text-xs text-slate-400 font-medium">{hour.displayTime}</span>
-                <div className="w-8 h-8 flex items-center justify-center">
-                  {getWeatherIcon(hour.weatherIcon)}
+      <div
+        ref={scrollContainerRef}
+        className="relative bg-slate-900 rounded-xl p-6 border border-slate-700 overflow-x-auto overflow-y-hidden cursor-grab active:cursor-grabbing"
+        style={{
+          scrollbarWidth: 'thin',
+          scrollbarColor: '#475569 #1e293b'
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div style={{ minWidth: '2000px' }}>
+          <div className="flex mb-4 px-2" style={{ width: '100%' }}>
+            {hourlyData.map((hour, idx) => {
+              const isFirstOfDay = idx === 0 || hour.day !== hourlyData[idx - 1].day;
+              return (
+                <div key={idx} className="flex flex-col items-center gap-1 flex-shrink-0" style={{ width: '125px' }}>
+                  {isFirstOfDay && (
+                    <span className="text-xs font-bold text-slate-300 mb-1">{hour.day}</span>
+                  )}
+                  <span className="text-xs text-slate-400 font-medium">{hour.displayTime}</span>
+                  <div className="w-8 h-8 flex items-center justify-center">
+                    {getWeatherIcon(hour.weatherIcon)}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <CloudRain className="w-3 h-3 text-cyan-400" />
+                    <span className="text-xs text-cyan-300 font-medium">{hour.rainChance}%</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Navigation className="w-3 h-3 text-white" style={{ transform: `rotate(${hour.windDirection}deg)` }} />
+                    <span className="text-xs text-slate-300 font-medium">{getWindDirectionLabel(hour.windDirection)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 mt-1">
-                  <CloudRain className="w-3 h-3 text-cyan-400" />
-                  <span className="text-xs text-cyan-300 font-medium">{hour.rainChance}%</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Navigation className="w-3 h-3 text-white" style={{ transform: `rotate(${hour.windDirection}deg)` }} />
-                  <span className="text-xs text-slate-300 font-medium">{getWindDirectionLabel(hour.windDirection)}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="relative h-96">
-          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-sm text-orange-400 font-semibold pr-3 w-12">
-            <span className="text-right">{maxTemp}°C</span>
-            <span className="text-right">{Math.round((maxTemp + minTemp) / 2)}°</span>
-            <span className="text-right">{minTemp}°</span>
+              );
+            })}
           </div>
 
-          <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-white font-semibold pl-3 w-16 text-right">
-            <span>{maxWind}</span>
-            <span>{Math.round(maxWind / 2)}</span>
-            <span>0 km/h</span>
-          </div>
+          <div className="relative h-96">
+            <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-sm text-orange-400 font-semibold pr-3 w-12 z-10 bg-slate-900">
+              <span className="text-right">{maxTemp}°C</span>
+              <span className="text-right">{Math.round((maxTemp + minTemp) / 2)}°</span>
+              <span className="text-right">{minTemp}°</span>
+            </div>
 
-          <div className="mx-14">
-            <svg className="w-full h-full" viewBox="0 0 1000 400" preserveAspectRatio="none">
+            <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-white font-semibold pl-3 w-16 text-right z-10 bg-slate-900">
+              <span>{maxWind}</span>
+              <span>{Math.round(maxWind / 2)}</span>
+              <span>0 km/h</span>
+            </div>
+
+            <div className="mx-14" style={{ width: 'calc(100% - 7rem)' }}>
+              <svg className="w-full h-full" viewBox="0 0 2000 400" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="rainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
@@ -157,9 +215,9 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
               {hourlyData.map((_, idx) => (
                 <line
                   key={`grid-${idx}`}
-                  x1={idx * (1000 / (hourlyData.length - 1))}
+                  x1={idx * (2000 / (hourlyData.length - 1))}
                   y1="0"
-                  x2={idx * (1000 / (hourlyData.length - 1))}
+                  x2={idx * (2000 / (hourlyData.length - 1))}
                   y2="400"
                   stroke="#475569"
                   strokeWidth="1"
@@ -167,12 +225,33 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 />
               ))}
 
+              <line
+                x1={nowPosition * 20}
+                y1="0"
+                x2={nowPosition * 20}
+                y2="400"
+                stroke="#22c55e"
+                strokeWidth="3"
+                opacity="0.8"
+              />
+              <text
+                x={nowPosition * 20}
+                y="-10"
+                fill="#22c55e"
+                fontSize="14"
+                fontWeight="bold"
+                textAnchor="middle"
+                transform="translate(0, 20)"
+              >
+                NOW
+              </text>
+
               {[0, 1, 2, 3, 4].map((idx) => (
                 <line
                   key={`hgrid-${idx}`}
                   x1="0"
                   y1={idx * 100}
-                  x2="1000"
+                  x2="2000"
                   y2={idx * 100}
                   stroke="#475569"
                   strokeWidth="1"
@@ -183,17 +262,17 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
               <path
                 d={
                   hourlyData.map((d, i) => {
-                    const x = i * (1000 / (hourlyData.length - 1));
+                    const x = i * (2000 / (hourlyData.length - 1));
                     const y = 400 - normalize(d.rainChance, maxRain) * 3.6;
                     return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-                  }).join(' ') + ' L 1000,400 L 0,400 Z'
+                  }).join(' ') + ' L 2000,400 L 0,400 Z'
                 }
                 fill="url(#rainGradient)"
               />
 
               <path
                 d={hourlyData.map((d, i) => {
-                  const x = i * (1000 / (hourlyData.length - 1));
+                  const x = i * (2000 / (hourlyData.length - 1));
                   const y = 400 - normalize(d.rainChance, maxRain) * 3.6;
                   return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
                 }).join(' ')}
@@ -206,7 +285,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
               <path
                 d={hourlyData.map((d, i) => {
-                  const x = i * (1000 / (hourlyData.length - 1));
+                  const x = i * (2000 / (hourlyData.length - 1));
                   const y = 400 - normalize(d.temp, maxTemp, minTemp) * 3.6;
                   return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
                 }).join(' ')}
@@ -219,7 +298,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
               <path
                 d={hourlyData.map((d, i) => {
-                  const x = i * (1000 / (hourlyData.length - 1));
+                  const x = i * (2000 / (hourlyData.length - 1));
                   const y = 400 - normalize(d.windSpeed, maxWind) * 3.6;
                   return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
                 }).join(' ')}
@@ -231,7 +310,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
               />
 
               {hourlyData.map((d, i) => {
-                const x = i * (1000 / (hourlyData.length - 1));
+                const x = i * (2000 / (hourlyData.length - 1));
                 const yWind = 400 - normalize(d.windSpeed, maxWind) * 3.6;
                 const rotation = d.windDirection + 180;
                 return (
@@ -248,7 +327,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
               })}
 
               {hourlyData.map((d, i) => {
-                const x = i * (1000 / (hourlyData.length - 1));
+                const x = i * (2000 / (hourlyData.length - 1));
                 const yTemp = 400 - normalize(d.temp, maxTemp, minTemp) * 3.6;
                 return (
                   <circle
@@ -262,7 +341,8 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                   />
                 );
               })}
-            </svg>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
