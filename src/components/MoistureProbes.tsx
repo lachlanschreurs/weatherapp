@@ -44,8 +44,12 @@ interface ProbeApiEndpoint {
   created_at: string;
 }
 
-export default function MoistureProbes() {
-  const [activeTab, setActiveTab] = useState<'probes' | 'apis'>('probes');
+interface MoistureProbesProps {
+  initialTab?: 'probes' | 'apis';
+}
+
+export default function MoistureProbes({ initialTab = 'probes' }: MoistureProbesProps) {
+  const [activeTab, setActiveTab] = useState<'probes' | 'apis'>(initialTab);
   const [probes, setProbes] = useState<ProbeWithLatestReading[]>([]);
   const [apiEndpoints, setApiEndpoints] = useState<ProbeApiEndpoint[]>([]);
   const [loading, setLoading] = useState(true);

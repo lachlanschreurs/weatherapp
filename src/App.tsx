@@ -108,6 +108,8 @@ function App() {
   const [hasAccess, setHasAccess] = useState(false);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [locationInitialized, setLocationInitialized] = useState(false);
+  const [probeTabMode, setProbeTabMode] = useState<'probes' | 'apis'>('probes');
+  const [shouldShowProbeApis, setShouldShowProbeApis] = useState(false);
   useEffect(() => {
     checkAuth();
     getUserLocation();
@@ -116,6 +118,16 @@ function App() {
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
+        if (shouldShowProbeApis) {
+          setProbeTabMode('apis');
+          setShouldShowProbeApis(false);
+          setTimeout(() => {
+            const probeSection = document.getElementById('moisture-probes-section');
+            if (probeSection) {
+              probeSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 500);
+        }
       } else {
         setProfile(null);
         setHasAccess(false);
@@ -126,7 +138,7 @@ function App() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [shouldShowProbeApis]);
 
   useEffect(() => {
     if (locationInitialized) {
@@ -549,12 +561,24 @@ function App() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setShowAuthModal(true)}
-                    className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-md"
-                  >
-                    Start Free Trial
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => setShowAuthModal(true)}
+                      className="px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium shadow-md"
+                    >
+                      Start Free Trial
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShouldShowProbeApis(true);
+                        setShowAuthModal(true);
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-md flex items-center gap-2"
+                    >
+                      <Droplets className="w-4 h-4" />
+                      Configure Probe APIs
+                    </button>
+                  </div>
                 )}
                 <button
                   onClick={fetchWeather}
@@ -728,8 +752,8 @@ function App() {
         </div>
 
         {user && (
-          <div className="mb-6">
-            <MoistureProbes />
+          <div className="mb-6" id="moisture-probes-section">
+            <MoistureProbes initialTab={probeTabMode} />
           </div>
         )}
 
