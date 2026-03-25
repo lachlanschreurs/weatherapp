@@ -43,27 +43,27 @@ function getAlertStyles(severity: AlertSeverity) {
   switch (severity) {
     case 'safe':
       return {
-        containerClass: 'bg-green-50 border-green-300',
-        borderClass: 'border-l-green-600',
+        containerClass: 'bg-green-100 border-green-400',
+        borderClass: 'border-l-green-700',
         titleClass: 'text-green-900',
         messageClass: 'text-green-800',
-        iconColor: 'text-green-600',
+        iconColor: 'text-green-700',
       };
     case 'caution':
       return {
-        containerClass: 'bg-orange-50 border-orange-300',
-        borderClass: 'border-l-orange-600',
-        titleClass: 'text-orange-900',
-        messageClass: 'text-orange-800',
-        iconColor: 'text-orange-600',
+        containerClass: 'bg-yellow-100 border-yellow-400',
+        borderClass: 'border-l-yellow-700',
+        titleClass: 'text-yellow-900',
+        messageClass: 'text-yellow-800',
+        iconColor: 'text-yellow-700',
       };
     case 'warning':
       return {
-        containerClass: 'bg-red-50 border-red-300',
-        borderClass: 'border-l-red-600',
+        containerClass: 'bg-red-100 border-red-400',
+        borderClass: 'border-l-red-700',
         titleClass: 'text-red-900',
         messageClass: 'text-red-800',
-        iconColor: 'text-red-600',
+        iconColor: 'text-red-700',
       };
   }
 }
