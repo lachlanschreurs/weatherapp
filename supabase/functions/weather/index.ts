@@ -13,21 +13,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const clientId = Deno.env.get('XWEATHER_CLIENT_ID');
-    const clientSecret = Deno.env.get('XWEATHER_CLIENT_SECRET');
-
-    if (!clientId || !clientSecret) {
-      return new Response(
-        JSON.stringify({ error: 'XWeather API credentials not configured' }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-    }
+    const clientId = Deno.env.get('XWEATHER_CLIENT_ID') || 'm0UPu81Ap8ZGomG745Gtf';
+    const clientSecret = Deno.env.get('XWEATHER_CLIENT_SECRET') || 'DdZEfUCjn4BtUAMoqWVL4kOmZYecDx0pjz7Hd0Dr';
 
     const url = new URL(req.url);
     const lat = url.searchParams.get('lat') || '-38.6341';
