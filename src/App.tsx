@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock } from 'lucide-react';
 import { getSprayCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
+import { findBestSprayWindow } from './utils/sprayWindow';
 import { AlertBanner } from './components/AlertBanner';
 import { LocationSearch, Location } from './components/LocationSearch';
+import { HourlyForecast } from './components/HourlyForecast';
 
 interface WeatherData {
   current: {
@@ -234,6 +236,7 @@ function App() {
         rain: item.rain?.['3h'] || 0,
         rainCount: item.rain?.['3h'] ? 1 : 0,
         totalForecasts: 1,
+        forecastItems: [item],
       });
     } else {
       existing.temps.push(item.main.temp);
@@ -242,6 +245,7 @@ function App() {
       existing.rain += item.rain?.['3h'] || 0;
       existing.rainCount += item.rain?.['3h'] ? 1 : 0;
       existing.totalForecasts += 1;
+      existing.forecastItems.push(item);
     }
 
     return acc;
@@ -290,6 +294,8 @@ function App() {
         </header>
 
         <AlertBanner alerts={alerts} />
+
+        <HourlyForecast forecastList={forecastList} />
 
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
           {weatherCode.toLowerCase().includes('rain') && (
@@ -414,6 +420,7 @@ function App() {
               const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
               const dayDate = date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
               const forecastSpray = getSprayCondition(day.windSpeed, day.rain);
+              const bestWindow = findBestSprayWindow(day.forecastItems);
 
               return (
                 <div
@@ -450,12 +457,27 @@ function App() {
                       </div>
                     </div>
 
-                    <div className={`mt-4 py-2 px-3 rounded-lg ${forecastSpray.bgColor}`}>
-                      <div className="text-xs font-semibold text-gray-600 mb-1">Spray</div>
-                      <div className={`font-bold ${forecastSpray.color}`}>
-                        {forecastSpray.rating}
+                    {bestWindow ? (
+                      <div className={`mt-4 py-3 px-3 rounded-lg ${bestWindow.rating === 'Good' ? 'bg-green-100' : 'bg-yellow-100'} border-2 ${bestWindow.rating === 'Good' ? 'border-green-300' : 'border-yellow-300'}`}>
+                        <div className="flex items-center justify-center gap-1 mb-2">
+                          <Clock className="w-4 h-4 text-gray-600" />
+                          <div className="text-xs font-semibold text-gray-600">Best Spray Window</div>
+                        </div>
+                        <div className={`font-bold text-sm mb-1 ${bestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'}`}>
+                          {bestWindow.startTime} - {bestWindow.endTime}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {bestWindow.duration.toFixed(0)}h window
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className={`mt-4 py-2 px-3 rounded-lg bg-red-100 border-2 border-red-300`}>
+                        <div className="text-xs font-semibold text-gray-600 mb-1">Spray</div>
+                        <div className="font-bold text-red-700 text-sm">
+                          Not Recommended
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
