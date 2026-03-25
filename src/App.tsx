@@ -188,10 +188,17 @@ function App() {
   const windDirection = getWindDirection(windDegrees);
 
   const rainfall = current.rain?.['1h'] || 0;
-  const pressure = current.main.pressure;
   const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
   const dewpointC = tempC - ((100 - humidity) / 5);
+
+  const next3Hours = forecastList.slice(0, 3).map((item: any) => ({
+    time: new Date(item.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
+    temp: Math.round(item.main.temp),
+    windSpeed: Math.round(item.wind.speed * 3.6),
+    rain: item.rain?.['3h'] || 0,
+    weather: item.weather[0]?.main || 'clear',
+  }));
 
   const dailyForecasts = forecastList.reduce((acc: any[], item: any) => {
     const date = new Date(item.dt * 1000).toLocaleDateString('en-AU');
@@ -321,15 +328,29 @@ function App() {
             </div>
 
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Gauge className="w-6 h-6" />
-                <span className="font-semibold">Pressure</span>
+              <div className="flex items-center gap-3 mb-3">
+                <Sun className="w-6 h-6" />
+                <span className="font-semibold">Next 3 Hours</span>
               </div>
-              <div className="text-3xl font-bold">
-                {Math.round(pressure)} hPa
-              </div>
-              <div className="text-sm opacity-80 mt-1">
-                Steady
+              <div className="space-y-2">
+                {next3Hours.map((hour, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-sm border-b border-white/20 pb-1 last:border-0">
+                    <span className="font-medium">{hour.time}</span>
+                    <div className="flex gap-3 items-center">
+                      <span>{hour.temp}°</span>
+                      <span className="flex items-center gap-1">
+                        <Wind className="w-3 h-3" />
+                        {hour.windSpeed}
+                      </span>
+                      {hour.rain > 0 && (
+                        <span className="flex items-center gap-1 text-blue-200">
+                          <CloudRain className="w-3 h-3" />
+                          {hour.rain.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
