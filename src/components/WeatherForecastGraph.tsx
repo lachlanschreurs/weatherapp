@@ -147,10 +147,7 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                       {showLabel && (
                         <div className="flex flex-col items-center">
                           <div className="text-xs text-gray-600 font-medium">
-                            {time.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              hour12: true,
-                            })}
+                            {time.getHours() % 12 || 12}{time.getHours() >= 12 ? 'pm' : 'am'}
                           </div>
                           <div className="text-xs text-gray-800 font-semibold">
                             {time.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -225,10 +222,7 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                       {showLabel && (
                         <div className="flex flex-col items-center">
                           <div className="text-xs text-gray-600 font-medium">
-                            {time.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              hour12: true,
-                            })}
+                            {time.getHours() % 12 || 12}{time.getHours() >= 12 ? 'pm' : 'am'}
                           </div>
                           <div className="text-xs text-gray-800 font-semibold">
                             {time.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -309,10 +303,7 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                       {showLabel && (
                         <div className="flex flex-col items-center">
                           <div className="text-xs text-gray-600 font-medium">
-                            {time.toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              hour12: true,
-                            })}
+                            {time.getHours() % 12 || 12}{time.getHours() >= 12 ? 'pm' : 'am'}
                           </div>
                           <div className="text-xs text-gray-800 font-semibold">
                             {time.toLocaleDateString('en-US', { weekday: 'short' })}
