@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap } from 'lucide-react';
 import { getSprayCondition } from './utils/deltaT';
+import { generateWeatherAlerts } from './utils/weatherAlerts';
+import { AlertBanner } from './components/AlertBanner';
 
 interface WeatherData {
   current: {
@@ -16,6 +18,7 @@ interface WeatherData {
     wind: {
       speed: number;
       deg: number;
+      gust?: number;
     };
     rain?: {
       '1h'?: number;
@@ -36,6 +39,7 @@ interface WeatherData {
       }>;
       wind: {
         speed: number;
+        gust?: number;
       };
       rain?: {
         '3h'?: number;
@@ -235,6 +239,15 @@ function App() {
   const todayRainChance = todayForecast ? Math.round((todayForecast.rainCount / todayForecast.totalForecasts) * 100) : 0;
   const todayExpectedRain = todayForecast ? todayForecast.rain : 0;
 
+  const alerts = generateWeatherAlerts(
+    tempC,
+    humidity,
+    current.wind.speed,
+    rainfall,
+    weatherCode,
+    forecastList
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -252,6 +265,8 @@ function App() {
             </button>
           </div>
         </header>
+
+        <AlertBanner alerts={alerts} />
 
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
           {weatherCode.toLowerCase().includes('rain') && (
