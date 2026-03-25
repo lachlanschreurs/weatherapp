@@ -467,6 +467,23 @@ function App() {
   const soilWorkability = generateSoilWorkabilityData(weather, extendedForecast);
   const operationAlerts = generateOperationAlerts(weather, extendedForecast);
 
+  const dailyForecastData = dailyForecasts.map((day: any) => {
+    const date = new Date(day.dt * 1000);
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const windDeg = day.forecastItems[0]?.wind?.deg || 0;
+    const windDir = directions[Math.round(windDeg / 45) % 8];
+
+    return {
+      date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }),
+      dayName: date.toLocaleDateString('en-AU', { weekday: 'short' }),
+      tempHigh: day.tempMax,
+      tempLow: day.tempMin,
+      rainChance: Math.round((day.rainCount / day.totalForecasts) * 100),
+      windSpeed: day.windSpeed,
+      windDirection: windDir,
+    };
+  });
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#8FA88E' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
