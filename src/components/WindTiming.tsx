@@ -81,10 +81,10 @@ export function WindTiming({ hourlyData, isPremium }: WindTimingProps) {
                 <span className="text-sm text-gray-600">Speed</span>
                 <div className="flex items-center gap-2">
                   <span className={`text-sm font-semibold ${getWindSpeedColor(hour.speed)}`}>
-                    {Math.round(hour.speed)} mph
+                    {Math.round(hour.speed)} km/h
                   </span>
                   <span className="text-xs text-gray-500">
-                    (gusts {Math.round(hour.gust)} mph)
+                    (gusts {Math.round(hour.gust)} km/h)
                   </span>
                 </div>
               </div>
@@ -114,7 +114,7 @@ export function WindTiming({ hourlyData, isPremium }: WindTimingProps) {
 
       <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
         <p className="text-xs text-blue-800">
-          <strong>Spraying Conditions:</strong> Ideal wind speeds are 3-10 mph. Avoid spraying above 15 mph.
+          <strong>Spraying Conditions:</strong> Ideal wind speeds are 5-15 km/h. Avoid spraying above 25 km/h.
         </p>
       </div>
     </div>

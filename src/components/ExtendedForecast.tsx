@@ -73,7 +73,7 @@ export function ExtendedForecast({ forecast, isPremium }: ExtendedForecastProps)
 
               <div className="flex items-center gap-1">
                 <Wind className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-700">{Math.round(day.wind_speed)} mph</span>
+                <span className="text-sm text-gray-700">{Math.round(day.wind_speed)} km/h</span>
               </div>
             </div>
           </div>
