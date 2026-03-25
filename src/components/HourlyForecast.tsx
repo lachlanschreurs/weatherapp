@@ -83,6 +83,26 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
     <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-white">48-Hour Forecast</h2>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-1 bg-orange-500 rounded"></div>
+            <Thermometer className="w-4 h-4 text-orange-400" />
+            <span className="text-slate-300">Temperature</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-1 bg-blue-500 rounded"></div>
+            <Wind className="w-4 h-4 text-blue-400" />
+            <span className="text-slate-300">Wind Speed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-white" />
+            <span className="text-slate-300">Wind Direction</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CloudRain className="w-4 h-4 text-cyan-400" />
+            <span className="text-slate-300">Rain %</span>
+          </div>
+        </div>
       </div>
 
       <div className="relative bg-slate-900 rounded-xl p-6 border border-slate-700">
@@ -98,6 +118,14 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                   {getWeatherIcon(hour.weatherIcon)}
                 </div>
                 <span className="text-sm text-slate-300 font-medium">{hour.displayTime}</span>
+                <div className="flex items-center gap-1 mt-1">
+                  <CloudRain className="w-3 h-3 text-cyan-400" />
+                  <span className="text-xs text-cyan-300 font-medium">{hour.rainChance}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Navigation className="w-3 h-3 text-white" style={{ transform: `rotate(${hour.windDirection}deg)` }} />
+                  <span className="text-xs text-slate-300 font-medium">{getWindDirectionLabel(hour.windDirection)}</span>
+                </div>
               </div>
             );
           })}
