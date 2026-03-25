@@ -21,9 +21,11 @@ interface HourlyForecastProps {
 export function HourlyForecast({ forecastList }: HourlyForecastProps) {
   const hourlyData: HourlyData[] = [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [nowPosition, setNowPosition] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, scrollLeft: 0 });
+  const [isDraggingNow, setIsDraggingNow] = useState(false);
 
   const now = Date.now();
 
@@ -77,6 +79,10 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDraggingNow) {
+      handleNowBarMouseMove(e);
+      return;
+    }
     if (!isDragging || !scrollContainerRef.current) return;
     e.preventDefault();
     const x = e.pageX;
@@ -86,10 +92,32 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    setIsDraggingNow(false);
   };
 
   const handleMouseLeave = () => {
     setIsDragging(false);
+    setIsDraggingNow(false);
+  };
+
+  const handleNowBarMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDraggingNow(true);
+  };
+
+  const handleNowBarMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingNow || !svgRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const svgRect = svgRef.current.getBoundingClientRect();
+    const x = e.clientX - svgRect.left;
+    const percentage = Math.max(0, Math.min(100, (x / svgRect.width) * 100));
+    setNowPosition(percentage);
+  };
+
+  const handleNowBarMouseUp = () => {
+    setIsDraggingNow(false);
   };
 
   const maxTemp = Math.max(...hourlyData.map(d => d.temp));
@@ -124,6 +152,31 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
   const gridYValues = [maxTemp, Math.round((maxTemp + minTemp) / 2), minTemp];
   const windGridValues = [maxWind, Math.round(maxWind / 2), 0];
+
+  const getCurrentWeatherAtNow = () => {
+    if (hourlyData.length < 2) return null;
+
+    const firstTime = hourlyData[0].timestamp;
+    const lastTime = hourlyData[hourlyData.length - 1].timestamp;
+    const totalDuration = lastTime - firstTime;
+    const currentTime = firstTime + (nowPosition / 100) * totalDuration;
+
+    for (let i = 0; i < hourlyData.length - 1; i++) {
+      if (currentTime >= hourlyData[i].timestamp && currentTime <= hourlyData[i + 1].timestamp) {
+        const ratio = (currentTime - hourlyData[i].timestamp) /
+                     (hourlyData[i + 1].timestamp - hourlyData[i].timestamp);
+
+        return {
+          temp: Math.round(hourlyData[i].temp + (hourlyData[i + 1].temp - hourlyData[i].temp) * ratio),
+          windSpeed: Math.round(hourlyData[i].windSpeed + (hourlyData[i + 1].windSpeed - hourlyData[i].windSpeed) * ratio),
+          rainChance: Math.round(hourlyData[i].rainChance + (hourlyData[i + 1].rainChance - hourlyData[i].rainChance) * ratio),
+        };
+      }
+    }
+    return hourlyData[0];
+  };
+
+  const currentWeather = getCurrentWeatherAtNow();
 
   return (
     <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-6">
@@ -204,7 +257,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
             </div>
 
             <div className="mx-14" style={{ width: 'calc(100% - 7rem)' }}>
-              <svg className="w-full h-full" viewBox="0 0 2000 400" preserveAspectRatio="none">
+              <svg ref={svgRef} className="w-full h-full" viewBox="0 0 2000 400" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="rainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
@@ -225,26 +278,78 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 />
               ))}
 
-              <line
-                x1={nowPosition * 20}
-                y1="0"
-                x2={nowPosition * 20}
-                y2="400"
-                stroke="#22c55e"
-                strokeWidth="3"
-                opacity="0.8"
-              />
-              <text
-                x={nowPosition * 20}
-                y="-10"
-                fill="#22c55e"
-                fontSize="14"
-                fontWeight="bold"
-                textAnchor="middle"
-                transform="translate(0, 20)"
+              <g
+                onMouseDown={handleNowBarMouseDown}
+                style={{ cursor: isDraggingNow ? 'grabbing' : 'grab' }}
               >
-                NOW
-              </text>
+                <line
+                  x1={nowPosition * 20}
+                  y1="0"
+                  x2={nowPosition * 20}
+                  y2="400"
+                  stroke="#22c55e"
+                  strokeWidth="3"
+                  opacity="0.8"
+                  pointerEvents="stroke"
+                  style={{ strokeWidth: 20, opacity: 0, cursor: 'grab' }}
+                />
+                <line
+                  x1={nowPosition * 20}
+                  y1="0"
+                  x2={nowPosition * 20}
+                  y2="400"
+                  stroke="#22c55e"
+                  strokeWidth="3"
+                  opacity="0.8"
+                  pointerEvents="none"
+                />
+                <rect
+                  x={nowPosition * 20 - 25}
+                  y="5"
+                  width="50"
+                  height="20"
+                  fill="#22c55e"
+                  rx="4"
+                  pointerEvents="none"
+                />
+                <text
+                  x={nowPosition * 20}
+                  y="20"
+                  fill="white"
+                  fontSize="12"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  pointerEvents="none"
+                >
+                  NOW
+                </text>
+                {currentWeather && (
+                  <>
+                    <rect
+                      x={nowPosition * 20 - 60}
+                      y="370"
+                      width="120"
+                      height="25"
+                      fill="#1e293b"
+                      stroke="#22c55e"
+                      strokeWidth="2"
+                      rx="6"
+                      pointerEvents="none"
+                    />
+                    <text
+                      x={nowPosition * 20}
+                      y="388"
+                      fill="#22c55e"
+                      fontSize="11"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                      pointerEvents="none"
+                    >
+                      {currentWeather.temp}°C | {currentWeather.windSpeed}km/h | {currentWeather.rainChance}%
+                    </text>
+                  </>
+                )}
+              </g>
 
               {[0, 1, 2, 3, 4].map((idx) => (
                 <line
