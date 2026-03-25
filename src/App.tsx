@@ -816,10 +816,10 @@ function App() {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-600" />
-                        <span className="font-bold text-gray-800">{day.dayName}</span>
-                        <span className="text-sm text-gray-600">{day.date}</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Calendar className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                        <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
+                        <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
                       </div>
                       <span className={`text-xs font-bold px-2 py-1 rounded ${
                         day.rating === 'Excellent'
@@ -868,12 +868,12 @@ function App() {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-gray-600" />
-                      <span className="font-bold text-gray-800">{day.dayName}</span>
-                      <span className="text-sm text-gray-600">{day.date}</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      <Calendar className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                      <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
+                      <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {day.rainAmount > 0 && (
                         <span className="text-xs text-gray-600">{day.rainAmount.toFixed(1)}mm</span>
                       )}
