@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   CloudRain,
   Wind,
@@ -7,6 +8,8 @@ import {
   Droplets,
   AlertTriangle,
   CheckCircle,
+  Bell,
+  X,
 } from 'lucide-react';
 import { WeatherAlert, AlertSeverity } from '../utils/weatherAlerts';
 
@@ -69,6 +72,8 @@ function getAlertStyles(severity: AlertSeverity) {
 }
 
 export function AlertBanner({ alerts }: AlertBannerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   if (alerts.length === 0) return null;
 
   const sortedAlerts = [...alerts].sort((a, b) => {
@@ -76,39 +81,74 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
     return severityOrder[a.severity] - severityOrder[b.severity];
   });
 
+  const hasWarnings = sortedAlerts.some(alert => alert.severity === 'warning');
+  const hasCautions = sortedAlerts.some(alert => alert.severity === 'caution');
+
+  const buttonColor = hasWarnings
+    ? 'bg-red-600 hover:bg-red-700'
+    : hasCautions
+    ? 'bg-yellow-600 hover:bg-yellow-700'
+    : 'bg-green-600 hover:bg-green-700';
+
   return (
-    <div className="mb-6 space-y-3">
-      <h2 className="text-2xl font-bold text-green-900 flex items-center gap-2">
-        <AlertTriangle className="w-6 h-6" />
-        Weather Alerts
-      </h2>
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className={`fixed bottom-6 right-6 ${buttonColor} text-white rounded-full p-4 shadow-2xl transition-all hover:scale-110 z-40`}
+      >
+        <div className="relative">
+          <Bell className="w-6 h-6" />
+          <span className="absolute -top-2 -right-2 bg-white text-gray-800 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {alerts.length}
+          </span>
+        </div>
+      </button>
 
-      <div className="space-y-3">
-        {sortedAlerts.map((alert) => {
-          const styles = getAlertStyles(alert.severity);
-
-          return (
-            <div
-              key={alert.id}
-              className={`${styles.containerClass} ${styles.borderClass} border-l-4 border-2 rounded-lg p-4 shadow-md transition-all hover:shadow-lg`}
-            >
-              <div className="flex items-start gap-4">
-                <div className={styles.iconColor}>
-                  {getAlertIcon(alert.icon)}
-                </div>
-                <div className="flex-1">
-                  <h3 className={`${styles.titleClass} font-bold text-lg mb-1`}>
-                    {alert.title}
-                  </h3>
-                  <p className={`${styles.messageClass} text-sm leading-relaxed`}>
-                    {alert.message}
-                  </p>
-                </div>
-              </div>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <Bell className="w-6 h-6 text-gray-700" />
+                Weather Alerts ({alerts.length})
+              </h2>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
             </div>
-          );
-        })}
-      </div>
-    </div>
+
+            <div className="overflow-y-auto p-6 space-y-3">
+              {sortedAlerts.map((alert) => {
+                const styles = getAlertStyles(alert.severity);
+
+                return (
+                  <div
+                    key={alert.id}
+                    className={`${styles.containerClass} ${styles.borderClass} border-l-4 border-2 rounded-lg p-4 shadow-md transition-all`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={styles.iconColor}>
+                        {getAlertIcon(alert.icon)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={`${styles.titleClass} font-bold text-lg mb-1`}>
+                          {alert.title}
+                        </h3>
+                        <p className={`${styles.messageClass} text-sm leading-relaxed`}>
+                          {alert.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
