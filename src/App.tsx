@@ -7,6 +7,7 @@ import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay
 import { AlertBanner } from './components/AlertBanner';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
+import { RainRadar } from './components/RainRadar';
 import { supabase, Profile } from './lib/supabase';
 import AuthModal from './components/AuthModal';
 import SubscriptionBanner from './components/SubscriptionBanner';
@@ -562,6 +563,14 @@ function App() {
         </div>
 
         <HourlyForecast forecastList={forecastList} />
+
+        <div className="mb-6">
+          <RainRadar
+            lat={location.lat}
+            lon={location.lon}
+            locationName={location.name}
+          />
+        </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
           <h2 className="text-2xl font-bold text-green-900 mb-6">5-Day Forecast</h2>
