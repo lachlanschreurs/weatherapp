@@ -422,7 +422,12 @@ function App() {
                   <Sprout className="w-10 h-10 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-5xl font-bold text-green-900 mb-2">FarmCast</h1>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-5xl font-bold text-green-900 mb-2">FarmCast</h1>
+                    <div className="mb-2">
+                      <AlertBanner alerts={alerts} />
+                    </div>
+                  </div>
                   <p className="text-xl text-green-900">
                     {location.name}
                     {location.state && `, ${location.state}`}
@@ -478,8 +483,6 @@ function App() {
         {user && !hasAccess && (
           <SubscriptionBanner daysRemaining={daysRemaining} onUpgrade={handleUpgrade} />
         )}
-
-        <AlertBanner alerts={alerts} />
 
         {hasAccess && (
           <div className="mb-6">

@@ -29,49 +29,48 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
   });
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-      <h2 className="text-2xl font-bold text-green-800 mb-6">24-Hour Forecast</h2>
+    <div className="bg-white rounded-2xl shadow-xl p-4 mb-6">
+      <h2 className="text-xl font-bold text-green-800 mb-4">24-Hour Forecast</h2>
       <div className="overflow-x-auto">
         <div className="min-w-max">
-          <div className="grid grid-cols-8 gap-4">
+          <div className="grid grid-cols-8 gap-2">
             {next24Hours.map((hour, idx) => {
               const sprayCondition = getSprayCondition(hour.windSpeed, hour.rain);
 
               return (
                 <div
                   key={idx}
-                  className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border-2 border-green-100 min-w-[140px]"
+                  className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200 min-w-[100px]"
                 >
-                  <div className="text-center mb-3">
-                    <div className="font-bold text-green-800">{hour.fullTime}</div>
+                  <div className="text-center mb-2">
+                    <div className="font-semibold text-sm text-green-800">{hour.fullTime}</div>
                   </div>
 
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Thermometer className="w-4 h-4 text-red-500" />
-                      <span className="text-2xl font-bold text-gray-800">{hour.temp}°C</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <Thermometer className="w-3 h-3 text-red-500 flex-shrink-0" />
+                      <span className="text-lg font-bold text-gray-800">{hour.temp}°</span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <Droplets className="w-4 h-4 text-blue-500" />
-                      <span className="font-semibold text-gray-700">{hour.humidity}%</span>
+                    <div className="flex items-center justify-between gap-1 text-xs">
+                      <Droplets className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                      <span className="font-medium text-gray-700">{hour.humidity}%</span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <Wind className="w-4 h-4 text-gray-500" />
-                      <span className="font-semibold text-gray-700">{hour.windSpeed} km/h</span>
+                    <div className="flex items-center justify-between gap-1 text-xs">
+                      <Wind className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                      <span className="font-medium text-gray-700">{hour.windSpeed}</span>
                     </div>
 
                     {hour.rain > 0 && (
-                      <div className="flex items-center justify-between text-sm">
-                        <CloudRain className="w-4 h-4 text-blue-500" />
-                        <span className="font-semibold text-blue-700">{hour.rain.toFixed(1)} mm</span>
+                      <div className="flex items-center justify-between gap-1 text-xs">
+                        <CloudRain className="w-3 h-3 text-blue-500 flex-shrink-0" />
+                        <span className="font-medium text-blue-700">{hour.rain.toFixed(1)}</span>
                       </div>
                     )}
 
-                    <div className={`mt-3 py-2 px-2 rounded-lg ${sprayCondition.bgColor}`}>
-                      <div className="text-xs font-semibold text-gray-600 text-center mb-1">Spray</div>
-                      <div className={`font-bold text-center text-sm ${sprayCondition.color}`}>
+                    <div className={`mt-2 py-1 px-1 rounded ${sprayCondition.bgColor}`}>
+                      <div className={`font-bold text-center text-xs ${sprayCondition.color}`}>
                         {sprayCondition.rating}
                       </div>
                     </div>

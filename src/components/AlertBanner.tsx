@@ -94,14 +94,15 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 ${buttonColor} text-white rounded-full p-4 shadow-2xl transition-all hover:scale-110 z-40`}
+        className={`${buttonColor} text-white rounded-lg p-3 shadow-lg transition-all hover:scale-105 flex items-center gap-2`}
+        title="View Weather Alerts"
       >
         <div className="relative">
-          <Bell className="w-6 h-6" />
-          <span className="absolute -top-2 -right-2 bg-white text-gray-800 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-            {alerts.length}
-          </span>
+          <AlertTriangle className="w-5 h-5" />
         </div>
+        <span className="text-sm font-semibold">
+          {alerts.length} {alerts.length === 1 ? 'Alert' : 'Alerts'}
+        </span>
       </button>
 
       {isOpen && (
