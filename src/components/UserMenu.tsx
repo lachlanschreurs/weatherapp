@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { User as UserIcon, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { User as UserIcon, LogOut, Settings, ChevronDown, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
 interface UserMenuProps {
   user: User;
   onSignOut: () => void;
+  isAdmin?: boolean;
+  onAdminPanelToggle?: () => void;
 }
 
-export function UserMenu({ user, onSignOut }: UserMenuProps) {
+export function UserMenu({ user, onSignOut, isAdmin = false, onAdminPanelToggle }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +45,26 @@ export function UserMenu({ user, onSignOut }: UserMenuProps) {
           <div className="px-4 py-3 border-b border-gray-200">
             <p className="text-sm font-semibold text-gray-800">{userName}</p>
             <p className="text-xs text-gray-600 truncate">{user.email}</p>
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                <Shield className="w-3 h-3" />
+                Admin
+              </span>
+            )}
           </div>
+
+          {isAdmin && onAdminPanelToggle && (
+            <button
+              onClick={() => {
+                onAdminPanelToggle();
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2 text-left flex items-center gap-3 hover:bg-gray-50 text-green-700"
+            >
+              <Shield className="w-4 h-4" />
+              <span className="font-medium">Admin Panel</span>
+            </button>
+          )}
 
           <button
             onClick={onSignOut}

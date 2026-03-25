@@ -11,6 +11,7 @@ import { ExtendedForecast } from './components/ExtendedForecast';
 import { ProbeAPIManager } from './components/ProbeAPIManager';
 import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
+import { AdminDashboard } from './components/AdminDashboard';
 import { supabase } from './lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -74,6 +75,8 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
     fetchWeather();
@@ -82,16 +85,35 @@ function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        checkAdminStatus(session.user.id);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
         setUser(session?.user ?? null);
+        if (session?.user) {
+          checkAdminStatus(session.user.id);
+        } else {
+          setIsAdmin(false);
+          setShowAdminPanel(false);
+        }
       })();
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAdminStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    setIsAdmin(data?.role === 'admin');
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -375,7 +397,12 @@ function App() {
               </div>
               <div className="flex items-center gap-3">
                 {user ? (
-                  <UserMenu user={user} onSignOut={handleSignOut} />
+                  <UserMenu
+                    user={user}
+                    onSignOut={handleSignOut}
+                    isAdmin={isAdmin}
+                    onAdminPanelToggle={() => setShowAdminPanel(!showAdminPanel)}
+                  />
                 ) : (
                   <>
                     <button
@@ -419,6 +446,12 @@ function App() {
             currentLocation={location.name}
           />
         </div>
+
+        {showAdminPanel && isAdmin && (
+          <div className="mb-6">
+            <AdminDashboard />
+          </div>
+        )}
 
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
           {weatherCode.toLowerCase().includes('rain') && (
