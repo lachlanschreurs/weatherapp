@@ -465,18 +465,19 @@ function App() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-16 h-16 bg-green-700 rounded-xl shadow-lg">
-                  <Sprout className="w-10 h-10 text-white" />
+                <div className="flex flex-col items-center">
+                  <span className="text-sm font-semibold text-green-800 mb-1">FarmCast</span>
+                  <div className="flex items-center justify-center w-12 h-12 bg-green-700 rounded-xl shadow-lg">
+                    <Sprout className="w-7 h-7 text-white" />
+                  </div>
                 </div>
                 <div>
-                  <h1 className="text-5xl font-bold text-green-900 mb-2">FarmCast</h1>
-                  <p className="text-xl text-green-900">
+                  <h1 className="text-5xl font-bold text-green-900 mb-1">
                     {location.name}
                     {location.state && `, ${location.state}`}
-                    {location.country && `, ${location.country}`}
-                  </p>
+                  </h1>
                   {lastUpdated && (
-                    <p className="text-sm text-green-900 mt-1">
+                    <p className="text-sm text-green-900">
                       Last updated: {lastUpdated.toLocaleTimeString('en-AU', {
                         hour: '2-digit',
                         minute: '2-digit',
