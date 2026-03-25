@@ -13,14 +13,6 @@ interface RadarFrame {
   isForecast?: boolean;
 }
 
-interface RainViewerResponse {
-  host: string;
-  radar: {
-    past: RadarFrame[];
-    nowcast: RadarFrame[];
-  };
-}
-
 export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showRadar, setShowRadar] = useState(true);
@@ -29,17 +21,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [opacity, setOpacity] = useState(0.7);
+  const [opacity, setOpacity] = useState(0.6);
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
+  const mapInstanceRef = useRef<any>(null);
 
   useEffect(() => {
     fetchRadarData();
-    const interval = setInterval(() => {
-      fetchRadarData();
-    }, 10 * 60 * 1000);
+    const interval = setInterval(fetchRadarData, 10 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [lat, lon]);
+  }, []);
 
   useEffect(() => {
     if (radarFrames.length > 0 && isPlaying) {
@@ -58,25 +49,39 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     try {
       setIsLoading(true);
       const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
-      const data: RainViewerResponse = await response.json();
 
-      console.log('RainViewer API Response:', data);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.host || !data.radar) {
+        throw new Error('Invalid API response');
+      }
 
       setRadarHost(data.host);
 
-      const pastFrames = (data.radar.past || [])
-        .slice(-6)
-        .map(f => ({ ...f, isForecast: false }));
+      const pastFrames = (data.radar.past || []).map((f: any) => ({
+        path: f.path,
+        time: f.time,
+        isForecast: false
+      }));
 
-      const forecastFrames = (data.radar.nowcast || [])
-        .map(f => ({ ...f, isForecast: true }));
+      const forecastFrames = (data.radar.nowcast || []).map((f: any) => ({
+        path: f.path,
+        time: f.time,
+        isForecast: true
+      }));
 
       const allFrames = [...pastFrames, ...forecastFrames];
 
-      console.log('Total frames:', allFrames.length, 'Past:', pastFrames.length, 'Forecast:', forecastFrames.length);
+      if (allFrames.length === 0) {
+        throw new Error('No radar frames available');
+      }
 
       setRadarFrames(allFrames);
-      setCurrentFrame(pastFrames.length > 0 ? pastFrames.length - 1 : 0);
+      setCurrentFrame(Math.max(0, pastFrames.length - 1));
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to fetch radar data:', error);
@@ -85,9 +90,9 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }
 
   useEffect(() => {
-    if (!showRadar || radarFrames.length === 0 || !mapRef.current) return;
+    if (!showRadar || radarFrames.length === 0 || !radarHost) return;
 
-    const loadLeaflet = async () => {
+    const initMap = async () => {
       if (!(window as any).L) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -96,99 +101,81 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        script.async = true;
-        document.head.appendChild(script);
-
         await new Promise((resolve) => {
           script.onload = resolve;
+          document.head.appendChild(script);
         });
       }
 
-      if (mapRef.current && (window as any).L && radarHost && radarFrames.length > 0) {
-        mapRef.current.innerHTML = '';
-        const L = (window as any).L;
+      if (!mapRef.current) return;
 
-        const zoom = isExpanded ? 10 : 9;
-        const map = L.map(mapRef.current).setView([lat, lon], zoom);
-
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          attribution: '© Esri',
-          maxZoom: 19,
-        }).addTo(map);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
-          attribution: '© CartoDB',
-          maxZoom: 19,
-          subdomains: 'abcd'
-        }).addTo(map);
-
-        const currentFrameData = radarFrames[currentFrame];
-        const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/4/1_1.png`;
-
-        console.log('Loading radar tile:', radarTileUrl);
-
-        const radarLayer = L.tileLayer(radarTileUrl, {
-          opacity: opacity,
-          attribution: '© RainViewer',
-          tileSize: 256,
-          zIndex: 10,
-          maxNativeZoom: 12
-        }).addTo(map);
-
-        L.marker([lat, lon], {
-          icon: L.divIcon({
-            className: 'location-marker',
-            html: '<div style="background: #60a5fa; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);"></div>',
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-          }),
-          title: locationName
-        }).addTo(map);
-
-        (mapRef.current as any)._leafletMap = map;
-        (mapRef.current as any)._radarLayer = radarLayer;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
       }
-    };
 
-    loadLeaflet();
-
-    return () => {
-      if (mapRef.current && (mapRef.current as any)._leafletMap) {
-        (mapRef.current as any)._leafletMap.remove();
-      }
-    };
-  }, [showRadar, lat, lon, isExpanded, radarFrames.length, radarHost]);
-
-  useEffect(() => {
-    if (mapRef.current && (mapRef.current as any)._radarLayer && radarFrames[currentFrame] && radarHost) {
-      const map = (mapRef.current as any)._leafletMap;
-      const oldLayer = (mapRef.current as any)._radarLayer;
-
-      oldLayer.remove();
-
-      const currentFrameData = radarFrames[currentFrame];
-      const radarTileUrl = `${radarHost}${currentFrameData.path}/256/{z}/{x}/{y}/4/1_1.png`;
-
-      console.log('Updating radar tile:', radarTileUrl);
+      mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const newLayer = L.tileLayer(radarTileUrl, {
-        opacity: opacity,
-        attribution: '© RainViewer',
-        tileSize: 256,
-        zIndex: 10,
-        maxNativeZoom: 12
+      const zoom = isExpanded ? 8 : 7;
+      const map = L.map(mapRef.current, {
+        center: [lat, lon],
+        zoom: zoom,
+        zoomControl: true,
+        attributionControl: true
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19
       }).addTo(map);
 
-      (mapRef.current as any)._radarLayer = newLayer;
-    }
-  }, [currentFrame, radarFrames, radarHost]);
+      const radarLayer = L.layerGroup().addTo(map);
+
+      L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: 'location-marker',
+          html: '<div style="background: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #ef4444, 0 2px 4px rgba(0,0,0,0.3);"></div>',
+          iconSize: [12, 12],
+          iconAnchor: [6, 6]
+        })
+      }).addTo(map);
+
+      mapInstanceRef.current = {
+        map,
+        radarLayer
+      };
+    };
+
+    initMap();
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.map.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [showRadar, lat, lon, isExpanded, radarHost, radarFrames.length]);
 
   useEffect(() => {
-    if (mapRef.current && (mapRef.current as any)._radarLayer) {
-      (mapRef.current as any)._radarLayer.setOpacity(opacity);
-    }
-  }, [opacity]);
+    if (!mapInstanceRef.current || radarFrames.length === 0 || !radarHost) return;
+
+    const { radarLayer } = mapInstanceRef.current;
+    const L = (window as any).L;
+
+    radarLayer.clearLayers();
+
+    const frame = radarFrames[currentFrame];
+    if (!frame) return;
+
+    const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+
+    L.tileLayer(tileUrl, {
+      opacity: opacity,
+      tileSize: 256,
+      zIndex: 1000
+    }).addTo(radarLayer);
+  }, [currentFrame, radarFrames, radarHost, opacity]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
@@ -199,35 +186,18 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     const now = Date.now() / 1000;
     const diffMinutes = Math.round((timestamp - now) / 60);
 
-    if (diffMinutes === 0) {
-      return 'Now';
-    } else if (diffMinutes > 0) {
+    if (diffMinutes === 0) return 'Now';
+    if (diffMinutes > 0) {
       const hours = Math.floor(diffMinutes / 60);
       const mins = diffMinutes % 60;
-      if (hours > 0) {
-        return `+${hours}h ${mins}m`;
-      }
-      return `+${diffMinutes}m`;
-    } else {
-      const hours = Math.floor(Math.abs(diffMinutes) / 60);
-      const mins = Math.abs(diffMinutes) % 60;
-      if (hours > 0) {
-        return `-${hours}h ${mins}m`;
-      }
-      return `-${Math.abs(diffMinutes)}m`;
+      return hours > 0 ? `+${hours}h ${mins}m` : `+${diffMinutes}m`;
     }
+    const hours = Math.floor(Math.abs(diffMinutes) / 60);
+    const mins = Math.abs(diffMinutes) % 60;
+    return hours > 0 ? `-${hours}h ${mins}m` : `-${Math.abs(diffMinutes)}m`;
   };
 
-  const getCurrentFrameInfo = () => {
-    if (radarFrames.length === 0 || !radarFrames[currentFrame]) return null;
-    const frame = radarFrames[currentFrame];
-    return {
-      time: formatTime(frame.time),
-      isForecast: frame.isForecast || false
-    };
-  };
-
-  const frameInfo = getCurrentFrameInfo();
+  const currentFrameData = radarFrames[currentFrame];
 
   return (
     <div className={`bg-white rounded-xl shadow-lg overflow-hidden ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
@@ -262,70 +232,82 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         <>
           <div className={`relative bg-gray-100 ${isExpanded ? 'h-[calc(100vh-16rem)]' : 'h-96'}`}>
             {isLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mb-3"></div>
-                  <p className="text-gray-600">Loading radar data...</p>
+                  <p className="text-gray-600 font-medium">Loading radar data...</p>
                 </div>
               </div>
             ) : radarFrames.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-gray-600">No radar data available</p>
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <CloudRain className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 font-medium">No radar data available</p>
+                  <button
+                    onClick={fetchRadarData}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
               </div>
             ) : (
-              <div ref={mapRef} className="w-full h-full"></div>
-            )}
-
-            {!isLoading && radarFrames.length > 0 && frameInfo && (
               <>
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-gray-700" />
-                    <span className="text-sm font-semibold text-gray-700">
-                      {frameInfo.time}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {formatRelativeTime(radarFrames[currentFrame].time)}
-                  </div>
-                  {frameInfo.isForecast && (
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium mt-2">
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                      Forecast
-                    </div>
-                  )}
-                </div>
+                <div ref={mapRef} className="w-full h-full"></div>
 
-                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">Precipitation Intensity</div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-2.5 rounded bg-gradient-to-r from-blue-300 to-blue-400"></div>
-                      <span className="text-xs text-gray-600">Light Rain</span>
+                {currentFrameData && (
+                  <>
+                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-4 h-4 text-gray-700" />
+                        <span className="text-sm font-semibold text-gray-700">
+                          {formatTime(currentFrameData.time)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatRelativeTime(currentFrameData.time)}
+                      </div>
+                      {currentFrameData.isForecast && (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium mt-2">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                          Forecast
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-2.5 rounded bg-gradient-to-r from-green-400 to-yellow-400"></div>
-                      <span className="text-xs text-gray-600">Moderate</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-2.5 rounded bg-gradient-to-r from-orange-400 to-red-500"></div>
-                      <span className="text-xs text-gray-600">Heavy</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">Radar Opacity</div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={opacity}
-                    onChange={(e) => setOpacity(parseFloat(e.target.value))}
-                    className="w-24"
-                  />
-                </div>
+                    <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
+                      <div className="text-xs font-semibold text-gray-700 mb-2">Precipitation</div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-2.5 rounded" style={{ background: 'rgba(140, 200, 255, 0.8)' }}></div>
+                          <span className="text-xs text-gray-600">Light</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-2.5 rounded" style={{ background: 'rgba(0, 150, 255, 0.8)' }}></div>
+                          <span className="text-xs text-gray-600">Moderate</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-2.5 rounded" style={{ background: 'rgba(255, 100, 0, 0.8)' }}></div>
+                          <span className="text-xs text-gray-600">Heavy</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
+                      <div className="text-xs font-semibold text-gray-700 mb-2">Opacity</div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={opacity}
+                        onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                        className="w-24"
+                      />
+                      <div className="text-xs text-gray-500 mt-1 text-center">{Math.round(opacity * 100)}%</div>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -374,11 +356,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </div>
 
                 <div className="text-xs font-medium text-gray-600 min-w-fit">
-                  Frame {currentFrame + 1} / {radarFrames.length}
+                  {currentFrame + 1} / {radarFrames.length}
                 </div>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Live radar with past hour + 2 hour forecast
+                Radar animation showing past and forecast precipitation
               </div>
             </div>
           )}
