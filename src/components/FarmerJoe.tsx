@@ -91,16 +91,16 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         .limit(1);
 
       if (!existingMessages || existingMessages.length === 0) {
+        // Create a greeting message from Farmer Joe without a user message
         const greeting = "Howdy! I'm Farmer Joe, your AI farming assistant. I'm here to help you with weather insights, spray planning, pest and disease identification, and general farm advice. What can I help you with today?";
 
-        await supabase.from('chat_messages').insert({
-          user_id: session.user.id,
-          message: '[System: Initial greeting]',
+        // Add a message that appears to come from Farmer Joe first
+        setMessages([{
+          id: `greeting-${Date.now()}`,
+          message: '',
           response: greeting,
-          weather_context: {},
-        });
-
-        await loadChatHistory();
+          created_at: new Date().toISOString(),
+        }]);
       }
     } catch (error) {
       console.error('Error sending greeting:', error);
@@ -355,20 +355,22 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
             ) : (
               messages.map((msg) => (
                 <div key={msg.id} className="space-y-3">
-                  {/* User Message */}
-                  <div className="flex justify-end">
-                    <div className="bg-blue-600 text-white rounded-lg rounded-tr-none px-4 py-2 max-w-[80%]">
-                      {msg.image_url && (
-                        <div className="mb-2">
-                          <div className="bg-white rounded p-1">
-                            <Camera className="w-8 h-8 text-blue-600 mx-auto" />
-                            <p className="text-xs text-blue-600 text-center mt-1">Image attached</p>
+                  {/* User Message - only show if message exists */}
+                  {msg.message && (
+                    <div className="flex justify-end">
+                      <div className="bg-blue-600 text-white rounded-lg rounded-tr-none px-4 py-2 max-w-[80%]">
+                        {msg.image_url && (
+                          <div className="mb-2">
+                            <div className="bg-white rounded p-1">
+                              <Camera className="w-8 h-8 text-blue-600 mx-auto" />
+                              <p className="text-xs text-blue-600 text-center mt-1">Image attached</p>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      <p className="text-sm">{msg.message}</p>
+                        )}
+                        <p className="text-sm">{msg.message}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Farmer Joe Response */}
                   <div className="flex justify-start">
