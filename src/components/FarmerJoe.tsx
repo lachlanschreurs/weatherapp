@@ -213,10 +213,16 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to get response from Farmer Joe');
+        console.error('Edge function error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        throw new Error(errorData.error || `Server error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Received response from Farmer Joe:', data);
 
       await loadChatHistory();
     } catch (error) {
