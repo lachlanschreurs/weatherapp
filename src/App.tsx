@@ -635,7 +635,7 @@ function App() {
 
             <div className={`px-8 py-6 ${sprayAdvice.bgColor} rounded-xl border-2 border-opacity-20 shadow-xl`}>
               <div className="text-center">
-                <div className="text-sm font-semibold uppercase tracking-wider opacity-70 mb-2">
+                <div className={`text-sm font-semibold uppercase tracking-wider mb-2 ${sprayAdvice.color}`}>
                   Spray Decision
                 </div>
                 <div className={`text-2xl font-bold ${sprayAdvice.color} leading-snug`}>
