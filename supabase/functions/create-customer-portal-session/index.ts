@@ -33,15 +33,47 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Get user from JWT token
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error('No authorization header');
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - no auth token" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!
+    ).auth.getUser(token);
+
+    if (userError || !user) {
+      console.error('Failed to verify user:', userError);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - invalid token" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const requestBody = await req.json();
     console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
 
-    const { userId, userEmail, returnUrl } = requestBody;
+    const { returnUrl } = requestBody;
+    const userId = user.id;
+    const userEmail = user.email;
 
     if (!userId || !userEmail) {
-      console.error('Missing required fields:', { userId: !!userId, userEmail: !!userEmail });
+      console.error('Missing user information:', { userId: !!userId, userEmail: !!userEmail });
       return new Response(
-        JSON.stringify({ error: "Missing required fields: userId, userEmail" }),
+        JSON.stringify({ error: "Missing user information" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

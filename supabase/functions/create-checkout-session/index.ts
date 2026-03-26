@@ -1,4 +1,5 @@
 import Stripe from "npm:stripe@14.11.0";
+import { createClient } from "npm:@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,15 +29,49 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+
+    // Get user from JWT token
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error('No authorization header');
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - no auth token" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!
+    ).auth.getUser(token);
+
+    if (userError || !user) {
+      console.error('Failed to verify user:', userError);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - invalid token" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const requestBody = await req.json();
     console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
 
-    const { priceId, userId, userEmail, successUrl, cancelUrl } = requestBody;
+    const { priceId, successUrl, cancelUrl } = requestBody;
+    const userId = user.id;
+    const userEmail = user.email;
 
     if (!priceId || !userId || !userEmail) {
       console.error('Missing required fields:', { priceId: !!priceId, userId: !!userId, userEmail: !!userEmail });
       return new Response(
-        JSON.stringify({ error: "Missing required fields: priceId, userId, userEmail" }),
+        JSON.stringify({ error: "Missing required fields: priceId" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
