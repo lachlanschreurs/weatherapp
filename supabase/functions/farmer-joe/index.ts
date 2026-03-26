@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface ChatRequest {
   message: string;
+  imageBase64?: string;
   weatherContext?: {
     location?: string;
     currentWeather?: any;
@@ -57,7 +58,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('Unauthorized');
     }
 
-    const { message, weatherContext }: ChatRequest = await req.json();
+    const { message, imageBase64, weatherContext }: ChatRequest = await req.json();
 
     if (!message || message.trim().length === 0) {
       throw new Error('Message is required');
@@ -68,7 +69,16 @@ Deno.serve(async (req: Request) => {
 - Weather conditions and their impact on farming
 - Best times for planting, spraying, and harvesting
 - Farm event planning based on weather forecasts
+- Pest and disease identification from photos
+- Chemical and treatment recommendations for pests and diseases
 - General farming tips and best practices
+
+When identifying pests or diseases from images:
+- Provide a clear identification of what you see
+- Explain the potential damage or concerns
+- Suggest specific chemical treatments or organic alternatives
+- Include application timing and weather considerations
+- Mention any safety precautions
 
 You have access to real-time weather data and forecasts. Be conversational, helpful, and use your farming expertise to give practical advice. Keep responses concise but informative. Use a warm, folksy tone but remain professional.`;
 
@@ -91,9 +101,9 @@ You have access to real-time weather data and forecasts. Be conversational, help
 
     if (!openaiApiKey) {
       // Fallback response if no API key
-      const fallbackResponse = `Howdy! I'm Farmer Joe, your AI farming assistant. I'd love to help you with weather insights and farm planning, but it looks like I need an OpenAI API key to be configured first.
+      const fallbackResponse = `Howdy! I'm Farmer Joe, your AI farming assistant. I'd love to help you with weather insights, pest identification, and farm planning, but it looks like I need an OpenAI API key to be configured first.
 
-In the meantime, here's some general advice: ${message.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : message.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
+In the meantime, here's some general advice: ${message.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : message.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : imageBase64 ? 'For pest and disease identification, I need to analyze your photo. Please configure the OpenAI API key to enable this feature.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
 
       // Save to database
       await supabaseClient.from('chat_messages').insert({
@@ -101,6 +111,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         message: message,
         response: fallbackResponse,
         weather_context: weatherContext || {},
+        image_url: imageBase64 ? 'data:image/jpeg;base64,...' : null,
       });
 
       return new Response(
@@ -114,7 +125,39 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
       );
     }
 
-    // Make request to OpenAI
+    // Prepare messages for OpenAI
+    const messages: any[] = [
+      {
+        role: 'system',
+        content: systemPrompt + contextInfo,
+      },
+    ];
+
+    // If image is provided, use vision model with image
+    if (imageBase64) {
+      messages.push({
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: message,
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:image/jpeg;base64,${imageBase64}`,
+            },
+          },
+        ],
+      });
+    } else {
+      messages.push({
+        role: 'user',
+        content: message,
+      });
+    }
+
+    // Make request to OpenAI (use gpt-4o for vision, gpt-3.5-turbo for text)
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -122,19 +165,10 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt + contextInfo,
-          },
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
+        model: imageBase64 ? 'gpt-4o' : 'gpt-3.5-turbo',
+        messages: messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: imageBase64 ? 1000 : 500,
       }),
     });
 
@@ -153,6 +187,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
       message: message,
       response: aiResponse,
       weather_context: weatherContext || {},
+      image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 50)}...` : null,
     });
 
     return new Response(

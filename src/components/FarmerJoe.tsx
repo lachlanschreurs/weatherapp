@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, X, Trash2, Loader2 } from 'lucide-react';
+import { Send, X, Trash2, Loader2, Camera, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Message {
@@ -7,6 +7,7 @@ interface Message {
   message: string;
   response: string;
   created_at: string;
+  image_url?: string | null;
   isUser?: boolean;
 }
 
@@ -53,7 +54,10 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [guestQuestionCount, setGuestQuestionCount] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_GUEST_QUESTIONS = 5;
 
   const scrollToBottom = () => {
@@ -113,11 +117,49 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     }
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const userMessage = input.trim();
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const base64Data = base64String.split(',')[1];
+      setSelectedImage(base64Data);
+      setImagePreview(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const sendMessage = async () => {
+    if ((!input.trim() && !selectedImage) || isLoading) return;
+
+    const userMessage = input.trim() || 'Please analyze this image';
+    const imageData = selectedImage;
     setInput('');
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setIsLoading(true);
 
     try {
@@ -164,6 +206,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         },
         body: JSON.stringify({
           message: userMessage,
+          imageBase64: imageData,
           weatherContext,
         }),
       });
@@ -271,6 +314,14 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                   {/* User Message */}
                   <div className="flex justify-end">
                     <div className="bg-blue-600 text-white rounded-lg rounded-tr-none px-4 py-2 max-w-[80%]">
+                      {msg.image_url && (
+                        <div className="mb-2">
+                          <div className="bg-white rounded p-1">
+                            <Camera className="w-8 h-8 text-blue-600 mx-auto" />
+                            <p className="text-xs text-blue-600 text-center mt-1">Image attached</p>
+                          </div>
+                        </div>
+                      )}
                       <p className="text-sm">{msg.message}</p>
                     </div>
                   </div>
@@ -314,26 +365,59 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
               </div>
             ) : (
               <>
+                {imagePreview && (
+                  <div className="mb-3 relative inline-block">
+                    <img
+                      src={imagePreview}
+                      alt="Selected"
+                      className="max-w-[200px] max-h-[200px] rounded-lg border-2 border-green-300 object-cover"
+                    />
+                    <button
+                      onClick={removeImage}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    >
+                      <XCircle className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                   <input
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Type your message..."
+                    placeholder={imagePreview ? "Describe what you want to know about this image..." : "Type your message or upload a photo..."}
                     disabled={isLoading}
                     className="w-full px-4 py-3 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed text-sm rounded-t-lg"
                   />
                   <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
-                    <p className="text-xs text-gray-500">
-                      {!isAuthenticated && guestQuestionCount > 0
-                        ? `${MAX_GUEST_QUESTIONS - guestQuestionCount} free questions left`
-                        : 'Ask about spray windows, planting times, or weather'
-                      }
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageSelect}
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isLoading}
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading}
+                        className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Upload photo of pest or disease"
+                      >
+                        <Camera className="w-5 h-5" />
+                      </button>
+                      <p className="text-xs text-gray-500">
+                        {!isAuthenticated && guestQuestionCount > 0
+                          ? `${MAX_GUEST_QUESTIONS - guestQuestionCount} free questions left`
+                          : imagePreview ? 'Photo ready to analyze' : 'Ask about pests, diseases, weather'
+                        }
+                      </p>
+                    </div>
                     <button
                       onClick={sendMessage}
-                      disabled={!input.trim() || isLoading}
+                      disabled={(!input.trim() && !selectedImage) || isLoading}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
                       <span className="text-sm font-medium">Send</span>
