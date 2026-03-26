@@ -618,26 +618,28 @@ function App() {
             </div>
           )}
           <div className="relative z-10">
-            <div className="flex items-center gap-6 mb-6">
-              {getWeatherIcon(weatherCode, 'w-24 h-24')}
-              <div>
-                <div className="text-7xl font-bold mb-2">
-                  {Math.round(tempC)}°C
-                </div>
-                <div className="text-lg opacity-80 mb-2">
-                  Feels like {Math.round(feelsLike)}°C
-                </div>
-                <div className="text-2xl capitalize opacity-90">
-                  {weatherDescription}
+            <div className="flex items-start justify-between gap-6 mb-6">
+              <div className="flex items-center gap-6">
+                {getWeatherIcon(weatherCode, 'w-24 h-24')}
+                <div>
+                  <div className="text-7xl font-bold mb-2">
+                    {Math.round(tempC)}°C
+                  </div>
+                  <div className="text-lg opacity-80 mb-2">
+                    Feels like {Math.round(feelsLike)}°C
+                  </div>
+                  <div className="text-2xl capitalize opacity-90">
+                    {weatherDescription}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={`${sprayAdvice.bgColor} rounded-lg border-2 ${sprayAdvice.color === 'text-green-700' ? 'border-green-400' : sprayAdvice.color === 'text-yellow-700' ? 'border-yellow-400' : 'border-red-400'} px-5 py-4 flex items-center gap-3 shadow-sm`}>
-              <AlertTriangle className={`w-6 h-6 flex-shrink-0 ${sprayAdvice.color}`} />
-              <div className="flex-1">
-                <span className={`font-bold ${sprayAdvice.color}`}>Spray Alert:</span>
-                <span className={`ml-2 ${sprayAdvice.color}`}>{sprayAdvice.message}</span>
+              <div className={`${sprayAdvice.bgColor} rounded-lg border-2 ${sprayAdvice.color === 'text-green-700' ? 'border-green-400' : sprayAdvice.color === 'text-amber-700' ? 'border-amber-400' : 'border-red-400'} px-4 py-3 flex items-center gap-3 shadow-md min-w-[320px] max-w-[360px]`}>
+                <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${sprayAdvice.color}`} />
+                <div className="flex-1">
+                  <div className={`font-bold ${sprayAdvice.color} text-sm mb-0.5`}>Spray Alert</div>
+                  <div className={`${sprayAdvice.color} text-sm leading-tight`}>{sprayAdvice.message}</div>
+                </div>
               </div>
             </div>
           </div>
