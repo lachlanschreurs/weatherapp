@@ -649,38 +649,40 @@ function App() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <div className={`${sprayAdvice.bgColor} rounded-lg border-2 ${sprayAdvice.color === 'text-green-700' ? 'border-green-400' : sprayAdvice.color === 'text-amber-700' ? 'border-amber-400' : 'border-red-400'} px-4 py-3 flex items-center gap-3 shadow-md min-w-[320px] max-w-[360px]`}>
-                  <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${sprayAdvice.color}`} />
-                  <div className="flex-1">
-                    <div className={`font-bold ${sprayAdvice.color} text-sm mb-0.5`}>Spray Alert</div>
-                    <div className={`${sprayAdvice.color} text-sm leading-tight`}>{sprayAdvice.message}</div>
-                  </div>
-                </div>
-
-                {(() => {
-                  const todayBestWindow = findBestSprayWindow(todayForecasts);
-                  if (todayBestWindow) {
-                    return (
-                      <div className={`${todayBestWindow.rating === 'Good' ? 'bg-green-50' : 'bg-yellow-50'} rounded-lg border-2 ${todayBestWindow.rating === 'Good' ? 'border-green-400' : 'border-yellow-400'} px-4 py-3 shadow-md min-w-[320px] max-w-[360px]`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Clock className={`w-5 h-5 ${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'}`} />
-                          <div className={`font-bold ${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'} text-sm`}>
-                            Best Spray Window Today
-                          </div>
-                        </div>
-                        <div className={`${todayBestWindow.rating === 'Good' ? 'text-green-800' : 'text-yellow-800'} text-sm font-semibold mb-1`}>
-                          {todayBestWindow.startTime} - {todayBestWindow.endTime}
-                        </div>
-                        <div className={`${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'} text-xs`}>
-                          {todayBestWindow.duration.toFixed(1)}h window • {todayBestWindow.conditions}
+              {(() => {
+                const todayBestWindow = findBestSprayWindow(todayForecasts);
+                if (todayBestWindow) {
+                  return (
+                    <div className={`${todayBestWindow.rating === 'Good' ? 'bg-green-50' : 'bg-yellow-50'} rounded-lg border-2 ${todayBestWindow.rating === 'Good' ? 'border-green-400' : 'border-yellow-400'} px-4 py-3 shadow-md min-w-[320px] max-w-[360px]`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className={`w-5 h-5 ${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'}`} />
+                        <div className={`font-bold ${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'} text-sm`}>
+                          Best Spray Window Today
                         </div>
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
+                      <div className={`${todayBestWindow.rating === 'Good' ? 'text-green-800' : 'text-yellow-800'} text-sm font-semibold mb-1`}>
+                        {todayBestWindow.startTime} - {todayBestWindow.endTime}
+                      </div>
+                      <div className={`${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'} text-xs`}>
+                        {todayBestWindow.duration.toFixed(1)}h window • {todayBestWindow.conditions}
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="bg-red-50 rounded-lg border-2 border-red-400 px-4 py-3 shadow-md min-w-[320px] max-w-[360px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-5 h-5 text-red-700" />
+                      <div className="font-bold text-red-700 text-sm">
+                        No Spray Window Today
+                      </div>
+                    </div>
+                    <div className="text-red-800 text-xs">
+                      Conditions not suitable for spraying today
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
