@@ -182,8 +182,9 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      if (!subscription?.stripeCustomerId) {
-        setMessage({ type: 'error', text: 'No subscription found' });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMessage({ type: 'error', text: 'Please sign in to manage your subscription' });
         return;
       }
 
@@ -197,7 +198,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         method: 'POST',
         headers,
         body: JSON.stringify({
-          customerId: subscription.stripeCustomerId,
+          userId: user.id,
+          userEmail: user.email,
           returnUrl: window.location.origin,
         }),
       });
@@ -303,25 +305,23 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             <p className="text-green-900">{subscription?.messagesCount || 0}</p>
                           </div>
                         </div>
-                        {subscription?.stripeCustomerId && (
-                          <button
-                            onClick={handleManageSubscription}
-                            disabled={isProcessing}
-                            className="w-full bg-white border-2 border-green-600 text-green-600 hover:bg-green-50 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isProcessing ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Loading...
-                              </>
-                            ) : (
-                              <>
-                                <ExternalLink className="w-4 h-4" />
-                                Manage Subscription
-                              </>
-                            )}
-                          </button>
-                        )}
+                        <button
+                          onClick={handleManageSubscription}
+                          disabled={isProcessing}
+                          className="w-full bg-white border-2 border-green-600 text-green-600 hover:bg-green-50 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <ExternalLink className="w-4 h-4" />
+                              Manage Subscription & Payment
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -536,6 +536,29 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                   );
                 })()}
               </div>
+
+              {/* Manage Payment Details - Show for users with customer ID but no active subscription */}
+              {subscription?.stripeCustomerId && !hasActiveSubscription && (
+                <div className="mb-6">
+                  <button
+                    onClick={handleManageSubscription}
+                    disabled={isProcessing}
+                    className="w-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-4 h-4" />
+                        Manage Payment Details
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Pricing Information */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
