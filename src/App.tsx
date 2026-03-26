@@ -972,15 +972,14 @@ function App() {
         initialMode={authMode}
       />
 
-      {user && (
-        <FarmerJoe
-          weatherContext={{
-            location: `${location.name}${location.state ? ', ' + location.state : ''}`,
-            currentWeather: current,
-            forecast: forecastList.slice(0, 8),
-          }}
-        />
-      )}
+      <FarmerJoe
+        weatherContext={{
+          location: `${location.name}${location.state ? ', ' + location.state : ''}`,
+          currentWeather: current,
+          forecast: forecastList.slice(0, 8),
+        }}
+        isAuthenticated={!!user}
+      />
     </div>
   );
 }

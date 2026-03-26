@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, X, Trash2, Loader2 } from 'lucide-react';
+import { Send, X, Trash2, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Message {
@@ -16,9 +16,37 @@ interface FarmerJoeProps {
     currentWeather?: any;
     forecast?: any;
   };
+  isAuthenticated?: boolean;
 }
 
-export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
+const FarmerJoeAvatar = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
+  const sizeClasses = {
+    sm: 'w-10 h-10',
+    md: 'w-12 h-12',
+    lg: 'w-16 h-16'
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} relative`}>
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        <circle cx="50" cy="50" r="48" fill="#86A789" stroke="#5C7556" strokeWidth="2"/>
+        <circle cx="50" cy="45" r="35" fill="#F5E6D3"/>
+        <rect x="30" y="15" width="40" height="15" rx="8" fill="#8B4513"/>
+        <rect x="25" y="25" width="50" height="8" fill="#A0522D"/>
+        <ellipse cx="38" cy="45" rx="4" ry="5" fill="#2C1810"/>
+        <ellipse cx="62" cy="45" rx="4" ry="5" fill="#2C1810"/>
+        <path d="M 40 58 Q 50 63 60 58" stroke="#8B4513" strokeWidth="2" fill="none" strokeLinecap="round"/>
+        <path d="M 35 38 Q 38 35 41 38" stroke="#5C3D2E" strokeWidth="1.5" fill="none"/>
+        <path d="M 59 38 Q 62 35 65 38" stroke="#5C3D2E" strokeWidth="1.5" fill="none"/>
+        <circle cx="50" cy="75" r="12" fill="#4A7C59"/>
+        <rect x="38" y="82" width="8" height="18" fill="#5C7556"/>
+        <rect x="54" y="82" width="8" height="18" fill="#5C7556"/>
+      </svg>
+    </div>
+  );
+}
+
+export default function FarmerJoe({ weatherContext, isAuthenticated = false }: FarmerJoeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -90,7 +118,15 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        alert('Please sign in to chat with Farmer Joe');
+        const tempId = `temp-${Date.now()}`;
+        const tempMessage: Message = {
+          id: tempId,
+          message: userMessage,
+          response: 'Please sign in to have a personalized conversation and save your chat history. For now, I can give you a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!',
+          created_at: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, tempMessage]);
+        setIsLoading(false);
         return;
       }
 
@@ -114,7 +150,6 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
 
       const data = await response.json();
 
-      // Reload chat history to get the new message
       await loadChatHistory();
     } catch (error) {
       console.error('Error sending message:', error);
@@ -133,25 +168,23 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
 
   return (
     <>
-      {/* Side Tab */}
-      <div
-        className={`fixed right-0 top-1/2 -translate-y-1/2 z-50 transition-all duration-300 ${
-          isOpen ? 'translate-x-0' : 'translate-x-0'
-        }`}
-      >
-        {!isOpen && (
-          <button
-            onClick={() => setIsOpen(true)}
-            className="bg-green-600 text-white px-3 py-6 rounded-l-lg shadow-lg hover:bg-green-700 transition-all duration-200 flex flex-col items-center gap-2 group"
-            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
-          >
-            <MessageCircle className="w-5 h-5 rotate-180" />
-            <span className="font-semibold text-sm whitespace-nowrap">
-              Farmer Joe
-            </span>
-          </button>
-        )}
-      </div>
+      {/* Floating Button */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed right-6 bottom-6 bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 z-50 group p-1"
+        >
+          <div className="relative">
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+            <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-full p-3 flex items-center gap-3">
+              <FarmerJoeAvatar size="md" />
+              <div className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 pr-0 group-hover:pr-3">
+                <span className="font-semibold text-sm whitespace-nowrap">Chat with Farmer Joe</span>
+              </div>
+            </div>
+          </div>
+        </button>
+      )}
 
       {/* Chat Window */}
       {isOpen && (
@@ -159,11 +192,9 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
           {/* Header */}
           <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-800 rounded-full flex items-center justify-center text-lg font-bold">
-                🧑‍🌾
-              </div>
+              <FarmerJoeAvatar size="md" />
               <div>
-                <h3 className="font-semibold">Farmer Joe</h3>
+                <h3 className="font-semibold text-lg">Farmer Joe</h3>
                 <p className="text-xs text-green-100">Your AI Farming Assistant</p>
               </div>
             </div>
@@ -192,11 +223,21 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
               </div>
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500 text-center px-4">
-                <div className="text-4xl mb-3">👋</div>
-                <p className="text-sm font-medium mb-2">Howdy! I'm Farmer Joe</p>
-                <p className="text-xs">
-                  Ask me about weather conditions, farm planning, or any farming advice you need!
+                <FarmerJoeAvatar size="lg" />
+                <p className="text-lg font-semibold mb-2 mt-4 text-gray-700">Howdy! I'm Farmer Joe</p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Your AI farming assistant here to help with weather conditions, farm planning, and agricultural advice.
                 </p>
+                {!isAuthenticated && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 mt-2">
+                    <p className="font-medium mb-1">Sign in for full features:</p>
+                    <ul className="text-left space-y-1">
+                      <li>• Save conversation history</li>
+                      <li>• Get personalized advice</li>
+                      <li>• Access weather context</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
               messages.map((msg) => (
