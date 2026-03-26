@@ -15,8 +15,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('Checkout session request received');
+
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
+      console.error('STRIPE_SECRET_KEY not configured');
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
 
@@ -25,9 +28,13 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const { priceId, userId, userEmail, successUrl, cancelUrl } = await req.json();
+    const requestBody = await req.json();
+    console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
+
+    const { priceId, userId, userEmail, successUrl, cancelUrl } = requestBody;
 
     if (!priceId || !userId || !userEmail) {
+      console.error('Missing required fields:', { priceId: !!priceId, userId: !!userId, userEmail: !!userEmail });
       return new Response(
         JSON.stringify({ error: "Missing required fields: priceId, userId, userEmail" }),
         {
@@ -36,6 +43,8 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
+
+    console.log('Creating/retrieving Stripe customer for:', userEmail);
 
     // Create or retrieve Stripe customer
     const customers = await stripe.customers.list({
@@ -46,6 +55,7 @@ Deno.serve(async (req: Request) => {
     let customerId: string;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+      console.log('Found existing customer:', customerId);
     } else {
       const customer = await stripe.customers.create({
         email: userEmail,
@@ -54,6 +64,7 @@ Deno.serve(async (req: Request) => {
         },
       });
       customerId = customer.id;
+      console.log('Created new customer:', customerId);
     }
 
     // Ensure we have valid URLs
@@ -89,6 +100,8 @@ Deno.serve(async (req: Request) => {
 
     console.log('Checkout session created:', session.id);
 
+    console.log('Checkout session created successfully:', { sessionId: session.id, hasUrl: !!session.url });
+
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
       {
@@ -96,12 +109,23 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error) {
-    console.error("Error creating checkout session:", error);
+  } catch (error: any) {
+    console.error("Error creating checkout session:", {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      stack: error.stack
+    });
+
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error.message || "Failed to create checkout session",
+        type: error.type || "unknown_error",
+        details: error.code || error.statusCode || "No additional details"
+      }),
       {
-        status: 500,
+        status: error.statusCode || 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
