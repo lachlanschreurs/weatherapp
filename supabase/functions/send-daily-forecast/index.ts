@@ -29,17 +29,32 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // Get all subscribers with daily forecast enabled
+    // Get all subscribers with daily forecast enabled who are in trial or have premium
     const { data: subscribers, error: subError } = await supabaseAdmin
       .from('email_subscriptions')
-      .select('*')
-      .eq('daily_forecast_enabled', true);
+      .select('*, user_subscriptions!inner(status, subscription_tier)')
+      .eq('daily_forecast_enabled', true)
+      .or('trial_active.eq.true,user_subscriptions.status.eq.active');
 
     if (subError) throw subError;
 
-    if (!subscribers || subscribers.length === 0) {
+    // Filter to only include users who should receive emails
+    const eligibleSubscribers = subscribers?.filter((sub: any) => {
+      // In trial and trial not expired
+      if (sub.trial_active && new Date(sub.trial_end_date) > new Date()) {
+        return true;
+      }
+      // Has active premium subscription
+      if (sub.user_subscriptions?.status === 'active' &&
+          sub.user_subscriptions?.subscription_tier === 'premium') {
+        return true;
+      }
+      return false;
+    }) || [];
+
+    if (eligibleSubscribers.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No subscribers found' }),
+        JSON.stringify({ message: 'No eligible subscribers found' }),
         {
           headers: {
             ...corsHeaders,
@@ -61,8 +76,8 @@ Deno.serve(async (req: Request) => {
 
     let emailsSent = 0;
 
-    // Send email to each subscriber
-    for (const subscriber of subscribers) {
+    // Send email to each eligible subscriber
+    for (const subscriber of eligibleSubscribers) {
       try {
         const location = subscriber.location || 'Sydney, Australia';
 
@@ -114,7 +129,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         message: `Successfully sent ${emailsSent} emails to subscribers`,
-        total: subscribers.length,
+        total: eligibleSubscribers.length,
         sent: emailsSent
       }),
       {

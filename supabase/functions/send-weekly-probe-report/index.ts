@@ -30,17 +30,32 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // Get all subscribers with weekly probe report enabled
+    // Get all subscribers with weekly probe report enabled who are in trial or have premium
     const { data: subscribers, error: subError } = await supabaseAdmin
       .from('email_subscriptions')
-      .select('user_id, email')
-      .eq('weekly_probe_report_enabled', true);
+      .select('user_id, email, trial_active, trial_end_date, user_subscriptions!inner(status, subscription_tier)')
+      .eq('weekly_probe_report_enabled', true)
+      .or('trial_active.eq.true,user_subscriptions.status.eq.active');
 
     if (subError) throw subError;
 
-    if (!subscribers || subscribers.length === 0) {
+    // Filter to only include users who should receive emails
+    const eligibleSubscribers = subscribers?.filter((sub: any) => {
+      // In trial and trial not expired
+      if (sub.trial_active && new Date(sub.trial_end_date) > new Date()) {
+        return true;
+      }
+      // Has active premium subscription
+      if (sub.user_subscriptions?.status === 'active' &&
+          sub.user_subscriptions?.subscription_tier === 'premium') {
+        return true;
+      }
+      return false;
+    }) || [];
+
+    if (eligibleSubscribers.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No subscribers found' }),
+        JSON.stringify({ message: 'No eligible subscribers found' }),
         {
           headers: {
             ...corsHeaders,
@@ -62,8 +77,8 @@ Deno.serve(async (req: Request) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 7);
 
-    // Send email to each subscriber
-    for (const subscriber of subscribers) {
+    // Send email to each eligible subscriber
+    for (const subscriber of eligibleSubscribers) {
       try {
         // Get user's probe APIs
         const { data: probeApis, error: apiError } = await supabaseAdmin
@@ -130,7 +145,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         message: `Successfully sent ${emailsSent} weekly reports`,
-        total: subscribers.length,
+        total: eligibleSubscribers.length,
         sent: emailsSent
       }),
       {
