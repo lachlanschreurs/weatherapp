@@ -132,12 +132,14 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         setMessage({ type: 'error', text: 'Please sign in to subscribe' });
         setIsProcessing(false);
         return;
       }
+
+      const user = session.user;
 
       const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
       if (!stripePriceId) {
@@ -148,7 +150,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       };
 
@@ -206,20 +208,23 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         setMessage({ type: 'error', text: 'Please sign in to manage your subscription' });
         setIsProcessing(false);
         return;
       }
 
+      const user = session.user;
+
       console.log('=== STRIPE PORTAL DEBUG START ===');
       console.log('User ID:', user.id);
       console.log('User Email:', user.email);
+      console.log('Has session token:', !!session.access_token);
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
       const headers = {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       };
 
