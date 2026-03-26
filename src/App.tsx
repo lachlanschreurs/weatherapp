@@ -82,6 +82,28 @@ function App() {
   const [appError, setAppError] = useState<string | null>(null);
 
   useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('Global error:', event.error);
+      setAppError(`Application Error: ${event.error?.message || 'Unknown error'}`);
+      event.preventDefault();
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      setAppError(`Promise Error: ${event.reason?.message || event.reason || 'Unknown error'}`);
+      event.preventDefault();
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
+  useEffect(() => {
     fetchWeather();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.lat, location.lon]);
@@ -198,19 +220,28 @@ function App() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
       if (!supabaseUrl) {
-        throw new Error('Supabase URL is not configured');
+        throw new Error('Supabase URL is not configured. Please check your .env file.');
       }
 
       const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
+      console.log('Fetching weather from:', weatherUrl);
 
       const response = await fetch(weatherUrl);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || 'Failed to fetch weather data');
+        const errorText = await response.text();
+        console.error('Weather API error:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: `HTTP ${response.status}: ${errorText}` };
+        }
+        throw new Error(errorData.error || `Failed to fetch weather data (HTTP ${response.status})`);
       }
 
       const weatherData = await response.json();
+      console.log('Weather data received:', weatherData);
 
       setWeather(weatherData);
       setLastUpdated(new Date());
@@ -222,7 +253,7 @@ function App() {
       }
     } catch (err) {
       console.error('Weather fetch error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
       setAppError(errorMessage);
     } finally {
@@ -301,7 +332,8 @@ function App() {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-700 text-lg">Loading FarmCast...</p>
+          <p className="mt-4 text-gray-700 text-lg font-semibold">Loading FarmCast...</p>
+          <p className="mt-2 text-gray-600 text-sm">Fetching weather data for {location.name}</p>
         </div>
       </div>
     );
