@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -617,8 +617,8 @@ function App() {
               ))}
             </div>
           )}
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-center gap-6">
+          <div className="relative z-10">
+            <div className="flex items-center gap-6 mb-6">
               {getWeatherIcon(weatherCode, 'w-24 h-24')}
               <div>
                 <div className="text-7xl font-bold mb-2">
@@ -633,14 +633,11 @@ function App() {
               </div>
             </div>
 
-            <div className={`px-8 py-6 ${sprayAdvice.bgColor} rounded-xl border-2 border-opacity-20 shadow-xl`}>
-              <div className="text-center">
-                <div className={`text-sm font-semibold uppercase tracking-wider mb-2 ${sprayAdvice.color}`}>
-                  Spray Decision
-                </div>
-                <div className={`text-2xl font-bold ${sprayAdvice.color} leading-snug`}>
-                  {sprayAdvice.message}
-                </div>
+            <div className={`${sprayAdvice.bgColor} rounded-lg border-2 ${sprayAdvice.color === 'text-green-700' ? 'border-green-400' : sprayAdvice.color === 'text-yellow-700' ? 'border-yellow-400' : 'border-red-400'} px-4 py-3 flex items-center gap-3`}>
+              <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${sprayAdvice.color}`} />
+              <div className="flex-1">
+                <span className={`font-bold ${sprayAdvice.color}`}>Spray Alert: </span>
+                <span className={`${sprayAdvice.color}`}>{sprayAdvice.message}</span>
               </div>
             </div>
           </div>
