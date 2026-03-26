@@ -357,8 +357,8 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                 <div key={msg.id} className="space-y-3">
                   {/* User Message - only show if message exists */}
                   {msg.message && (
-                    <div className="flex justify-end">
-                      <div className="bg-blue-600 text-white rounded-lg rounded-tr-none px-4 py-2 max-w-[80%]">
+                    <div className="flex justify-end items-end gap-2">
+                      <div className="bg-blue-600 text-white rounded-2xl rounded-br-none px-4 py-3 max-w-[80%] shadow-md">
                         {msg.image_url && (
                           <div className="mb-2">
                             <div className="bg-white rounded p-1">
@@ -367,15 +367,18 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                             </div>
                           </div>
                         )}
-                        <p className="text-sm">{msg.message}</p>
+                        <p className="text-sm leading-relaxed">{msg.message}</p>
                       </div>
                     </div>
                   )}
 
                   {/* Farmer Joe Response */}
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-gray-200 rounded-lg rounded-tl-none px-4 py-2 max-w-[80%] shadow-sm">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">{msg.response}</p>
+                  <div className="flex justify-start items-start gap-2">
+                    <div className="flex-shrink-0 mt-1">
+                      <FarmerJoeAvatar size="sm" />
+                    </div>
+                    <div className="bg-green-50 border-2 border-green-200 rounded-2xl rounded-tl-none px-4 py-3 max-w-[75%] shadow-sm">
+                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{msg.response}</p>
                     </div>
                   </div>
                 </div>
