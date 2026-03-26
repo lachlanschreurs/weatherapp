@@ -52,7 +52,9 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [guestQuestionCount, setGuestQuestionCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const MAX_GUEST_QUESTIONS = 5;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -65,8 +67,12 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   useEffect(() => {
     if (isOpen) {
       loadChatHistory();
+      if (!isAuthenticated) {
+        const savedCount = localStorage.getItem('farmerJoeGuestQuestions');
+        setGuestQuestionCount(savedCount ? parseInt(savedCount) : 0);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isAuthenticated]);
 
   const loadChatHistory = async () => {
     setIsLoadingHistory(true);
@@ -118,11 +124,29 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
+        if (guestQuestionCount >= MAX_GUEST_QUESTIONS) {
+          const tempId = `temp-${Date.now()}`;
+          const tempMessage: Message = {
+            id: tempId,
+            message: userMessage,
+            response: "You've reached your 5 free questions! Sign in to continue chatting with me and get personalized farming advice, weather insights, and save your conversation history. Click the sign-in button at the top right to get started!",
+            created_at: new Date().toISOString(),
+          };
+          setMessages(prev => [...prev, tempMessage]);
+          setIsLoading(false);
+          return;
+        }
+
+        const newCount = guestQuestionCount + 1;
+        setGuestQuestionCount(newCount);
+        localStorage.setItem('farmerJoeGuestQuestions', newCount.toString());
+
+        const remainingQuestions = MAX_GUEST_QUESTIONS - newCount;
         const tempId = `temp-${Date.now()}`;
         const tempMessage: Message = {
           id: tempId,
           message: userMessage,
-          response: 'Please sign in to have a personalized conversation and save your chat history. For now, I can give you a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!',
+          response: `Thanks for your question! ${remainingQuestions > 0 ? `You have ${remainingQuestions} free question${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free question!'} Sign in to get unlimited access, personalized advice based on your location and weather, and save your chat history. Here's a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!`,
           created_at: new Date().toISOString(),
         };
         setMessages(prev => [...prev, tempMessage]);
@@ -230,8 +254,10 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                 </p>
                 {!isAuthenticated && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 mt-2">
-                    <p className="font-medium mb-1">Sign in for full features:</p>
+                    <p className="font-medium mb-2">Free Trial: {MAX_GUEST_QUESTIONS - guestQuestionCount} questions remaining</p>
+                    <p className="font-medium mb-1">Sign in for unlimited access:</p>
                     <ul className="text-left space-y-1">
+                      <li>• Unlimited questions</li>
                       <li>• Save conversation history</li>
                       <li>• Get personalized advice</li>
                       <li>• Access weather context</li>
@@ -275,30 +301,48 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
 
           {/* Input */}
           <div className="p-6 border-t border-gray-200 bg-gray-50">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                disabled={isLoading}
-                className="w-full px-4 py-3 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed text-sm rounded-t-lg"
-              />
-              <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
-                <p className="text-xs text-gray-500">
-                  Ask about spray windows, planting times, or weather
-                </p>
+            {!isAuthenticated && guestQuestionCount >= MAX_GUEST_QUESTIONS ? (
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 text-center">
+                <p className="font-semibold mb-2">Free Trial Expired</p>
+                <p className="text-sm mb-3">Sign in to continue chatting with Farmer Joe and unlock unlimited questions!</p>
                 <button
-                  onClick={sendMessage}
-                  disabled={!input.trim() || isLoading}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  onClick={() => setIsOpen(false)}
+                  className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
                 >
-                  <span className="text-sm font-medium">Send</span>
-                  <Send className="w-4 h-4" />
+                  Sign In Now
                 </button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message..."
+                    disabled={isLoading}
+                    className="w-full px-4 py-3 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed text-sm rounded-t-lg"
+                  />
+                  <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-500">
+                      {!isAuthenticated && guestQuestionCount > 0
+                        ? `${MAX_GUEST_QUESTIONS - guestQuestionCount} free questions left`
+                        : 'Ask about spray windows, planting times, or weather'
+                      }
+                    </p>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!input.trim() || isLoading}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      <span className="text-sm font-medium">Send</span>
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
