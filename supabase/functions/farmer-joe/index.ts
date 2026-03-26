@@ -25,35 +25,33 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Get the authorization header
+    // Get the authorization header (optional for guest users)
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('Missing Authorization header');
-      throw new Error('No authorization header');
-    }
 
-    // Create Supabase client with the user's token
+    // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
+      authHeader ? {
         global: {
           headers: {
             Authorization: authHeader,
           },
         },
-      }
+      } : {}
     );
 
-    // Verify user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
+    // Try to verify user (optional - may be guest)
+    let user = null;
+    if (authHeader) {
+      const {
+        data: { user: authUser },
+        error: userError,
+      } = await supabaseClient.auth.getUser();
 
-    if (userError || !user) {
-      console.error('Auth error:', userError);
-      throw new Error('Unauthorized');
+      if (!userError && authUser) {
+        user = authUser;
+      }
     }
 
     const { message, imageBase64, weatherContext }: ChatRequest = await req.json();
@@ -103,14 +101,16 @@ You have access to real-time weather data and forecasts. Be conversational, help
 
 In the meantime, here's some general advice: ${message.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : message.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : imageBase64 ? 'For pest and disease identification, I need to analyze your photo. Please configure the OpenAI API key to enable this feature.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
 
-      // Save to database
-      await supabaseClient.from('chat_messages').insert({
-        user_id: user.id,
-        message: message,
-        response: fallbackResponse,
-        weather_context: weatherContext || {},
-        image_url: imageBase64 ? 'data:image/jpeg;base64,...' : null,
-      });
+      // Save to database (only for authenticated users)
+      if (user) {
+        await supabaseClient.from('chat_messages').insert({
+          user_id: user.id,
+          message: message,
+          response: fallbackResponse,
+          weather_context: weatherContext || {},
+          image_url: imageBase64 ? 'data:image/jpeg;base64,...' : null,
+        });
+      }
 
       return new Response(
         JSON.stringify({ response: fallbackResponse }),
@@ -179,14 +179,16 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
     const openaiData = await openaiResponse.json();
     const aiResponse = openaiData.choices[0]?.message?.content || 'Sorry, I couldn\'t generate a response.';
 
-    // Save chat message to database
-    await supabaseClient.from('chat_messages').insert({
-      user_id: user.id,
-      message: message,
-      response: aiResponse,
-      weather_context: weatherContext || {},
-      image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 50)}...` : null,
-    });
+    // Save chat message to database (only for authenticated users)
+    if (user) {
+      await supabaseClient.from('chat_messages').insert({
+        user_id: user.id,
+        message: message,
+        response: aiResponse,
+        weather_context: weatherContext || {},
+        image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 50)}...` : null,
+      });
+    }
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
