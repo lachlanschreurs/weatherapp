@@ -117,7 +117,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 8 : 7;
+      const zoom = isExpanded ? 9 : 8;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,

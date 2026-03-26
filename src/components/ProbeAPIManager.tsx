@@ -252,9 +252,37 @@ export function ProbeAPIManager({ user }: ProbeAPIManagerProps) {
         </div>
       ) : probeAPIs.length === 0 ? (
         <div className="text-center py-12">
-          <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No probe APIs configured yet</p>
-          <p className="text-sm text-gray-500 mt-2">Add your first probe API to start monitoring</p>
+          <Activity className="w-20 h-20 text-green-600 mx-auto mb-6" />
+          <h4 className="text-xl font-bold text-gray-800 mb-4">Connect moisture probes to unlock:</h4>
+          <div className="max-w-md mx-auto space-y-3 text-left">
+            <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+              <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+              <div>
+                <p className="font-semibold text-gray-800">Soil moisture tracking</p>
+                <p className="text-sm text-gray-600">Monitor moisture levels across your fields in real-time</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
+              <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+              <div>
+                <p className="font-semibold text-gray-800">Irrigation recommendations</p>
+                <p className="text-sm text-gray-600">Get precise watering schedules based on soil data</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-lg">
+              <div className="w-2 h-2 bg-amber-600 rounded-full mt-2"></div>
+              <div>
+                <p className="font-semibold text-gray-800">Root zone alerts</p>
+                <p className="text-sm text-gray-600">Receive notifications when action is needed</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="mt-6 bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800 transition-colors font-semibold shadow-md hover:shadow-lg"
+          >
+            Connect Your First Probe
+          </button>
         </div>
       ) : (
         <div className="space-y-4">

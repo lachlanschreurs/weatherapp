@@ -104,20 +104,20 @@ export function analyzeIrrigationNeeds(dailyData: DayData[]): IrrigationDay[] {
       recommendation = 'Heavy rain expected - no irrigation needed';
     } else if (day.rain >= 5) {
       level = 'Low';
-      recommendation = 'Moderate rain expected - minimal irrigation';
+      recommendation = 'Moderate rain expected - minimal irrigation if needed';
     } else if (day.rain >= 2) {
       level = 'Medium';
-      recommendation = 'Light rain expected - reduce irrigation';
+      recommendation = 'Light rain expected - reduce to 2-3 mm if needed';
     } else {
       if (day.tempMax > 28 || day.humidity < 40) {
         level = 'High';
-        recommendation = 'Dry conditions - increase irrigation';
+        recommendation = 'Recommended: 6-8 mm irrigation tonight';
       } else if (day.tempMax > 25) {
         level = 'Medium';
-        recommendation = 'Warm and dry - normal irrigation';
+        recommendation = 'Recommended: 4-6 mm irrigation tonight';
       } else {
         level = 'Low';
-        recommendation = 'Mild conditions - light irrigation';
+        recommendation = 'Recommended: 2-4 mm if soil appears dry';
       }
     }
 

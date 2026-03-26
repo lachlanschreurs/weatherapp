@@ -4,6 +4,7 @@ import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
 import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay } from './utils/farmingRecommendations';
+import { getSprayAdvice } from './utils/sprayAdvice';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
 import { RainRadar } from './components/RainRadar';
@@ -13,6 +14,7 @@ import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
+import { PremiumTeaser } from './components/PremiumTeaser';
 import FarmerJoe from './components/FarmerJoe';
 import EmailSubscriptions from './components/EmailSubscriptions';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
@@ -400,6 +402,7 @@ function App() {
 
   const rainfall = current.rain?.['1h'] || 0;
   const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
+  const sprayAdvice = getSprayAdvice(windSpeedKmh, rainfall, forecastList);
 
   const dewpointC = tempC - ((100 - humidity) / 5);
   const deltaT = calculateDeltaT(tempC, humidity);
@@ -519,6 +522,9 @@ function App() {
                     {location.name}
                     {location.state && `, ${location.state}`}
                   </h1>
+                  <p className="text-sm text-green-700 font-medium mb-1">
+                    Agriculture-focused weather intelligence
+                  </p>
                   {lastUpdated && (
                     <p className="text-sm text-green-900">
                       Last updated: {lastUpdated.toLocaleTimeString('en-AU', {
@@ -627,16 +633,13 @@ function App() {
               </div>
             </div>
 
-            <div className={`px-8 py-6 ${sprayCondition.bgColor} rounded-xl border-2 border-opacity-20 shadow-lg`}>
+            <div className={`px-8 py-6 ${sprayAdvice.bgColor} rounded-xl border-2 border-opacity-20 shadow-xl`}>
               <div className="text-center">
-                <div className="text-sm font-semibold uppercase tracking-wider opacity-70 mb-1">
-                  Spray Conditions
+                <div className="text-sm font-semibold uppercase tracking-wider opacity-70 mb-2">
+                  Spray Decision
                 </div>
-                <div className={`text-4xl font-bold ${sprayCondition.color} mb-2`}>
-                  {sprayCondition.rating}
-                </div>
-                <div className="text-sm font-medium text-gray-700">
-                  {sprayCondition.reason}
+                <div className={`text-2xl font-bold ${sprayAdvice.color} leading-snug`}>
+                  {sprayAdvice.message}
                 </div>
               </div>
             </div>
@@ -696,9 +699,11 @@ function App() {
           </div>
         </div>
 
-        <HourlyForecast forecastList={forecastList} />
+        <div className="mb-8">
+          <HourlyForecast forecastList={forecastList} />
+        </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
           <h2 className="text-2xl font-bold text-green-900 mb-6">5-Day Forecast</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {dailyForecasts.map((day: any, index: number) => {
@@ -711,7 +716,7 @@ function App() {
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-xl p-5 border-2 border-green-100 hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-xl p-5 border-2 border-green-100 shadow-md hover:shadow-xl transition-all"
                 >
                   <div className="text-center">
                     <div className="font-bold text-lg text-green-900">{dayName}</div>
@@ -771,64 +776,24 @@ function App() {
           </div>
         </div>
 
-        <div className="mb-6">
-          <RainRadar
-            lat={location.lat}
-            lon={location.lon}
-            locationName={location.name}
-          />
-        </div>
-
-        {user ? (
-          <>
-            <div className="mb-6">
-              <ExtendedForecast location={location} />
-            </div>
-
-            <div className="mb-6">
-              <ProbeAPIManager user={user} />
-            </div>
-          </>
-        ) : (
-          <div className="mb-6 bg-white rounded-2xl shadow-xl p-8 border-2 border-green-200">
-            <div className="text-center">
-              <div className="flex justify-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <Calendar className="w-10 h-10 text-green-700" />
-                </div>
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <Activity className="w-10 h-10 text-green-700" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-bold text-green-900 mb-3">Unlock Premium Features</h3>
-              <p className="text-gray-600 mb-6">
-                Sign up to access 30-day extended forecasts, probe API management, and personalized farming insights
-              </p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setShowAuthModal(true);
-                  }}
-                  className="bg-green-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-800 transition-colors"
-                >
-                  Create Free Account
-                </button>
-                <button
-                  onClick={() => {
-                    setAuthMode('login');
-                    setShowAuthModal(true);
-                  }}
-                  className="bg-white text-green-700 px-8 py-3 rounded-lg font-semibold border-2 border-green-700 hover:bg-green-50 transition-colors"
-                >
-                  Sign In
-                </button>
-              </div>
-            </div>
+        {user && (
+          <div className="mt-8 mb-8">
+            <ProbeAPIManager user={user} />
           </div>
         )}
 
-        <div className="mt-6 bg-white rounded-xl p-6 border-2 border-green-200">
+        {!user && (
+          <div className="mb-8">
+            <PremiumTeaser
+              onSignUpClick={() => {
+                setAuthMode('signup');
+                setShowAuthModal(true);
+              }}
+            />
+          </div>
+        )}
+
+        <div className="mt-8 bg-white rounded-xl shadow-md p-6 border-2 border-green-200">
           <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div className="flex items-center gap-3">
@@ -855,9 +820,23 @@ function App() {
           </div>
         </div>
 
+        <div className="mb-8">
+          <RainRadar
+            lat={location.lat}
+            lon={location.lon}
+            locationName={location.name}
+          />
+        </div>
+
         {user && (
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-green-300 relative">
+          <div className="mb-8">
+            <ExtendedForecast location={location} />
+          </div>
+        )}
+
+        {user && (
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white rounded-xl shadow-xl p-6 border-2 border-green-300 relative">
               <div className="flex items-center gap-2 mb-4">
                 <Sprout className="w-6 h-6 text-green-900" />
                 <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
@@ -908,7 +887,7 @@ function App() {
               )}
             </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-6 border-2 border-blue-300 relative">
+            <div className="bg-white rounded-xl shadow-xl p-6 border-2 border-blue-300 relative">
               <div className="flex items-center gap-2 mb-4">
                 <Droplets className="w-6 h-6 text-green-900" />
                 <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>
