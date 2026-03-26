@@ -1,4 +1,4 @@
-const CACHE_NAME = 'farm-weather-v2';
+const CACHE_NAME = 'farm-weather-v3';
 const urlsToCache = [
   '/',
   '/index.html',

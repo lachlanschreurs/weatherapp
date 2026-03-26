@@ -213,6 +213,10 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         return;
       }
 
+      console.log('=== STRIPE PORTAL DEBUG START ===');
+      console.log('User ID:', user.id);
+      console.log('User Email:', user.email);
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
       const headers = {
         'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
@@ -222,32 +226,37 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const requestBody = {
         userId: user.id,
         userEmail: user.email,
-        returnUrl: `${window.location.origin}/?billing=complete`,
+        returnUrl: window.location.origin,
       };
 
-      console.log('Creating billing portal session:', { apiUrl, ...requestBody, userEmail: 'hidden' });
+      console.log('API URL:', apiUrl);
+      console.log('Request body:', { ...requestBody, userEmail: 'REDACTED' });
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody),
       }).catch((fetchError) => {
-        console.error('Network error:', fetchError);
+        console.error('FETCH ERROR:', fetchError);
         throw new Error(`Network error: ${fetchError.message}`);
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
 
       if (!response) {
         throw new Error('No response from server');
       }
 
-      const data = await response.json().catch(() => ({
-        error: 'Invalid response from server'
-      }));
+      const data = await response.json().catch((parseError) => {
+        console.error('JSON PARSE ERROR:', parseError);
+        return { error: 'Invalid response from server' };
+      });
 
-      console.log('Portal response:', { status: response.status, data });
+      console.log('Response data:', data);
 
       if (!response.ok) {
-        console.error('Portal error:', data);
+        console.error('ERROR RESPONSE:', data);
         if (data.errorType === 'portal_not_activated') {
           setMessage({
             type: 'error',
@@ -261,27 +270,35 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       }
 
       if (!data.url) {
-        console.error('No URL in portal response:', data);
+        console.error('NO URL IN RESPONSE:', data);
         throw new Error('No portal URL returned from Stripe');
       }
 
-      console.log('Opening billing portal at:', data.url);
-      console.log('Portal URL type:', typeof data.url);
-      console.log('Portal URL valid:', data.url && data.url.startsWith('https://'));
+      console.log('Portal URL received:', data.url);
+      console.log('URL starts with https:', data.url.startsWith('https://'));
+      console.log('URL starts with stripe:', data.url.includes('stripe.com'));
 
       // Verify URL is valid before redirecting
       if (!data.url || !data.url.startsWith('https://')) {
+        console.error('INVALID URL:', data.url);
         throw new Error('Invalid portal URL received');
       }
 
-      console.log('About to redirect to Stripe portal...');
+      console.log('REDIRECTING TO STRIPE IN 100MS...');
+      console.log('=== STRIPE PORTAL DEBUG END ===');
 
-      // Use window.location.href to navigate to Stripe portal
-      // When user returns, they'll come back to our returnUrl
-      window.location.href = data.url;
+      // Show loading message
+      setMessage({ type: 'success', text: 'Redirecting to Stripe billing portal...' });
+
+      // Force immediate redirect using replace to avoid navigation issues
+      setTimeout(() => {
+        console.log('EXECUTING REDIRECT NOW to:', data.url);
+        window.location.replace(data.url);
+      }, 100);
+
       // Don't reset isProcessing - let the page redirect happen
     } catch (error) {
-      console.error('Error creating portal session:', error);
+      console.error('PORTAL SESSION ERROR:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to open billing portal';
       setMessage({ type: 'error', text: errorMessage });
       setIsProcessing(false);

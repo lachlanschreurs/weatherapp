@@ -125,17 +125,9 @@ function App() {
         if (session?.user) {
           checkAdminStatus(session.user.id);
 
-          if (event === 'SIGNED_IN') {
-            await createWeatherUpdateNotification(
-              session.user.id,
-              `${location.name}${location.state ? ', ' + location.state : ''}`,
-              'welcome',
-              'Welcome to FarmCast! You will now receive weather alerts and updates for your location.'
-            );
-
-            if (weather) {
-              processWeatherNotifications(weather);
-            }
+          // Only send welcome notification on actual signup, not every login
+          if (event === 'SIGNED_IN' && weather) {
+            processWeatherNotifications(weather);
           }
         } else {
           setIsAdmin(false);
