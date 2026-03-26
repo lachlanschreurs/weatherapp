@@ -13,6 +13,7 @@ import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
+import FarmerJoe from './components/FarmerJoe';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -970,6 +971,16 @@ function App() {
         }}
         initialMode={authMode}
       />
+
+      {user && (
+        <FarmerJoe
+          weatherContext={{
+            location: `${location.name}${location.state ? ', ' + location.state : ''}`,
+            currentWeather: current,
+            forecast: forecastList.slice(0, 8),
+          }}
+        />
+      )}
     </div>
   );
 }
