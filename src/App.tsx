@@ -631,6 +631,10 @@ function App() {
           <div className="relative z-10">
             <div className="flex items-start justify-between gap-6 mb-6">
               <div className="flex items-center gap-6">
+                <div className="flex flex-col gap-1">
+                  <span className="text-red-400 font-semibold text-lg">H: {Math.round(todayHighTemp)}°</span>
+                  <span className="text-blue-600 font-semibold text-lg">L: {Math.round(todayLowTemp)}°</span>
+                </div>
                 {getWeatherIcon(weatherCode, 'w-24 h-24')}
                 <div>
                   <div className="text-7xl font-bold mb-2">
@@ -638,11 +642,6 @@ function App() {
                   </div>
                   <div className="flex items-center gap-4 text-lg mb-2">
                     <span className="opacity-80">Feels like {Math.round(feelsLike)}°C</span>
-                    <span className="opacity-60">•</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-red-400 font-semibold">H: {Math.round(todayHighTemp)}°</span>
-                      <span className="text-blue-300 font-semibold">L: {Math.round(todayLowTemp)}°</span>
-                    </div>
                   </div>
                   <div className="text-2xl capitalize opacity-90">
                     {weatherDescription}
