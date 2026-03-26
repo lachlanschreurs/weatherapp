@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X, Trash2, Loader2, Camera, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import SubscriptionManager from './SubscriptionManager';
 
 interface Message {
   id: string;
@@ -64,6 +65,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showSubscriptionPrompt, setShowSubscriptionPrompt] = useState(false);
+  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_GUEST_QUESTIONS = 5;
@@ -422,7 +424,10 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                       <li>• Weather-based insights</li>
                       <li>• Conversation history</li>
                     </ul>
-                    <button className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors">
+                    <button
+                      onClick={() => setShowSubscriptionManager(true)}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                    >
                       Subscribe Now - $5.99/month
                     </button>
                   </div>
@@ -493,6 +498,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                 <p className="font-semibold mb-2">Subscription Required</p>
                 <p className="text-sm mb-3">Get unlimited access to Farmer Joe for just $5.99/month</p>
                 <button
+                  onClick={() => setShowSubscriptionManager(true)}
                   className="bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors w-full"
                 >
                   Subscribe Now - $5.99/month
@@ -564,6 +570,10 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
             )}
           </div>
         </div>
+      )}
+
+      {showSubscriptionManager && (
+        <SubscriptionManager onClose={() => setShowSubscriptionManager(false)} />
       )}
     </>
   );

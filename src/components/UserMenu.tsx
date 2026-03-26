@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { User as UserIcon, LogOut, Settings, ChevronDown, Shield } from 'lucide-react';
+import { User as UserIcon, LogOut, Settings, ChevronDown, Shield, CreditCard } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import SubscriptionManager from './SubscriptionManager';
 
 interface UserMenuProps {
   user: User;
@@ -12,6 +13,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user, onSignOut, isAdmin = false, onAdminPanelToggle }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -67,6 +69,17 @@ export function UserMenu({ user, onSignOut, isAdmin = false, onAdminPanelToggle 
           )}
 
           <button
+            onClick={() => {
+              setShowSubscriptionManager(true);
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-2 text-left flex items-center gap-3 hover:bg-gray-50 text-gray-700"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span className="font-medium">Manage Subscription</span>
+          </button>
+
+          <button
             onClick={onSignOut}
             className="w-full px-4 py-2 text-left flex items-center gap-3 hover:bg-gray-50 text-red-600"
           >
@@ -74,6 +87,10 @@ export function UserMenu({ user, onSignOut, isAdmin = false, onAdminPanelToggle 
             <span className="font-medium">Sign Out</span>
           </button>
         </div>
+      )}
+
+      {showSubscriptionManager && (
+        <SubscriptionManager onClose={() => setShowSubscriptionManager(false)} />
       )}
     </div>
   );

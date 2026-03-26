@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Check, X, Loader2, Calendar, AlertCircle } from 'lucide-react';
+import { CreditCard, Check, X, Loader2, Calendar, AlertCircle, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface SubscriptionManagerProps {
@@ -12,12 +12,14 @@ interface SubscriptionInfo {
   endsAt: string | null;
   messagesCount: number;
   emailStartedAt: string | null;
+  stripeCustomerId: string | null;
 }
 
 export default function SubscriptionManager({ onClose }: SubscriptionManagerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     loadSubscriptionInfo();
@@ -34,7 +36,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at')
+        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, stripe_customer_id')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -46,7 +48,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           startedAt: data.farmer_joe_subscription_started_at,
           endsAt: data.farmer_joe_subscription_ends_at,
           messagesCount: data.farmer_joe_messages_count || 0,
-          emailStartedAt: data.email_subscription_started_at
+          emailStartedAt: data.email_subscription_started_at,
+          stripeCustomerId: data.stripe_customer_id
         });
       }
     } catch (error) {
@@ -82,6 +85,100 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
   const hasActiveSubscription = subscription?.status === 'active' &&
     (!subscription.endsAt || new Date(subscription.endsAt) > new Date());
+
+  const handleSubscribe = async () => {
+    setIsProcessing(true);
+    setMessage(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMessage({ type: 'error', text: 'Please sign in to subscribe' });
+        return;
+      }
+
+      const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
+      if (!stripePriceId) {
+        setMessage({ type: 'error', text: 'Subscription not configured. Please contact support.' });
+        return;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          priceId: stripePriceId,
+          userId: user.id,
+          userEmail: user.email,
+          successUrl: window.location.origin + '?subscription=success',
+          cancelUrl: window.location.origin + '?subscription=cancelled',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      setMessage({ type: 'error', text: 'Failed to start checkout. Please try again.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setIsProcessing(true);
+    setMessage(null);
+
+    try {
+      if (!subscription?.stripeCustomerId) {
+        setMessage({ type: 'error', text: 'No subscription found' });
+        return;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          customerId: subscription.stripeCustomerId,
+          returnUrl: window.location.origin,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create portal session');
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      setMessage({ type: 'error', text: 'Failed to open billing portal. Please try again.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -143,7 +240,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                         <p className="text-sm text-green-800 mb-3">
                           You have unlimited access to Farmer Joe chat
                         </p>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
                           <div>
                             <p className="text-green-700 font-medium">Started</p>
                             <p className="text-green-900">{formatDate(subscription?.startedAt)}</p>
@@ -153,6 +250,25 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             <p className="text-green-900">{subscription?.messagesCount || 0}</p>
                           </div>
                         </div>
+                        {subscription?.stripeCustomerId && (
+                          <button
+                            onClick={handleManageSubscription}
+                            disabled={isProcessing}
+                            className="w-full bg-white border-2 border-green-600 text-green-600 hover:bg-green-50 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Loading...
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="w-4 h-4" />
+                                Manage Subscription
+                              </>
+                            )}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -199,8 +315,19 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                           Image analysis for pests & diseases
                         </li>
                       </ul>
-                      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
-                        Subscribe Now - $5.99/month
+                      <button
+                        onClick={handleSubscribe}
+                        disabled={isProcessing}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          'Subscribe Now - $5.99/month'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -259,8 +386,19 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                               <p className="text-sm text-amber-800 mb-3">
                                 Your 3-month free trial has ended. Subscribe to Farmer Joe to continue receiving email alerts.
                               </p>
-                              <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors">
-                                Subscribe for Email Alerts
+                              <button
+                                onClick={handleSubscribe}
+                                disabled={isProcessing}
+                                className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {isProcessing ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  'Subscribe for Email Alerts'
+                                )}
                               </button>
                             </>
                           )}

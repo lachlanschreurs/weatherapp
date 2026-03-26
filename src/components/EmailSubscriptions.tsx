@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Check, X, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import SubscriptionManager from './SubscriptionManager';
 
 interface EmailSubscriptionsProps {
   location?: string;
@@ -20,6 +21,7 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
   const [isInFreePeriod, setIsInFreePeriod] = useState(true);
   const [freeMonthsRemaining, setFreeMonthsRemaining] = useState(3);
   const [hasActiveFarmerJoeSubscription, setHasActiveFarmerJoeSubscription] = useState(false);
+  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -301,7 +303,10 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
                       <p className="text-xs text-amber-800 mb-3">
                         Your 3-month free trial for email alerts has ended. Subscribe to Farmer Joe for $5.99/month to continue receiving email updates.
                       </p>
-                      <button className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded transition-colors">
+                      <button
+                        onClick={() => setShowSubscriptionManager(true)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded transition-colors"
+                      >
                         Subscribe Now - $5.99/month
                       </button>
                     </div>
@@ -396,6 +401,10 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
             </div>
           </div>
         </div>
+      )}
+
+      {showSubscriptionManager && (
+        <SubscriptionManager onClose={() => setShowSubscriptionManager(false)} />
       )}
     </>
   );
