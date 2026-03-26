@@ -40,7 +40,7 @@ export function ProbeAPIManager({ user }: ProbeAPIManagerProps) {
 
     setLoading(true);
     const { data, error } = await supabase
-      .from('probe_apis')
+      .from('probe_api_endpoints')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
@@ -57,7 +57,7 @@ export function ProbeAPIManager({ user }: ProbeAPIManagerProps) {
 
     if (editingId) {
       const { error } = await supabase
-        .from('probe_apis')
+        .from('probe_api_endpoints')
         .update({
           name: formData.name,
           api_url: formData.api_url,
@@ -72,7 +72,7 @@ export function ProbeAPIManager({ user }: ProbeAPIManagerProps) {
       }
     } else {
       const { error } = await supabase
-        .from('probe_apis')
+        .from('probe_api_endpoints')
         .insert({
           user_id: user.id,
           name: formData.name,
@@ -94,7 +94,7 @@ export function ProbeAPIManager({ user }: ProbeAPIManagerProps) {
     if (!confirm('Are you sure you want to delete this probe API?')) return;
 
     const { error } = await supabase
-      .from('probe_apis')
+      .from('probe_api_endpoints')
       .delete()
       .eq('id', id);
 
