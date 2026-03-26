@@ -24,6 +24,24 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
   useEffect(() => {
     loadSubscriptionInfo();
+
+    // Check for redirect from Stripe
+    const params = new URLSearchParams(window.location.search);
+    const subscriptionStatus = params.get('subscription');
+
+    if (subscriptionStatus === 'success') {
+      setMessage({ type: 'success', text: 'Subscription activated successfully! It may take a moment to update.' });
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Reload subscription info after a brief delay
+      setTimeout(() => {
+        loadSubscriptionInfo();
+      }, 2000);
+    } else if (subscriptionStatus === 'cancelled') {
+      setMessage({ type: 'error', text: 'Subscription cancelled. You can try again anytime.' });
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const loadSubscriptionInfo = async () => {
