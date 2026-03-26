@@ -16,8 +16,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('Portal session request received');
+
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
+      console.error('STRIPE_SECRET_KEY not configured');
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
 
@@ -30,9 +33,13 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, userEmail, returnUrl } = await req.json();
+    const requestBody = await req.json();
+    console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
+
+    const { userId, userEmail, returnUrl } = requestBody;
 
     if (!userId || !userEmail) {
+      console.error('Missing required fields:', { userId: !!userId, userEmail: !!userEmail });
       return new Response(
         JSON.stringify({ error: "Missing required fields: userId, userEmail" }),
         {
@@ -42,6 +49,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log('Fetching customer ID for user:', userId);
+
     // Get or create customer
     const { data: profile } = await supabase
       .from('profiles')
@@ -50,8 +59,10 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     let customerId = profile?.stripe_customer_id;
+    console.log('Profile stripe_customer_id:', customerId || 'none');
 
     if (!customerId) {
+      console.log('No customer ID found, searching Stripe by email:', userEmail);
       // Create new customer if doesn't exist
       const customers = await stripe.customers.list({
         email: userEmail,
@@ -60,7 +71,9 @@ Deno.serve(async (req: Request) => {
 
       if (customers.data.length > 0) {
         customerId = customers.data[0].id;
+        console.log('Found existing Stripe customer:', customerId);
       } else {
+        console.log('Creating new Stripe customer');
         const customer = await stripe.customers.create({
           email: userEmail,
           metadata: {
@@ -68,9 +81,11 @@ Deno.serve(async (req: Request) => {
           },
         });
         customerId = customer.id;
+        console.log('Created new customer:', customerId);
       }
 
       // Save customer ID
+      console.log('Saving customer ID to profile');
       await supabase
         .from('profiles')
         .update({ stripe_customer_id: customerId })
@@ -81,7 +96,10 @@ Deno.serve(async (req: Request) => {
     const origin = req.headers.get("origin") || req.headers.get("referer")?.split('?')[0];
     const finalReturnUrl = returnUrl || origin || "https://farmcast.app";
 
-    console.log('Creating portal session with return_url:', finalReturnUrl);
+    console.log('Creating portal session with:', {
+      customerId,
+      returnUrl: finalReturnUrl
+    });
 
     // Create billing portal session
     try {
@@ -90,7 +108,11 @@ Deno.serve(async (req: Request) => {
         return_url: finalReturnUrl,
       });
 
-      console.log('Portal session created successfully:', session.id);
+      console.log('Portal session created successfully:', {
+        sessionId: session.id,
+        url: session.url,
+        returnUrl: finalReturnUrl
+      });
 
       return new Response(
         JSON.stringify({ url: session.url }),
@@ -100,7 +122,11 @@ Deno.serve(async (req: Request) => {
         }
       );
     } catch (stripeError: any) {
-      console.error("Stripe portal error:", stripeError);
+      console.error("Stripe portal error:", {
+        message: stripeError.message,
+        type: stripeError.type,
+        code: stripeError.code
+      });
 
       // Check if it's a billing portal not activated error
       if (stripeError.type === 'invalid_request_error' &&

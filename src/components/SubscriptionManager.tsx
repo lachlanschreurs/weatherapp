@@ -28,6 +28,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     // Check for redirect from Stripe
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
+    const billingStatus = params.get('billing');
 
     if (subscriptionStatus === 'success') {
       setMessage({ type: 'success', text: 'Subscription activated successfully! It may take a moment to update.' });
@@ -41,6 +42,12 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       setMessage({ type: 'error', text: 'Subscription cancelled. You can try again anytime.' });
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
+    } else if (billingStatus === 'complete') {
+      setMessage({ type: 'success', text: 'Payment details updated successfully!' });
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Reload subscription info
+      loadSubscriptionInfo();
     }
   }, []);
 
@@ -202,6 +209,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setMessage({ type: 'error', text: 'Please sign in to manage your subscription' });
+        setIsProcessing(false);
         return;
       }
 
@@ -211,38 +219,61 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         'Content-Type': 'application/json',
       };
 
+      const requestBody = {
+        userId: user.id,
+        userEmail: user.email,
+        returnUrl: `${window.location.origin}/?billing=complete`,
+      };
+
+      console.log('Creating billing portal session:', { apiUrl, ...requestBody, userEmail: 'hidden' });
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          userId: user.id,
-          userEmail: user.email,
-          returnUrl: window.location.origin,
-        }),
+        body: JSON.stringify(requestBody),
+      }).catch((fetchError) => {
+        console.error('Network error:', fetchError);
+        throw new Error(`Network error: ${fetchError.message}`);
       });
 
-      const data = await response.json();
+      if (!response) {
+        throw new Error('No response from server');
+      }
+
+      const data = await response.json().catch(() => ({
+        error: 'Invalid response from server'
+      }));
+
+      console.log('Portal response:', { status: response.status, data });
 
       if (!response.ok) {
+        console.error('Portal error:', data);
         if (data.errorType === 'portal_not_activated') {
           setMessage({
             type: 'error',
-            text: 'Stripe billing portal needs to be activated. Please contact support or activate it at: https://dashboard.stripe.com/settings/billing/portal'
+            text: 'Stripe billing portal needs to be activated. Please contact support.'
           });
         } else {
-          throw new Error(data.error || 'Failed to create portal session');
+          throw new Error(data.error || `Server error: ${response.status}`);
         }
+        setIsProcessing(false);
         return;
       }
 
-      if (data.url) {
-        window.location.href = data.url;
+      if (!data.url) {
+        console.error('No URL in portal response:', data);
+        throw new Error('No portal URL returned from Stripe');
       }
+
+      console.log('Opening billing portal at:', data.url);
+      // Use window.location.href to navigate to Stripe portal
+      // When user returns, they'll come back to our returnUrl
+      window.location.href = data.url;
+      // Don't reset isProcessing - let the page redirect happen
     } catch (error) {
       console.error('Error creating portal session:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to open billing portal. Please try again.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to open billing portal';
       setMessage({ type: 'error', text: errorMessage });
-    } finally {
       setIsProcessing(false);
     }
   };
