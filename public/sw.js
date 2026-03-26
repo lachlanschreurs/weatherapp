@@ -14,6 +14,18 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Don't intercept external requests (like Stripe, APIs, etc)
+  if (url.origin !== location.origin) {
+    return;
+  }
+
+  // Don't intercept navigation requests to allow proper redirects
+  if (event.request.mode === 'navigate') {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

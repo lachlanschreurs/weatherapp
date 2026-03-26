@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, AlertTriangle, Info, CloudRain } from 'lucide-react';
-import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, type WeatherNotification } from '../utils/notificationService';
+import { Bell, X, Check, AlertTriangle, Info, CloudRain, Trash2 } from 'lucide-react';
+import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllNotifications, type WeatherNotification } from '../utils/notificationService';
 import { supabase } from '../lib/supabase';
 
 interface NotificationCenterProps {
@@ -69,6 +69,13 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
     loadNotifications();
   };
 
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to clear all notifications?')) {
+      await clearAllNotifications(userId);
+      loadNotifications();
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case 'alert':
@@ -116,15 +123,28 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
               <Bell className="w-5 h-5" />
               Notifications
             </h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAllAsRead}
-                className="text-xs text-green-700 hover:text-green-800 font-semibold flex items-center gap-1"
-              >
-                <Check className="w-3 h-3" />
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="text-xs text-green-700 hover:text-green-800 font-semibold flex items-center gap-1"
+                  title="Mark all as read"
+                >
+                  <Check className="w-3 h-3" />
+                  Mark all read
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1"
+                  title="Clear all notifications"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-y-auto flex-1">

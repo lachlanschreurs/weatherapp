@@ -266,6 +266,16 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       }
 
       console.log('Opening billing portal at:', data.url);
+      console.log('Portal URL type:', typeof data.url);
+      console.log('Portal URL valid:', data.url && data.url.startsWith('https://'));
+
+      // Verify URL is valid before redirecting
+      if (!data.url || !data.url.startsWith('https://')) {
+        throw new Error('Invalid portal URL received');
+      }
+
+      console.log('About to redirect to Stripe portal...');
+
       // Use window.location.href to navigate to Stripe portal
       // When user returns, they'll come back to our returnUrl
       window.location.href = data.url;

@@ -95,6 +95,20 @@ export async function deleteNotification(notificationId: string) {
   return true;
 }
 
+export async function clearAllNotifications(userId: string) {
+  const { error } = await supabase
+    .from('user_notifications')
+    .delete()
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error clearing all notifications:', error);
+    return false;
+  }
+
+  return true;
+}
+
 export async function checkAndCreateWeatherAlerts(
   userId: string,
   location: string,
