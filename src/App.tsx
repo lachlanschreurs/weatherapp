@@ -79,10 +79,12 @@ function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [appError, setAppError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWeather();
-  }, [location]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.lat, location.lon]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -118,7 +120,8 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, [location, weather]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
@@ -189,15 +192,22 @@ function App() {
   async function fetchWeather() {
     setLoading(true);
     setError(null);
+    setAppError(null);
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL is not configured');
+      }
+
       const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
 
       const response = await fetch(weatherUrl);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch weather data');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || 'Failed to fetch weather data');
       }
 
       const weatherData = await response.json();
@@ -206,11 +216,15 @@ function App() {
       setLastUpdated(new Date());
 
       if (user) {
-        processWeatherNotifications(weatherData);
+        processWeatherNotifications(weatherData).catch(err => {
+          console.error('Notification error:', err);
+        });
       }
     } catch (err) {
       console.error('Weather fetch error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      setAppError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -261,6 +275,27 @@ function App() {
     return 'text-gray-800';
   }
 
+  if (appError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#8FA88E' }}>
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Application Error</h2>
+          <p className="text-gray-700 mb-4">{appError}</p>
+          <button
+            onClick={() => {
+              setAppError(null);
+              setError(null);
+              fetchWeather();
+            }}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
@@ -292,18 +327,24 @@ function App() {
   const current = weather?.current;
   const forecastList = weather?.forecast?.list || [];
 
-  if (!current) {
+  if (!current || !current.main || !current.weather || current.weather.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
         <div className="text-center">
           <p className="text-gray-700 text-lg">No weather data available</p>
+          <button
+            onClick={fetchWeather}
+            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            Load Weather
+          </button>
         </div>
       </div>
     );
   }
 
-  const tempC = current.main.temp;
-  const humidity = current.main.humidity;
+  const tempC = current.main.temp || 0;
+  const humidity = current.main.humidity || 0;
   const weatherCode = current.weather[0]?.main || 'clear';
   const weatherDescription = current.weather[0]?.description || 'clear';
   const bgGradient = getBackgroundGradient(weatherCode);
