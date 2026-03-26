@@ -14,6 +14,7 @@ import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
 import FarmerJoe from './components/FarmerJoe';
+import EmailSubscriptions from './components/EmailSubscriptions';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -532,6 +533,7 @@ function App() {
               <div className="flex items-center gap-3">
                 {user ? (
                   <>
+                    <EmailSubscriptions location={`${location.name}${location.state ? ', ' + location.state : ''}, ${location.country}`} />
                     <NotificationCenter userId={user.id} />
                     <UserMenu
                       user={user}
