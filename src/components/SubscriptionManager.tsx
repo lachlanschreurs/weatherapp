@@ -122,17 +122,22 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       });
 
       const data = await response.json();
+      console.log('Checkout response:', { status: response.status, data });
 
       if (!response.ok) {
+        console.error('Checkout error:', data);
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      setMessage({ type: 'error', text: 'Failed to start checkout. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setMessage({ type: 'error', text: `Failed to start checkout: ${errorMessage}` });
     } finally {
       setIsProcessing(false);
     }
