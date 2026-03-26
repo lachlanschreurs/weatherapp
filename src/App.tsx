@@ -428,6 +428,19 @@ function App() {
 
   const feelsLike = calculateFeelsLike(tempC, humidity, windSpeedKmh);
 
+  const today = new Date().toLocaleDateString('en-AU');
+  const todayForecasts = forecastList.filter((item: any) => {
+    const itemDate = new Date(item.dt * 1000).toLocaleDateString('en-AU');
+    return itemDate === today;
+  });
+
+  const todayHighTemp = todayForecasts.length > 0
+    ? Math.max(...todayForecasts.map((f: any) => f.main.temp_max))
+    : tempC;
+  const todayLowTemp = todayForecasts.length > 0
+    ? Math.min(...todayForecasts.map((f: any) => f.main.temp_min))
+    : tempC;
+
   const dailyForecasts = forecastList.reduce((acc: any[], item: any) => {
     const date = new Date(item.dt * 1000).toLocaleDateString('en-AU');
     const existing = acc.find(f => f.date === date);
@@ -623,8 +636,10 @@ function App() {
                   <div className="text-7xl font-bold mb-2">
                     {Math.round(tempC)}°C
                   </div>
-                  <div className="text-lg opacity-80 mb-2">
-                    Feels like {Math.round(feelsLike)}°C
+                  <div className="flex items-center gap-4 text-lg opacity-80 mb-2">
+                    <span>Feels like {Math.round(feelsLike)}°C</span>
+                    <span className="opacity-60">•</span>
+                    <span>H: {Math.round(todayHighTemp)}° L: {Math.round(todayLowTemp)}°</span>
                   </div>
                   <div className="text-2xl capitalize opacity-90">
                     {weatherDescription}
