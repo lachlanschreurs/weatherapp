@@ -246,6 +246,20 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                 </div>
               )}
 
+              {/* Phone Number Requirement Notice */}
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-blue-900 mb-1">Free Trial Policy</h4>
+                    <p className="text-sm text-blue-800">
+                      Each phone number is eligible for one 3-month free trial. This prevents abuse and ensures fair access to our services.
+                      If you try to create multiple accounts with different emails but the same phone number, you will not receive additional free trials.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Subscription Status */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Farmer Joe Chat Subscription</h3>

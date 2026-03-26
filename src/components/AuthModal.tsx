@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Mail, Lock, User } from 'lucide-react';
+import { X, Mail, Lock, User, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -14,6 +14,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +40,23 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({
+        if (!phoneNumber || phoneNumber.length < 10) {
+          throw new Error('Please enter a valid phone number');
+        }
+
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone_number', normalizedPhone)
+          .maybeSingle();
+
+        if (existingProfile) {
+          throw new Error('This phone number is already registered. Each phone number can only be used once.');
+        }
+
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -48,7 +65,19 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             },
           },
         });
-        if (error) throw error;
+
+        if (signUpError) throw signUpError;
+
+        if (authData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ phone_number: normalizedPhone })
+            .eq('id', authData.user.id);
+
+          if (profileError) {
+            console.error('Error updating phone number:', profileError);
+          }
+        }
       }
       onSuccess();
       onClose();
@@ -84,22 +113,45 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Name
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="Your name"
-                  required={!isLogin}
-                />
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Your name"
+                    required={!isLogin}
+                  />
+                </div>
               </div>
-            </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Mobile Phone Number
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="0412 345 678"
+                    required={!isLogin}
+                    minLength={10}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Required to prevent multiple free trial registrations
+                </p>
+              </div>
+            </>
           )}
 
           <div>
