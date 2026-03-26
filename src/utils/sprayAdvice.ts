@@ -43,8 +43,8 @@ export function getSprayAdvice(
   if (currentRainfall > 0) {
     return {
       message: 'Currently raining – delay spraying',
-      color: 'text-red-700',
-      bgColor: 'bg-red-50',
+      color: 'text-red-800',
+      bgColor: 'bg-red-100',
       icon: 'danger',
     };
   }
@@ -52,8 +52,8 @@ export function getSprayAdvice(
   if (currentWindSpeed > 25) {
     return {
       message: 'Wind too strong – spraying not recommended',
-      color: 'text-red-700',
-      bgColor: 'bg-red-50',
+      color: 'text-red-800',
+      bgColor: 'bg-red-100',
       icon: 'danger',
     };
   }
@@ -130,8 +130,8 @@ export function getSprayAdvice(
 
   return {
     message: 'No ideal spray windows in next 24 hours',
-    color: 'text-red-700',
-    bgColor: 'bg-red-50',
+    color: 'text-red-800',
+    bgColor: 'bg-red-100',
     icon: 'danger',
   };
 }

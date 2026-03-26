@@ -633,11 +633,11 @@ function App() {
               </div>
             </div>
 
-            <div className={`${sprayAdvice.bgColor} rounded-lg border-2 ${sprayAdvice.color === 'text-green-700' ? 'border-green-400' : sprayAdvice.color === 'text-yellow-700' ? 'border-yellow-400' : 'border-red-400'} px-4 py-3 flex items-center gap-3`}>
-              <AlertTriangle className={`w-5 h-5 flex-shrink-0 ${sprayAdvice.color}`} />
+            <div className={`${sprayAdvice.bgColor} rounded-lg border-2 ${sprayAdvice.color === 'text-green-700' ? 'border-green-400' : sprayAdvice.color === 'text-yellow-700' ? 'border-yellow-400' : 'border-red-400'} px-5 py-4 flex items-center gap-3 shadow-sm`}>
+              <AlertTriangle className={`w-6 h-6 flex-shrink-0 ${sprayAdvice.color}`} />
               <div className="flex-1">
-                <span className={`font-bold ${sprayAdvice.color}`}>Spray Alert: </span>
-                <span className={`${sprayAdvice.color}`}>{sprayAdvice.message}</span>
+                <span className={`font-bold ${sprayAdvice.color}`}>Spray Alert:</span>
+                <span className={`ml-2 ${sprayAdvice.color}`}>{sprayAdvice.message}</span>
               </div>
             </div>
           </div>
