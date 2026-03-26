@@ -128,12 +128,14 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setMessage({ type: 'error', text: 'Please sign in to subscribe' });
+        setIsProcessing(false);
         return;
       }
 
       const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
       if (!stripePriceId) {
         setMessage({ type: 'error', text: 'Subscription not configured. Please contact support.' });
+        setIsProcessing(false);
         return;
       }
 
@@ -143,36 +145,51 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         'Content-Type': 'application/json',
       };
 
+      const requestBody = {
+        priceId: stripePriceId,
+        userId: user.id,
+        userEmail: user.email,
+        successUrl: `${window.location.origin}/?subscription=success`,
+        cancelUrl: `${window.location.origin}/?subscription=cancelled`,
+      };
+
+      console.log('Sending checkout request:', { apiUrl, ...requestBody, userEmail: 'hidden' });
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          priceId: stripePriceId,
-          userId: user.id,
-          userEmail: user.email,
-          successUrl: window.location.origin + '?subscription=success',
-          cancelUrl: window.location.origin + '?subscription=cancelled',
-        }),
+        body: JSON.stringify(requestBody),
+      }).catch((fetchError) => {
+        console.error('Network error:', fetchError);
+        throw new Error(`Network error: ${fetchError.message}. Please check your connection and try again.`);
       });
 
-      const data = await response.json();
+      if (!response) {
+        throw new Error('No response from server');
+      }
+
+      const data = await response.json().catch(() => ({
+        error: 'Invalid response from server'
+      }));
+
       console.log('Checkout response:', { status: response.status, data });
 
       if (!response.ok) {
         console.error('Checkout error:', data);
-        throw new Error(data.error || 'Failed to create checkout session');
+        throw new Error(data.error || `Server error: ${response.status}`);
       }
 
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
+      if (!data.url) {
+        console.error('No URL in response:', data);
+        throw new Error('No checkout URL returned from Stripe');
       }
+
+      console.log('Redirecting to:', data.url);
+      window.location.href = data.url;
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setMessage({ type: 'error', text: `Failed to start checkout: ${errorMessage}` });
-    } finally {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setMessage({ type: 'error', text: errorMessage });
       setIsProcessing(false);
     }
   };
