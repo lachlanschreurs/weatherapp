@@ -17,6 +17,9 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
   const [timezone, setTimezone] = useState('Australia/Sydney');
   const [hasSubscription, setHasSubscription] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isInFreePeriod, setIsInFreePeriod] = useState(true);
+  const [freeMonthsRemaining, setFreeMonthsRemaining] = useState(3);
+  const [hasActiveFarmerJoeSubscription, setHasActiveFarmerJoeSubscription] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -34,6 +37,41 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
       }
 
       setEmail(user.email || '');
+
+      // Check subscription status
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email_subscription_started_at, farmer_joe_subscription_status, farmer_joe_subscription_ends_at')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profile) {
+        // Check if user has active Farmer Joe subscription
+        const hasActiveSub = profile.farmer_joe_subscription_status === 'active' &&
+          (!profile.farmer_joe_subscription_ends_at || new Date(profile.farmer_joe_subscription_ends_at) > new Date());
+        setHasActiveFarmerJoeSubscription(hasActiveSub);
+
+        // Calculate free period for email subscriptions
+        if (profile.email_subscription_started_at) {
+          const startDate = new Date(profile.email_subscription_started_at);
+          const freeEndDate = new Date(startDate);
+          freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+          const now = new Date();
+
+          if (now < freeEndDate) {
+            setIsInFreePeriod(true);
+            const monthsLeft = Math.ceil((freeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
+            setFreeMonthsRemaining(monthsLeft);
+          } else {
+            setIsInFreePeriod(false);
+            setFreeMonthsRemaining(0);
+          }
+        } else {
+          // Never started, so it's free
+          setIsInFreePeriod(true);
+          setFreeMonthsRemaining(3);
+        }
+      }
 
       const { data, error } = await supabase
         .from('email_subscriptions')
@@ -72,6 +110,28 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
       if (!user) {
         setMessage({ type: 'error', text: 'Please sign in to save subscription settings' });
         return;
+      }
+
+      // Check if user can enable email subscriptions
+      if (!isInFreePeriod && !hasActiveFarmerJoeSubscription) {
+        setMessage({
+          type: 'error',
+          text: 'Your 3-month free trial for email alerts has ended. Subscribe to Farmer Joe ($5.99/month) to continue receiving email updates.'
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // If first time enabling, set the start date in profile
+      if (!hasSubscription) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ email_subscription_started_at: new Date().toISOString() })
+          .eq('id', user.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
       }
 
       const subscriptionData = {
@@ -233,6 +293,37 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
                       <option value="Pacific/Auckland">New Zealand</option>
                     </select>
                   </div>
+
+                  {/* Subscription Status Banner */}
+                  {!isInFreePeriod && !hasActiveFarmerJoeSubscription && (
+                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm font-medium text-amber-900 mb-2">Email Subscription Required</p>
+                      <p className="text-xs text-amber-800 mb-3">
+                        Your 3-month free trial for email alerts has ended. Subscribe to Farmer Joe for $5.99/month to continue receiving email updates.
+                      </p>
+                      <button className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded transition-colors">
+                        Subscribe Now - $5.99/month
+                      </button>
+                    </div>
+                  )}
+
+                  {isInFreePeriod && !hasActiveFarmerJoeSubscription && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm font-medium text-blue-900 mb-1">Free Email Alerts Trial</p>
+                      <p className="text-xs text-blue-800">
+                        {freeMonthsRemaining} month{freeMonthsRemaining !== 1 ? 's' : ''} remaining. After that, email alerts require a Farmer Joe subscription ($5.99/month).
+                      </p>
+                    </div>
+                  )}
+
+                  {hasActiveFarmerJoeSubscription && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm font-medium text-green-900 mb-1">Active Subscription</p>
+                      <p className="text-xs text-green-800">
+                        You have full access to email alerts with your Farmer Joe subscription.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-3 mb-6">
                     <h3 className="font-medium text-gray-900">Subscription Options</h3>

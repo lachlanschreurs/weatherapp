@@ -20,6 +20,12 @@ interface FarmerJoeProps {
   isAuthenticated?: boolean;
 }
 
+interface SubscriptionStatus {
+  hasActiveSubscription: boolean;
+  subscriptionEndsAt: string | null;
+  needsSubscription: boolean;
+}
+
 const FarmerJoeAvatar = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
   const sizeClasses = {
     sm: 'w-10 h-10',
@@ -56,6 +62,8 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [guestQuestionCount, setGuestQuestionCount] = useState(0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
+  const [showSubscriptionPrompt, setShowSubscriptionPrompt] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_GUEST_QUESTIONS = 5;
@@ -75,10 +83,48 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         const savedCount = localStorage.getItem('farmerJoeGuestQuestions');
         setGuestQuestionCount(savedCount ? parseInt(savedCount) : 0);
       } else {
+        checkSubscriptionStatus();
         sendGreeting();
       }
     }
   }, [isOpen, isAuthenticated]);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setSubscriptionStatus(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('farmer_joe_subscription_status, farmer_joe_subscription_ends_at')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        const hasActiveSubscription = data.farmer_joe_subscription_status === 'active' &&
+          (!data.farmer_joe_subscription_ends_at || new Date(data.farmer_joe_subscription_ends_at) > new Date());
+
+        setSubscriptionStatus({
+          hasActiveSubscription,
+          subscriptionEndsAt: data.farmer_joe_subscription_ends_at,
+          needsSubscription: !hasActiveSubscription
+        });
+      } else {
+        setSubscriptionStatus({
+          hasActiveSubscription: false,
+          subscriptionEndsAt: null,
+          needsSubscription: true
+        });
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    }
+  };
 
   const sendGreeting = async () => {
     try {
@@ -200,7 +246,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
           const tempMessage: Message = {
             id: tempId,
             message: userMessage,
-            response: "You've reached your 5 free questions! Sign in to continue chatting with me and get personalized farming advice, weather insights, and save your conversation history. Click the sign-in button at the top right to get started!",
+            response: "You've reached your 5 free questions! Sign in to subscribe and get unlimited access to Farmer Joe for just $5.99/month. Get personalized farming advice, weather insights, and save your conversation history. Click the sign-in button at the top right to get started!",
             created_at: new Date().toISOString(),
           };
           setMessages(prev => [...prev, tempMessage]);
@@ -217,7 +263,22 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         const tempMessage: Message = {
           id: tempId,
           message: userMessage,
-          response: `Thanks for your question! ${remainingQuestions > 0 ? `You have ${remainingQuestions} free question${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free question!'} Sign in to get unlimited access, personalized advice based on your location and weather, and save your chat history. Here's a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!`,
+          response: `Thanks for your question! ${remainingQuestions > 0 ? `You have ${remainingQuestions} free question${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free question!'} Sign in and subscribe for just $5.99/month to get unlimited access, personalized advice based on your location and weather, and save your chat history. Here's a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!`,
+          created_at: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, tempMessage]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if authenticated user has active subscription
+      if (subscriptionStatus?.needsSubscription) {
+        setShowSubscriptionPrompt(true);
+        const tempId = `temp-${Date.now()}`;
+        const tempMessage: Message = {
+          id: tempId,
+          message: userMessage,
+          response: "To continue chatting with Farmer Joe, you'll need to subscribe for just $5.99/month. This gives you unlimited access to personalized farming advice, weather insights, and your conversation history is always saved. Click the 'Subscribe Now' button below to get started!",
           created_at: new Date().toISOString(),
         };
         setMessages(prev => [...prev, tempMessage]);
@@ -342,13 +403,28 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                 {!isAuthenticated && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 mt-2">
                     <p className="font-medium mb-2">Free Trial: {MAX_GUEST_QUESTIONS - guestQuestionCount} questions remaining</p>
-                    <p className="font-medium mb-1">Sign in for unlimited access:</p>
+                    <p className="font-medium mb-1">Subscribe for $5.99/month:</p>
                     <ul className="text-left space-y-1">
                       <li>• Unlimited questions</li>
                       <li>• Save conversation history</li>
                       <li>• Get personalized advice</li>
                       <li>• Access weather context</li>
                     </ul>
+                  </div>
+                )}
+                {isAuthenticated && subscriptionStatus?.needsSubscription && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mt-2">
+                    <p className="font-semibold mb-2">Subscription Required</p>
+                    <p className="mb-2">Subscribe to Farmer Joe for just $5.99/month to get:</p>
+                    <ul className="text-left space-y-1 mb-3">
+                      <li>• Unlimited AI chat access</li>
+                      <li>• Personalized farm advice</li>
+                      <li>• Weather-based insights</li>
+                      <li>• Conversation history</li>
+                    </ul>
+                    <button className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors">
+                      Subscribe Now - $5.99/month
+                    </button>
                   </div>
                 )}
               </div>
@@ -404,12 +480,22 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
             {!isAuthenticated && guestQuestionCount >= MAX_GUEST_QUESTIONS ? (
               <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 text-center">
                 <p className="font-semibold mb-2">Free Trial Expired</p>
-                <p className="text-sm mb-3">Sign in to continue chatting with Farmer Joe and unlock unlimited questions!</p>
+                <p className="text-sm mb-3">Sign in and subscribe for $5.99/month to unlock unlimited access to Farmer Joe!</p>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
                 >
                   Sign In Now
+                </button>
+              </div>
+            ) : subscriptionStatus?.needsSubscription && showSubscriptionPrompt ? (
+              <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg p-4 text-center">
+                <p className="font-semibold mb-2">Subscription Required</p>
+                <p className="text-sm mb-3">Get unlimited access to Farmer Joe for just $5.99/month</p>
+                <button
+                  className="bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors w-full"
+                >
+                  Subscribe Now - $5.99/month
                 </button>
               </div>
             ) : (

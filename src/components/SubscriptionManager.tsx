@@ -1,0 +1,298 @@
+import React, { useState, useEffect } from 'react';
+import { CreditCard, Check, X, Loader2, Calendar, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+interface SubscriptionManagerProps {
+  onClose?: () => void;
+}
+
+interface SubscriptionInfo {
+  status: string;
+  startedAt: string | null;
+  endsAt: string | null;
+  messagesCount: number;
+  emailStartedAt: string | null;
+}
+
+export default function SubscriptionManager({ onClose }: SubscriptionManagerProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    loadSubscriptionInfo();
+  }, []);
+
+  const loadSubscriptionInfo = async () => {
+    setIsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMessage({ type: 'error', text: 'Please sign in to manage subscriptions' });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSubscription({
+          status: data.farmer_joe_subscription_status || 'none',
+          startedAt: data.farmer_joe_subscription_started_at,
+          endsAt: data.farmer_joe_subscription_ends_at,
+          messagesCount: data.farmer_joe_messages_count || 0,
+          emailStartedAt: data.email_subscription_started_at
+        });
+      }
+    } catch (error) {
+      console.error('Error loading subscription:', error);
+      setMessage({ type: 'error', text: 'Failed to load subscription information' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const calculateEmailFreeMonthsRemaining = () => {
+    if (!subscription?.emailStartedAt) return 3;
+
+    const startDate = new Date(subscription.emailStartedAt);
+    const freeEndDate = new Date(startDate);
+    freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+    const now = new Date();
+
+    if (now >= freeEndDate) return 0;
+
+    const monthsLeft = Math.ceil((freeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    return Math.max(0, Math.min(3, monthsLeft));
+  };
+
+  const hasActiveSubscription = subscription?.status === 'active' &&
+    (!subscription.endsAt || new Date(subscription.endsAt) > new Date());
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-gradient-to-r from-green-600 to-green-700 text-white p-6 flex items-center justify-between rounded-t-lg">
+          <div className="flex items-center gap-3">
+            <CreditCard className="w-6 h-6" />
+            <div>
+              <h2 className="text-xl font-semibold">Subscription Management</h2>
+              <p className="text-xs text-green-100">Manage your Farmer Joe subscription</p>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="hover:bg-green-800 p-2 rounded transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        <div className="p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+            </div>
+          ) : (
+            <>
+              {message && (
+                <div
+                  className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
+                    message.type === 'success'
+                      ? 'bg-green-50 text-green-800 border border-green-200'
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}
+                >
+                  {message.type === 'success' ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
+                  <span className="text-sm">{message.text}</span>
+                </div>
+              )}
+
+              {/* Subscription Status */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Farmer Joe Chat Subscription</h3>
+
+                {hasActiveSubscription ? (
+                  <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-green-600 text-white rounded-full p-2">
+                        <Check className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-900 mb-1">Active Subscription</p>
+                        <p className="text-sm text-green-800 mb-3">
+                          You have unlimited access to Farmer Joe chat
+                        </p>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-green-700 font-medium">Started</p>
+                            <p className="text-green-900">{formatDate(subscription?.startedAt)}</p>
+                          </div>
+                          <div>
+                            <p className="text-green-700 font-medium">Messages Sent</p>
+                            <p className="text-green-900">{subscription?.messagesCount || 0}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="bg-gray-400 text-white rounded-full p-2">
+                        <AlertCircle className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 mb-1">No Active Subscription</p>
+                        <p className="text-sm text-gray-700 mb-3">
+                          Subscribe to unlock unlimited access to Farmer Joe
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="font-semibold text-gray-900">Farmer Joe Premium</p>
+                          <p className="text-2xl font-bold text-green-600">$5.99<span className="text-sm text-gray-600">/month</span></p>
+                        </div>
+                      </div>
+                      <ul className="space-y-2 mb-4">
+                        <li className="flex items-center gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Unlimited AI chat messages
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Personalized farming advice
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Weather-based insights
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Save conversation history
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-600" />
+                          Image analysis for pests & diseases
+                        </li>
+                      </ul>
+                      <button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors">
+                        Subscribe Now - $5.99/month
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Email Subscription Status */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Email Alerts</h3>
+
+                {(() => {
+                  const freeMonths = calculateEmailFreeMonthsRemaining();
+                  const isInFreePeriod = freeMonths > 0;
+
+                  return (
+                    <div className={`border-2 rounded-lg p-4 ${
+                      hasActiveSubscription
+                        ? 'bg-green-50 border-green-200'
+                        : isInFreePeriod
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-amber-50 border-amber-200'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-full p-2 ${
+                          hasActiveSubscription
+                            ? 'bg-green-600 text-white'
+                            : isInFreePeriod
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-amber-600 text-white'
+                        }`}>
+                          {hasActiveSubscription || isInFreePeriod ? (
+                            <Check className="w-5 h-5" />
+                          ) : (
+                            <Calendar className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          {hasActiveSubscription ? (
+                            <>
+                              <p className="font-semibold text-green-900 mb-1">Email Alerts Active</p>
+                              <p className="text-sm text-green-800">
+                                Included with your Farmer Joe subscription
+                              </p>
+                            </>
+                          ) : isInFreePeriod ? (
+                            <>
+                              <p className="font-semibold text-blue-900 mb-1">Free Trial Active</p>
+                              <p className="text-sm text-blue-800">
+                                {freeMonths} month{freeMonths !== 1 ? 's' : ''} remaining of free email alerts.
+                                Subscribe to Farmer Joe before the trial ends to continue receiving updates.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-semibold text-amber-900 mb-1">Trial Expired</p>
+                              <p className="text-sm text-amber-800 mb-3">
+                                Your 3-month free trial has ended. Subscribe to Farmer Joe to continue receiving email alerts.
+                              </p>
+                              <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors">
+                                Subscribe for Email Alerts
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Pricing Information */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-2">Subscription Details</h4>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                    Farmer Joe Chat: $5.99/month
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                    Email Alerts: Free for 3 months, then included with subscription
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                    Cancel anytime, no long-term commitment
+                  </li>
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
