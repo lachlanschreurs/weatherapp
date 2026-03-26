@@ -74,9 +74,38 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       if (!isAuthenticated) {
         const savedCount = localStorage.getItem('farmerJoeGuestQuestions');
         setGuestQuestionCount(savedCount ? parseInt(savedCount) : 0);
+      } else {
+        sendGreeting();
       }
     }
   }, [isOpen, isAuthenticated]);
+
+  const sendGreeting = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: existingMessages } = await supabase
+        .from('chat_messages')
+        .select('id')
+        .limit(1);
+
+      if (!existingMessages || existingMessages.length === 0) {
+        const greeting = "Howdy! I'm Farmer Joe, your AI farming assistant. I'm here to help you with weather insights, spray planning, pest and disease identification, and general farm advice. What can I help you with today?";
+
+        await supabase.from('chat_messages').insert({
+          user_id: session.user.id,
+          message: '[System: Initial greeting]',
+          response: greeting,
+          weather_context: {},
+        });
+
+        await loadChatHistory();
+      }
+    } catch (error) {
+      console.error('Error sending greeting:', error);
+    }
+  };
 
   const loadChatHistory = async () => {
     setIsLoadingHistory(true);
@@ -201,9 +230,8 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           message: userMessage,
