@@ -636,10 +636,13 @@ function App() {
                   <div className="text-7xl font-bold mb-2">
                     {Math.round(tempC)}°C
                   </div>
-                  <div className="flex items-center gap-4 text-lg opacity-80 mb-2">
-                    <span>Feels like {Math.round(feelsLike)}°C</span>
+                  <div className="flex items-center gap-4 text-lg mb-2">
+                    <span className="opacity-80">Feels like {Math.round(feelsLike)}°C</span>
                     <span className="opacity-60">•</span>
-                    <span>H: {Math.round(todayHighTemp)}° L: {Math.round(todayLowTemp)}°</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-red-400 font-semibold">H: {Math.round(todayHighTemp)}°</span>
+                      <span className="text-blue-300 font-semibold">L: {Math.round(todayLowTemp)}°</span>
+                    </div>
                   </div>
                   <div className="text-2xl capitalize opacity-90">
                     {weatherDescription}
