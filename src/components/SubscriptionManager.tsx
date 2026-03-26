@@ -275,20 +275,6 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                 </div>
               )}
 
-              {/* Phone Number Requirement Notice */}
-              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-blue-900 mb-1">Free Trial Policy</h4>
-                    <p className="text-sm text-blue-800">
-                      Each phone number is eligible for one 3-month free trial. This prevents abuse and ensures fair access to our services.
-                      If you try to create multiple accounts with different emails but the same phone number, you will not receive additional free trials.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               {/* Subscription Status */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Farmer Joe Chat Subscription</h3>
@@ -348,12 +334,11 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                       </div>
                     </div>
 
-                    <div className="bg-white border border-green-200 rounded-lg p-4 mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="font-semibold text-gray-900">Farmer Joe Premium</p>
-                          <p className="text-2xl font-bold text-green-600">$5.99<span className="text-sm text-gray-600">/month</span></p>
-                        </div>
+                    <div className="bg-white border border-green-200 rounded-lg p-5 mb-4">
+                      <div className="mb-4">
+                        <p className="font-semibold text-gray-900 mb-1">Farmer Joe Premium</p>
+                        <p className="text-2xl font-bold text-green-600 mb-1">$5.99<span className="text-sm text-gray-600">/month</span></p>
+                        <p className="text-xs text-gray-500">3 month free trial • cancel anytime</p>
                       </div>
                       <ul className="space-y-2 mb-4">
                         <li className="flex items-center gap-2 text-sm text-gray-700">
@@ -380,7 +365,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                       <button
                         onClick={handleSubscribe}
                         disabled={isProcessing}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-3"
                       >
                         {isProcessing ? (
                           <>
@@ -388,9 +373,12 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             Processing...
                           </>
                         ) : (
-                          'Subscribe Now - $5.99/month'
+                          'Unlock Farmer Joe Premium'
                         )}
                       </button>
+                      <p className="text-xs text-center text-gray-500">
+                        Secure payments powered by Stripe
+                      </p>
                     </div>
                   </div>
                 )}
@@ -570,24 +558,27 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
               )}
 
               {/* Pricing Information */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-2">Subscription Details</h4>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                    Farmer Joe Chat: $5.99/month
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-5">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <div className="w-1 h-5 bg-green-600 rounded"></div>
+                  What's Included
+                </h4>
+                <ul className="space-y-2.5 text-sm text-gray-700">
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span><strong>Farmer Joe Chat</strong> — Unlimited AI-powered farming advice ($5.99/month after trial)</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                    Email Alerts: Free for 3 months, then included with subscription
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span><strong>Daily Email Alerts</strong> — Weather forecasts and spray window notifications</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                    Weekly Probe Reports: Free for 3 months, then included with subscription
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span><strong>Weekly Probe Reports</strong> — Comprehensive soil moisture analysis</span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                    Cancel anytime, no long-term commitment
+                  <li className="flex items-start gap-2">
+                    <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <span><strong>Cancel Anytime</strong> — No long-term commitment required</span>
                   </li>
                 </ul>
               </div>

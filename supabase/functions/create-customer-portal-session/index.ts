@@ -77,12 +77,20 @@ Deno.serve(async (req: Request) => {
         .eq('id', userId);
     }
 
+    // Ensure we have a valid return URL
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.split('?')[0];
+    const finalReturnUrl = returnUrl || origin || "https://farmcast.app";
+
+    console.log('Creating portal session with return_url:', finalReturnUrl);
+
     // Create billing portal session
     try {
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: returnUrl || `${req.headers.get("origin")}`,
+        return_url: finalReturnUrl,
       });
+
+      console.log('Portal session created successfully:', session.id);
 
       return new Response(
         JSON.stringify({ url: session.url }),

@@ -56,6 +56,14 @@ Deno.serve(async (req: Request) => {
       customerId = customer.id;
     }
 
+    // Ensure we have valid URLs
+    const origin = req.headers.get("origin") || req.headers.get("referer")?.split('?')[0];
+    const baseUrl = origin || "https://farmcast.app";
+    const finalSuccessUrl = successUrl || `${baseUrl}?subscription=success`;
+    const finalCancelUrl = cancelUrl || baseUrl;
+
+    console.log('Creating checkout session with URLs:', { finalSuccessUrl, finalCancelUrl });
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -67,8 +75,8 @@ Deno.serve(async (req: Request) => {
         },
       ],
       mode: "subscription",
-      success_url: successUrl || `${req.headers.get("origin")}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${req.headers.get("origin")}`,
+      success_url: finalSuccessUrl,
+      cancel_url: finalCancelUrl,
       metadata: {
         supabase_user_id: userId,
       },
@@ -78,6 +86,8 @@ Deno.serve(async (req: Request) => {
         },
       },
     });
+
+    console.log('Checkout session created:', session.id);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
