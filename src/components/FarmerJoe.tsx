@@ -133,24 +133,31 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
 
   return (
     <>
-      {/* Chat Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700 transition-all duration-200 flex items-center gap-2 group z-50"
-        >
-          <MessageCircle className="w-6 h-6" />
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap">
-            Chat with Farmer Joe
-          </span>
-        </button>
-      )}
+      {/* Side Tab */}
+      <div
+        className={`fixed right-0 top-1/2 -translate-y-1/2 z-50 transition-all duration-300 ${
+          isOpen ? 'translate-x-0' : 'translate-x-0'
+        }`}
+      >
+        {!isOpen && (
+          <button
+            onClick={() => setIsOpen(true)}
+            className="bg-green-600 text-white px-3 py-6 rounded-l-lg shadow-lg hover:bg-green-700 transition-all duration-200 flex flex-col items-center gap-2 group"
+            style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
+          >
+            <MessageCircle className="w-5 h-5 rotate-180" />
+            <span className="font-semibold text-sm whitespace-nowrap">
+              Farmer Joe
+            </span>
+          </button>
+        )}
+      </div>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-lg shadow-2xl flex flex-col z-50 border border-gray-200">
+        <div className="fixed right-0 top-0 w-full sm:w-[450px] h-full bg-white shadow-2xl flex flex-col z-50 border-l-2 border-green-200">
           {/* Header */}
-          <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-t-lg flex items-center justify-between">
+          <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-800 rounded-full flex items-center justify-center text-lg font-bold">
                 🧑‍🌾
@@ -226,28 +233,31 @@ export default function FarmerJoe({ weatherContext }: FarmerJoeProps) {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
-            <div className="flex gap-2">
+          <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask Farmer Joe..."
+                placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+                className="w-full px-4 py-3 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed text-sm rounded-t-lg"
               />
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim() || isLoading}
-                className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="w-5 h-5" />
-              </button>
+              <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  Ask about spray windows, planting times, or weather
+                </p>
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || isLoading}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  <span className="text-sm font-medium">Send</span>
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Tip: Ask about spray windows, planting times, or upcoming weather!
-            </p>
           </div>
         </div>
       )}
