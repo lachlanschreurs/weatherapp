@@ -145,30 +145,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   };
 
   const sendGreeting = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { data: existingMessages } = await supabase
-        .from('chat_messages')
-        .select('id')
-        .limit(1);
-
-      if (!existingMessages || existingMessages.length === 0) {
-        // Create a greeting message from Farmer Joe without a user message
-        const greeting = "Howdy! I'm Farmer Joe, your AI farming assistant. I'm here to help you with weather insights, spray planning, pest and disease identification, and general farm advice. What can I help you with today?";
-
-        // Add a message that appears to come from Farmer Joe first
-        setMessages([{
-          id: `greeting-${Date.now()}`,
-          message: '',
-          response: greeting,
-          created_at: new Date().toISOString(),
-        }]);
-      }
-    } catch (error) {
-      console.error('Error sending greeting:', error);
-    }
+    // Greeting removed - users start the conversation
   };
 
   const loadChatHistory = async () => {
@@ -320,6 +297,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           message: userMessage,
