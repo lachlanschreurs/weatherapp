@@ -30,28 +30,39 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // Get all subscribers with weekly probe report enabled who are in trial or have premium
+    // Get all users with probe report access (free trial or active subscription)
     const { data: subscribers, error: subError } = await supabaseAdmin
-      .from('email_subscriptions')
-      .select('user_id, email, trial_active, trial_end_date, user_subscriptions!inner(status, subscription_tier)')
-      .eq('weekly_probe_report_enabled', true)
-      .or('trial_active.eq.true,user_subscriptions.status.eq.active');
+      .from('profiles')
+      .select('id, email, probe_report_subscription_started_at, farmer_joe_subscription_status, farmer_joe_subscription_ends_at')
+      .not('probe_report_subscription_started_at', 'is', null);
 
     if (subError) throw subError;
 
     // Filter to only include users who should receive emails
-    const eligibleSubscribers = subscribers?.filter((sub: any) => {
-      // In trial and trial not expired
-      if (sub.trial_active && new Date(sub.trial_end_date) > new Date()) {
+    const eligibleSubscribers = subscribers?.filter((profile: any) => {
+      const now = new Date();
+      const startedAt = new Date(profile.probe_report_subscription_started_at);
+      const freeEndDate = new Date(startedAt);
+      freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+
+      // In free 3-month trial period
+      if (now < freeEndDate) {
         return true;
       }
-      // Has active premium subscription
-      if (sub.user_subscriptions?.status === 'active' &&
-          sub.user_subscriptions?.subscription_tier === 'premium') {
-        return true;
+
+      // Has active Farmer Joe subscription
+      if (profile.farmer_joe_subscription_status === 'active') {
+        const endsAt = profile.farmer_joe_subscription_ends_at ? new Date(profile.farmer_joe_subscription_ends_at) : null;
+        if (!endsAt || endsAt > now) {
+          return true;
+        }
       }
+
       return false;
-    }) || [];
+    }).map((profile: any) => ({
+      user_id: profile.id,
+      email: profile.email
+    })) || [];
 
     if (eligibleSubscribers.length === 0) {
       return new Response(

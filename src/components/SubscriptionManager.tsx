@@ -12,6 +12,7 @@ interface SubscriptionInfo {
   endsAt: string | null;
   messagesCount: number;
   emailStartedAt: string | null;
+  probeReportStartedAt: string | null;
   stripeCustomerId: string | null;
 }
 
@@ -36,7 +37,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, stripe_customer_id')
+        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, stripe_customer_id')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -49,6 +50,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           endsAt: data.farmer_joe_subscription_ends_at,
           messagesCount: data.farmer_joe_messages_count || 0,
           emailStartedAt: data.email_subscription_started_at,
+          probeReportStartedAt: data.probe_report_subscription_started_at,
           stripeCustomerId: data.stripe_customer_id
         });
       }
@@ -73,6 +75,20 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     if (!subscription?.emailStartedAt) return 3;
 
     const startDate = new Date(subscription.emailStartedAt);
+    const freeEndDate = new Date(startDate);
+    freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+    const now = new Date();
+
+    if (now >= freeEndDate) return 0;
+
+    const monthsLeft = Math.ceil((freeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    return Math.max(0, Math.min(3, monthsLeft));
+  };
+
+  const calculateProbeReportFreeMonthsRemaining = () => {
+    if (!subscription?.probeReportStartedAt) return 3;
+
+    const startDate = new Date(subscription.probeReportStartedAt);
     const freeEndDate = new Date(startDate);
     freeEndDate.setMonth(freeEndDate.getMonth() + 3);
     const now = new Date();
@@ -414,6 +430,81 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                 })()}
               </div>
 
+              {/* Weekly Probe Report Status */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Probe Reports</h3>
+
+                {(() => {
+                  const freeMonths = calculateProbeReportFreeMonthsRemaining();
+                  const isInFreePeriod = freeMonths > 0;
+
+                  return (
+                    <div className={`border-2 rounded-lg p-4 ${
+                      hasActiveSubscription
+                        ? 'bg-green-50 border-green-200'
+                        : isInFreePeriod
+                        ? 'bg-blue-50 border-blue-200'
+                        : 'bg-amber-50 border-amber-200'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-full p-2 ${
+                          hasActiveSubscription
+                            ? 'bg-green-600 text-white'
+                            : isInFreePeriod
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-amber-600 text-white'
+                        }`}>
+                          {hasActiveSubscription || isInFreePeriod ? (
+                            <Check className="w-5 h-5" />
+                          ) : (
+                            <Calendar className="w-5 h-5" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          {hasActiveSubscription ? (
+                            <>
+                              <p className="font-semibold text-green-900 mb-1">Weekly Reports Active</p>
+                              <p className="text-sm text-green-800">
+                                Included with your Farmer Joe subscription
+                              </p>
+                            </>
+                          ) : isInFreePeriod ? (
+                            <>
+                              <p className="font-semibold text-blue-900 mb-1">Free Trial Active</p>
+                              <p className="text-sm text-blue-800">
+                                {freeMonths} month{freeMonths !== 1 ? 's' : ''} remaining of free weekly probe reports.
+                                Subscribe to Farmer Joe before the trial ends to continue receiving reports.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-semibold text-amber-900 mb-1">Trial Expired</p>
+                              <p className="text-sm text-amber-800 mb-3">
+                                Your 3-month free trial has ended. Subscribe to Farmer Joe to continue receiving weekly probe reports.
+                              </p>
+                              <button
+                                onClick={handleSubscribe}
+                                disabled={isProcessing}
+                                className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {isProcessing ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  'Subscribe for Weekly Reports'
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Pricing Information */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900 mb-2">Subscription Details</h4>
@@ -425,6 +516,10 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
                     Email Alerts: Free for 3 months, then included with subscription
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                    Weekly Probe Reports: Free for 3 months, then included with subscription
                   </li>
                   <li className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
