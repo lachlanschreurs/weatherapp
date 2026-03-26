@@ -144,6 +144,14 @@ function App() {
       })();
     });
 
+    // Handle Stripe redirect
+    const params = new URLSearchParams(window.location.search);
+    const subscriptionStatus = params.get('subscription');
+    if (subscriptionStatus) {
+      // Clean up URL immediately to prevent blank page
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
