@@ -78,22 +78,46 @@ Deno.serve(async (req: Request) => {
     }
 
     // Create billing portal session
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl || `${req.headers.get("origin")}`,
-    });
+    try {
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: returnUrl || `${req.headers.get("origin")}`,
+      });
 
-    return new Response(
-      JSON.stringify({ url: session.url }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(
+        JSON.stringify({ url: session.url }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    } catch (stripeError: any) {
+      console.error("Stripe portal error:", stripeError);
+
+      // Check if it's a billing portal not activated error
+      if (stripeError.type === 'invalid_request_error' &&
+          stripeError.message?.includes('billing portal')) {
+        return new Response(
+          JSON.stringify({
+            error: "Billing portal not activated. Please activate it in your Stripe Dashboard: https://dashboard.stripe.com/settings/billing/portal",
+            errorType: "portal_not_activated"
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
       }
-    );
-  } catch (error) {
+
+      throw stripeError;
+    }
+  } catch (error: any) {
     console.error("Error creating customer portal session:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error.message || "Failed to create billing portal session",
+        details: error.type || "unknown_error"
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

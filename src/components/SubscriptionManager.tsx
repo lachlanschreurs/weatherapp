@@ -207,7 +207,15 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create portal session');
+        if (data.errorType === 'portal_not_activated') {
+          setMessage({
+            type: 'error',
+            text: 'Stripe billing portal needs to be activated. Please contact support or activate it at: https://dashboard.stripe.com/settings/billing/portal'
+          });
+        } else {
+          throw new Error(data.error || 'Failed to create portal session');
+        }
+        return;
       }
 
       if (data.url) {
@@ -215,7 +223,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       }
     } catch (error) {
       console.error('Error creating portal session:', error);
-      setMessage({ type: 'error', text: 'Failed to open billing portal. Please try again.' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to open billing portal. Please try again.';
+      setMessage({ type: 'error', text: errorMessage });
     } finally {
       setIsProcessing(false);
     }
