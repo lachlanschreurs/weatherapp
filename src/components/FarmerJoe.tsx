@@ -212,7 +212,8 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from Farmer Joe');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to get response from Farmer Joe');
       }
 
       const data = await response.json();
@@ -220,7 +221,15 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       await loadChatHistory();
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+
+      const tempId = `error-${Date.now()}`;
+      const errorMessage: Message = {
+        id: tempId,
+        message: userMessage,
+        response: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or check your connection.`,
+        created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
