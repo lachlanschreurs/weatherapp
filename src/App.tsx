@@ -424,16 +424,6 @@ function App() {
 
   const feelsLike = calculateFeelsLike(tempC, humidity, windSpeedKmh);
 
-  const currentTime = Date.now() / 1000;
-  const last12Hours = forecastList.filter((item: any) => {
-    const timeDiff = currentTime - item.dt;
-    return timeDiff >= 0 && timeDiff <= 12 * 3600;
-  });
-
-  const rainfall12h = last12Hours.reduce((sum: number, item: any) => {
-    return sum + (item.rain?.['3h'] || 0);
-  }, 0);
-
   const dailyForecasts = forecastList.reduce((acc: any[], item: any) => {
     const date = new Date(item.dt * 1000).toLocaleDateString('en-AU');
     const existing = acc.find(f => f.date === date);
@@ -690,14 +680,14 @@ function App() {
 
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
-                <CloudRain className="w-6 h-6" />
-                <span className="font-semibold">Last 12 Hours</span>
+                <Droplets className="w-6 h-6" />
+                <span className="font-semibold">Humidity</span>
               </div>
               <div className="text-3xl font-bold">
-                {rainfall12h.toFixed(1)} mm
+                {humidity}%
               </div>
               <div className="text-sm opacity-80 mt-1">
-                Rainfall
+                Dew Point: {Math.round(dewpointC)}°C
               </div>
             </div>
           </div>
