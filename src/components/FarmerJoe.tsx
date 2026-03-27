@@ -90,14 +90,19 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     setHasEngaged(hasEngagedBefore);
 
     if (!hasEngagedBefore) {
-      setShowBubble(true);
-      setBubbleText("Hey! Got a farming question?");
+      // Show bubble after first drop (at 2s into 4s animation)
+      const showBubbleTimeout = setTimeout(() => {
+        setShowBubble(true);
+        setBubbleText("Hey! Got a farming question?");
+      }, 2500);
 
+      // Hide bubble after total animation + display time
       const hideTimeout = setTimeout(() => {
         setShowBubble(false);
-      }, 8000);
+      }, 10500);
 
       return () => {
+        clearTimeout(showBubbleTimeout);
         clearTimeout(hideTimeout);
       };
     } else {

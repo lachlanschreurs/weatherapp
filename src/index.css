@@ -32,35 +32,58 @@
 
 @keyframes drop-bounce {
   0% {
-    transform: translateY(-20px);
+    transform: translateY(-50vh);
+    animation-timing-function: ease-in;
+  }
+  20% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  25% {
+    transform: translateY(-12px);
+    animation-timing-function: ease-in;
+  }
+  30% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-6px);
     animation-timing-function: ease-in;
   }
   40% {
     transform: translateY(0);
-    animation-timing-function: ease-out;
   }
+  /* Pause flat */
+  40%, 50% {
+    transform: translateY(0);
+  }
+  /* Second drop from halfway */
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-50vh);
     animation-timing-function: ease-in;
   }
-  65% {
+  70% {
     transform: translateY(0);
     animation-timing-function: ease-out;
   }
   75% {
-    transform: translateY(-4px);
+    transform: translateY(-12px);
     animation-timing-function: ease-in;
   }
-  85% {
+  80% {
     transform: translateY(0);
   }
-  100% {
+  85% {
+    transform: translateY(-6px);
+    animation-timing-function: ease-in;
+  }
+  90%, 100% {
     transform: translateY(0);
   }
 }
 
 .animate-drop-bounce {
-  animation: drop-bounce 2s ease-in-out;
+  animation: drop-bounce 4s ease-in-out;
   animation-delay: 0.5s;
   animation-fill-mode: backwards;
 }
