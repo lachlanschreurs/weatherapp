@@ -72,6 +72,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_FREE_MESSAGES = 10;
   const MAX_FREE_UPLOADS = 2;
+  const MAX_GUEST_QUESTIONS = 3;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

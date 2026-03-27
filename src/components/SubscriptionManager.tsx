@@ -53,10 +53,14 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
   const loadSubscriptionInfo = async () => {
     setIsLoading(true);
+    setMessage(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setMessage({ type: 'error', text: 'Please sign in to manage subscriptions' });
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setSubscription(null);
+        setMessage({ type: 'error', text: 'Please sign in to manage your subscription.' });
+        setIsLoading(false);
         return;
       }
 
@@ -66,7 +70,12 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         .eq('id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error loading subscription:', error);
+        setMessage({ type: 'error', text: 'Unable to load subscription information. Please try again.' });
+        setIsLoading(false);
+        return;
+      }
 
       if (data) {
         setSubscription({
@@ -78,10 +87,21 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           probeReportStartedAt: data.probe_report_subscription_started_at,
           stripeCustomerId: data.stripe_customer_id
         });
+      } else {
+        // No profile data found, but user is authenticated - set default values
+        setSubscription({
+          status: 'none',
+          startedAt: null,
+          endsAt: null,
+          messagesCount: 0,
+          emailStartedAt: null,
+          probeReportStartedAt: null,
+          stripeCustomerId: null
+        });
       }
     } catch (error) {
       console.error('Error loading subscription:', error);
-      setMessage({ type: 'error', text: 'Failed to load subscription information' });
+      setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' });
     } finally {
       setIsLoading(false);
     }
@@ -132,9 +152,9 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setMessage({ type: 'error', text: 'Please sign in to subscribe' });
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.user) {
+        setMessage({ type: 'error', text: 'Please sign in to subscribe.' });
         setIsProcessing(false);
         return;
       }
@@ -209,9 +229,9 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setMessage({ type: 'error', text: 'Please sign in to manage your subscription' });
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session?.user) {
+        setMessage({ type: 'error', text: 'Please sign in to manage your subscription.' });
         setIsProcessing(false);
         return;
       }
@@ -338,20 +358,40 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-green-600" />
             </div>
+          ) : subscription === null ? (
+            <div className="text-center py-12">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-8 max-w-md mx-auto">
+                <div className="bg-blue-600 text-white rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Sign In Required</h3>
+                <p className="text-gray-700 mb-4">
+                  Please sign in to view and manage your subscription.
+                </p>
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+                  >
+                    Close
+                  </button>
+                )}
+              </div>
+            </div>
           ) : (
             <>
-              {message && (
+              {message && message.text !== 'Please sign in to manage your subscription.' && (
                 <div
                   className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
                     message.type === 'success'
                       ? 'bg-green-50 text-green-800 border border-green-200'
-                      : 'bg-red-50 text-red-800 border border-red-200'
+                      : 'bg-amber-50 text-amber-800 border border-amber-200'
                   }`}
                 >
                   {message.type === 'success' ? (
                     <Check className="w-4 h-4" />
                   ) : (
-                    <X className="w-4 h-4" />
+                    <AlertCircle className="w-4 h-4" />
                   )}
                   <span className="text-sm">{message.text}</span>
                 </div>
