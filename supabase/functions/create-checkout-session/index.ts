@@ -1,5 +1,5 @@
 import Stripe from "npm:stripe@14.11.0";
-import { createClient } from "npm:@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,15 +77,22 @@ Deno.serve(async (req: Request) => {
       hasUser: !!user,
       userId: user?.id,
       email: user?.email,
-      error: userError?.message
+      error: userError?.message,
+      errorStatus: userError?.status
     });
 
     if (userError || !user) {
-      console.error('Failed to verify user:', userError);
+      console.error('Failed to verify user:', {
+        error: userError,
+        message: userError?.message,
+        status: userError?.status,
+        name: userError?.name
+      });
       return new Response(
         JSON.stringify({
           error: "Unauthorized - Invalid token",
-          details: userError?.message || "No user found"
+          details: userError?.message || "No user found",
+          hint: "Please try signing out and signing back in"
         }),
         {
           status: 401,
@@ -94,7 +101,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('User verified:', user.id, user.email);
+    console.log('User verified successfully:', user.id, user.email);
 
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseServiceKey) {

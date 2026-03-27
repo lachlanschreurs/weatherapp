@@ -152,14 +152,17 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Refresh session to ensure we have a valid token
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
       if (sessionError || !session?.user) {
-        setMessage({ type: 'error', text: 'Please sign in to subscribe.' });
+        console.error('Session refresh error:', sessionError);
+        setMessage({ type: 'error', text: 'Please sign out and sign back in, then try again.' });
         setIsProcessing(false);
         return;
       }
 
       const user = session.user;
+      console.log('Session refreshed for checkout, user:', user.id);
 
       const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
       const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -237,9 +240,11 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Refresh session to ensure we have a valid token
+      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
       if (sessionError || !session?.user) {
-        setMessage({ type: 'error', text: 'Please sign in to manage your subscription.' });
+        console.error('Session refresh error:', sessionError);
+        setMessage({ type: 'error', text: 'Please sign out and sign back in, then try again.' });
         setIsProcessing(false);
         return;
       }
@@ -255,6 +260,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       };
 
       const requestBody = {

@@ -1,5 +1,5 @@
 import Stripe from "npm:stripe@14.11.0";
-import { createClient } from "npm:@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,16 +29,38 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No Authorization header');
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - No auth header" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing Supabase environment variables');
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const supabaseClient = createClient(
       supabaseUrl,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      supabaseAnonKey,
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     );
@@ -46,15 +68,36 @@ Deno.serve(async (req: Request) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
     if (userError || !user) {
-      console.error('Failed to verify user:', userError);
+      console.error('Failed to verify user:', {
+        error: userError,
+        message: userError?.message,
+        status: userError?.status
+      });
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
+        JSON.stringify({
+          error: "Unauthorized - Invalid token",
+          details: userError?.message || "No user found",
+          hint: "Please try signing out and signing back in"
+        }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseServiceKey) {
+      console.error('Missing service role key');
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const requestBody = await req.json();
     console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
