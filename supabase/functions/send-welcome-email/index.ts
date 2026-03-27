@@ -41,7 +41,7 @@ Deno.serve(async (req: Request) => {
         'Authorization': `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: 'FarmCast <lachlan@farmastweather.com>',
+        from: 'FarmCast <support@farmcastweather.com>',
         to: email,
         subject: 'Welcome to FarmCast - Your AI Farm Weather Assistant',
         html: emailHtml,
