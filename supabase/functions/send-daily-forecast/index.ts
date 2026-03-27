@@ -355,25 +355,28 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
     }
     .brand {
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       margin-bottom: 12px;
     }
+    .brand-name {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: white;
+    }
     .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: white;
-      border-radius: 8px;
+      width: 48px;
+      height: 48px;
+      background: #047857;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
-    }
-    .brand-name {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
+      font-size: 28px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     .location-title {
       font-size: 18px;
@@ -559,8 +562,8 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
   <div class="container">
     <div class="header">
       <div class="brand">
-        <div class="logo-icon">🌾</div>
         <div class="brand-name">FarmCast</div>
+        <div class="logo-icon">🌱</div>
       </div>
       <div class="location-title">${location}, ${country}</div>
       <div class="date-subtitle">${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
