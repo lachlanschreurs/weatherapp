@@ -78,7 +78,7 @@ Deno.serve(async (req: Request) => {
     if (!emailRegex.test(userEmail)) {
       console.error('Invalid email format:', userEmail);
       return new Response(
-        JSON.stringify({ error: "Invalid email address format. Please use a valid email (e.g., name@example.com)" }),
+        JSON.stringify({ error: "Invalid email address format. Please use a valid email (e.g., support@farmcastweather.com)" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

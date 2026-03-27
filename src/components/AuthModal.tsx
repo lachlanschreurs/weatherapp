@@ -91,7 +91,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     try {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
-        throw new Error('Please enter a valid email address (e.g., name@example.com)');
+        throw new Error('Please enter a valid email address (e.g., support@farmcastweather.com)');
       }
 
       if (isLogin) {
@@ -313,14 +313,14 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="name@example.com"
+                placeholder="support@farmcastweather.com"
                 required
                 pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
-                title="Please enter a valid email address (e.g., name@example.com)"
+                title="Please enter a valid email address (e.g., support@farmcastweather.com)"
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Use a valid email address (e.g., name@farmcastweather.com)
+              Use a valid email address (e.g., support@farmcastweather.com)
             </p>
           </div>
 
