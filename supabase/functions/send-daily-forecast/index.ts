@@ -29,24 +29,22 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // Get all subscribers with daily forecast enabled who are in trial or have premium
+    // Get all subscribers with daily forecast enabled who are in trial or have active subscription
     const { data: subscribers, error: subError } = await supabaseAdmin
       .from('email_subscriptions')
-      .select('*, user_subscriptions!inner(status, subscription_tier)')
-      .eq('daily_forecast_enabled', true)
-      .or('trial_active.eq.true,user_subscriptions.status.eq.active');
+      .select('*')
+      .eq('daily_forecast_enabled', true);
 
     if (subError) throw subError;
 
     // Filter to only include users who should receive emails
     const eligibleSubscribers = subscribers?.filter((sub: any) => {
       // In trial and trial not expired
-      if (sub.trial_active && new Date(sub.trial_end_date) > new Date()) {
+      if (sub.trial_active && sub.trial_end_date && new Date(sub.trial_end_date) > new Date()) {
         return true;
       }
-      // Has active premium subscription
-      if (sub.user_subscriptions?.status === 'active' &&
-          sub.user_subscriptions?.subscription_tier === 'premium') {
+      // No subscription requirement (legacy users or free tier)
+      if (!sub.requires_subscription) {
         return true;
       }
       return false;
@@ -69,29 +67,74 @@ Deno.serve(async (req: Request) => {
       throw new Error('RESEND_API_KEY not configured');
     }
 
-    const weatherApiKey = Deno.env.get('API_KEY_FARMCAST');
+    const weatherApiKey = Deno.env.get('OPENWEATHER_API_KEY');
     if (!weatherApiKey) {
       throw new Error('Weather API key not configured');
     }
 
     let emailsSent = 0;
+    const errors: string[] = [];
+
+    console.log(`Processing ${eligibleSubscribers.length} eligible subscribers`);
 
     // Send email to each eligible subscriber
     for (const subscriber of eligibleSubscribers) {
       try {
+        console.log(`Processing subscriber: ${subscriber.email}`);
         const location = subscriber.location || 'Sydney, Australia';
 
-        // Fetch weather data for subscriber's location
-        const weatherResponse = await fetch(
-          `https://api.weatherapi.com/v1/forecast.json?key=${weatherApiKey}&q=${encodeURIComponent(location)}&days=5&aqi=yes`
+        // First get coordinates for the location
+        const geoResponse = await fetch(
+          `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${weatherApiKey}`
         );
 
-        if (!weatherResponse.ok) {
-          console.error(`Failed to fetch weather for ${subscriber.email}`);
+        if (!geoResponse.ok) {
+          const errorMsg = `Failed to geocode location for ${subscriber.email}: ${geoResponse.status}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
           continue;
         }
 
-        const weatherData = await weatherResponse.json();
+        const geoData = await geoResponse.json();
+        if (!geoData || geoData.length === 0) {
+          const errorMsg = `Location not found for ${subscriber.email}: ${location}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+          continue;
+        }
+
+        const { lat, lon, name, country } = geoData[0];
+
+        // Fetch current and forecast weather data
+        const weatherResponse = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=40`
+        );
+
+        if (!weatherResponse.ok) {
+          const errorMsg = `Failed to fetch weather for ${subscriber.email}: ${weatherResponse.status}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+          continue;
+        }
+
+        const forecastData = await weatherResponse.json();
+
+        // Get current weather
+        const currentResponse = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`
+        );
+
+        if (!currentResponse.ok) {
+          const errorMsg = `Failed to fetch current weather for ${subscriber.email}: ${currentResponse.status}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+          continue;
+        }
+
+        const currentData = await currentResponse.json();
+
+        // Transform OpenWeather data to match our email template format
+        const weatherData = transformOpenWeatherData(currentData, forecastData, name, country);
 
         // Calculate spray conditions
         const current = weatherData.current;
@@ -117,12 +160,17 @@ Deno.serve(async (req: Request) => {
 
         if (emailResponse.ok) {
           emailsSent++;
+          console.log(`Successfully sent email to ${subscriber.email}`);
         } else {
           const errorData = await emailResponse.text();
-          console.error(`Failed to send email to ${subscriber.email}:`, errorData);
+          const errorMsg = `Failed to send email to ${subscriber.email}: ${errorData}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
         }
       } catch (error) {
-        console.error(`Error processing subscriber ${subscriber.email}:`, error);
+        const errorMsg = `Error processing subscriber ${subscriber.email}: ${error.message}`;
+        console.error(errorMsg);
+        errors.push(errorMsg);
       }
     }
 
@@ -130,7 +178,8 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         message: `Successfully sent ${emailsSent} emails to subscribers`,
         total: eligibleSubscribers.length,
-        sent: emailsSent
+        sent: emailsSent,
+        errors: errors.length > 0 ? errors : undefined
       }),
       {
         headers: {
@@ -154,6 +203,77 @@ Deno.serve(async (req: Request) => {
   }
 });
 
+function transformOpenWeatherData(current: any, forecast: any, cityName: string, country: string) {
+  // Group forecast by day
+  const dailyForecasts: any = {};
+
+  forecast.list.forEach((item: any) => {
+    const date = item.dt_txt.split(' ')[0];
+    if (!dailyForecasts[date]) {
+      dailyForecasts[date] = {
+        date,
+        temps: [],
+        conditions: [],
+        humidity: [],
+        wind: [],
+        rain: 0,
+        rainChance: 0
+      };
+    }
+
+    dailyForecasts[date].temps.push(item.main.temp);
+    dailyForecasts[date].conditions.push(item.weather[0].description);
+    dailyForecasts[date].humidity.push(item.main.humidity);
+    dailyForecasts[date].wind.push(item.wind.speed * 3.6); // Convert m/s to km/h
+    if (item.rain && item.rain['3h']) {
+      dailyForecasts[date].rain += item.rain['3h'];
+    }
+    if (item.pop) {
+      dailyForecasts[date].rainChance = Math.max(dailyForecasts[date].rainChance, item.pop * 100);
+    }
+  });
+
+  // Convert to array and calculate daily aggregates
+  const forecastDays = Object.values(dailyForecasts).slice(0, 5).map((day: any) => ({
+    date: day.date,
+    day: {
+      maxtemp_c: Math.max(...day.temps),
+      mintemp_c: Math.min(...day.temps),
+      condition: {
+        text: day.conditions[Math.floor(day.conditions.length / 2)]
+      },
+      daily_chance_of_rain: Math.round(day.rainChance),
+      totalprecip_mm: day.rain,
+      maxwind_kph: Math.max(...day.wind)
+    }
+  }));
+
+  return {
+    location: {
+      name: `${cityName}, ${country}`
+    },
+    current: {
+      temp_c: current.main.temp,
+      feelslike_c: current.main.feels_like,
+      humidity: current.main.humidity,
+      wind_kph: current.wind.speed * 3.6,
+      wind_dir: degreesToDirection(current.wind.deg),
+      condition: {
+        text: current.weather[0].description
+      }
+    },
+    forecast: {
+      forecastday: forecastDays
+    }
+  };
+}
+
+function degreesToDirection(degrees: number): string {
+  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const index = Math.round(degrees / 22.5) % 16;
+  return directions[index];
+}
+
 function getSprayConditions(current: any): string {
   const temp = current.temp_c;
   const humidity = current.humidity;
@@ -163,7 +283,6 @@ function getSprayConditions(current: any): string {
   if (windSpeed > 20) return 'Poor - Wind too strong';
   if (temp < 8 || temp > 30) return 'Poor - Temperature out of range';
   if (deltaT < 2 || deltaT > 10) return 'Poor - Delta T out of range';
-  if (current.precip_mm > 0) return 'Poor - Rain detected';
 
   if (windSpeed < 5 && deltaT >= 2 && deltaT <= 8 && temp >= 15 && temp <= 25) {
     return 'Excellent - Perfect conditions';
