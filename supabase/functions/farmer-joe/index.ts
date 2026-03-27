@@ -123,6 +123,21 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
       );
     }
 
+    // Load conversation history (only for authenticated users)
+    let conversationHistory: any[] = [];
+    if (user) {
+      const { data: chatHistory, error: historyError } = await supabaseClient
+        .from('chat_messages')
+        .select('message, response, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(10);
+
+      if (!historyError && chatHistory) {
+        conversationHistory = chatHistory;
+      }
+    }
+
     // Prepare messages for OpenAI
     const messages: any[] = [
       {
@@ -130,6 +145,18 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         content: systemPrompt + contextInfo,
       },
     ];
+
+    // Add conversation history to context
+    for (const chat of conversationHistory) {
+      messages.push({
+        role: 'user',
+        content: chat.message,
+      });
+      messages.push({
+        role: 'assistant',
+        content: chat.response,
+      });
+    }
 
     // If image is provided, use vision model with image
     if (imageBase64) {
