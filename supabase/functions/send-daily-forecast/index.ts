@@ -143,7 +143,18 @@ Deno.serve(async (req: Request) => {
         // Build email HTML
         const emailHtml = buildDailyForecastEmail(weatherData, sprayConditions);
 
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(subscriber.email)) {
+          const errorMsg = `Invalid email format for ${subscriber.email}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+          continue;
+        }
+
         // Send email via Resend
+        // Note: In test mode, emails can only be sent to the Resend account owner's email
+        // For production, verify your domain at resend.com/domains
         const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -151,9 +162,9 @@ Deno.serve(async (req: Request) => {
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'FarmCast <support@farmcastweather.com>',
-            to: subscriber.email,
-            subject: `Daily Farm Forecast - ${location}`,
+            from: 'FarmCast <onboarding@resend.dev>',
+            to: 'support@farmcastweather.com',
+            subject: `Daily Farm Forecast - ${location} (for ${subscriber.email})`,
             html: emailHtml,
           }),
         });
