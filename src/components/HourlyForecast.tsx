@@ -170,13 +170,33 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
           temp: Math.round(hourlyData[i].temp + (hourlyData[i + 1].temp - hourlyData[i].temp) * ratio),
           windSpeed: Math.round(hourlyData[i].windSpeed + (hourlyData[i + 1].windSpeed - hourlyData[i].windSpeed) * ratio),
           rainChance: Math.round(hourlyData[i].rainChance + (hourlyData[i + 1].rainChance - hourlyData[i].rainChance) * ratio),
+          timestamp: currentTime,
         };
       }
     }
-    return hourlyData[0];
+    return { ...hourlyData[0], timestamp: firstTime };
+  };
+
+  const getCurrentTimeLabel = () => {
+    if (hourlyData.length < 2) return 'NOW';
+
+    const firstTime = hourlyData[0].timestamp;
+    const lastTime = hourlyData[hourlyData.length - 1].timestamp;
+    const totalDuration = lastTime - firstTime;
+    const currentTime = firstTime + (nowPosition / 100) * totalDuration;
+
+    const date = new Date(currentTime);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const period = hours >= 12 ? 'pm' : 'am';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, '0');
+
+    return `${displayHours}:${displayMinutes}${period}`;
   };
 
   const currentWeather = getCurrentWeatherAtNow();
+  const currentTimeLabel = getCurrentTimeLabel();
 
   return (
     <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-6">
@@ -311,9 +331,9 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                   pointerEvents="none"
                 />
                 <rect
-                  x={nowPosition * 20 - 25}
+                  x={nowPosition * 20 - 32}
                   y="5"
-                  width="50"
+                  width="64"
                   height="20"
                   fill="#22c55e"
                   rx="4"
@@ -328,7 +348,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                   textAnchor="middle"
                   pointerEvents="none"
                 >
-                  NOW
+                  {currentTimeLabel}
                 </text>
                 {currentWeather && (
                   <>
