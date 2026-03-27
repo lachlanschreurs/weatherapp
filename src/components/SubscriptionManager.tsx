@@ -162,8 +162,16 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const user = session.user;
 
       const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
+      const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
       if (!stripePriceId) {
         setMessage({ type: 'error', text: 'Subscription not configured. Please contact support.' });
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!stripePublishableKey) {
+        setMessage({ type: 'error', text: 'Stripe publishable key not configured. Please contact support.' });
         setIsProcessing(false);
         return;
       }
