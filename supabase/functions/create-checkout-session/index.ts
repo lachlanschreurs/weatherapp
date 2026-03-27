@@ -30,7 +30,9 @@ Deno.serve(async (req: Request) => {
     });
 
     const authHeader = req.headers.get('Authorization');
+    const apikeyHeader = req.headers.get('apikey');
     console.log('Auth header present:', !!authHeader);
+    console.log('Apikey header present:', !!apikeyHeader);
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.error('Invalid auth header');
@@ -43,13 +45,19 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabaseAdmin = createClient(
+    const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: {
+            Authorization: authHeader,
+          },
+        },
+      }
     );
 
-    const jwt = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(jwt);
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
 
     if (userError || !user) {
       console.error('Failed to verify user:', userError);
