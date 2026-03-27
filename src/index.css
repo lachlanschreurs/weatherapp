@@ -30,18 +30,37 @@
   animation: bounce-gentle 1s ease-in-out 3;
 }
 
-@keyframes vibrate {
-  0%, 100% {
-    transform: translateX(0) translateY(0);
+@keyframes drop-bounce {
+  0% {
+    transform: translateY(-20px);
+    animation-timing-function: ease-in;
   }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-3px) translateY(-2px);
+  40% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
   }
-  20%, 40%, 60%, 80% {
-    transform: translateX(3px) translateY(2px);
+  50% {
+    transform: translateY(-8px);
+    animation-timing-function: ease-in;
+  }
+  65% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  75% {
+    transform: translateY(-4px);
+    animation-timing-function: ease-in;
+  }
+  85% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
   }
 }
 
-.animate-vibrate {
-  animation: vibrate 0.5s ease-in-out infinite;
+.animate-drop-bounce {
+  animation: drop-bounce 2s ease-in-out;
+  animation-delay: 0.5s;
+  animation-fill-mode: backwards;
 }

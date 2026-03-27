@@ -400,7 +400,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                 setHasEngaged(true);
               }
             }}
-            className={`bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 group p-1 ${!hasEngaged ? 'animate-vibrate' : ''}`}
+            className={`bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 group p-1 ${!hasEngaged ? 'animate-drop-bounce' : ''}`}
           >
             <div className="relative">
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
