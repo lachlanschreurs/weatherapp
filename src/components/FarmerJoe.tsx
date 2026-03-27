@@ -68,6 +68,8 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showSubscriptionPrompt, setShowSubscriptionPrompt] = useState(false);
   const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
+  const [showBubble, setShowBubble] = useState(true);
+  const [bubbleText, setBubbleText] = useState("Got farming questions? I'm here to help!");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_FREE_MESSAGES = 10;
@@ -81,6 +83,32 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const bubbleMessages = [
+      "Got farming questions? I'm here to help!",
+      "Ask me about spray conditions!",
+      "Need pest or disease advice? Chat with me!",
+      "I can analyze photos of your crops!",
+      "Click me for personalized farm advice!"
+    ];
+
+    let currentIndex = 0;
+    const interval = setInterval(() => {
+      currentIndex = (currentIndex + 1) % bubbleMessages.length;
+      setBubbleText(bubbleMessages[currentIndex]);
+    }, 4000);
+
+    const hideTimeout = setTimeout(() => {
+      setShowBubble(false);
+      clearInterval(interval);
+    }, 20000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(hideTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -349,20 +377,43 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     <>
       {/* Floating Button */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed right-6 bottom-6 bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 z-50 group p-1"
-        >
-          <div className="relative">
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-            <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-full p-3 flex items-center gap-3">
-              <FarmerJoeAvatar size="md" />
-              <div className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 pr-0 group-hover:pr-3">
-                <span className="font-semibold text-sm whitespace-nowrap">Chat with Farmer Joe</span>
+        <div className="fixed right-6 bottom-6 z-50">
+          {showBubble && (
+            <div className="absolute bottom-full right-0 mb-4 animate-bounce-gentle">
+              <div className="relative bg-white rounded-2xl shadow-2xl px-6 py-4 max-w-[280px] border-2 border-green-300">
+                <button
+                  onClick={() => setShowBubble(false)}
+                  className="absolute -top-2 -right-2 bg-gray-600 text-white rounded-full p-1 hover:bg-gray-700 transition-colors shadow-md"
+                  aria-label="Dismiss bubble"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+                <p className="text-sm font-semibold text-gray-800 text-center leading-relaxed">
+                  {bubbleText}
+                </p>
+                <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r-2 border-b-2 border-green-300 transform rotate-45"></div>
               </div>
             </div>
-          </div>
-        </button>
+          )}
+
+          <button
+            onClick={() => {
+              setIsOpen(true);
+              setShowBubble(false);
+            }}
+            className="bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 group p-1"
+          >
+            <div className="relative">
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-full p-3 flex items-center gap-3">
+                <FarmerJoeAvatar size="md" />
+                <div className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 pr-0 group-hover:pr-3">
+                  <span className="font-semibold text-sm whitespace-nowrap">Chat with Farmer Joe</span>
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
       )}
 
       {/* Chat Window */}
