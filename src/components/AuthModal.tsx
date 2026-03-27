@@ -89,9 +89,14 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     setLoading(true);
 
     try {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address (e.g., name@example.com)');
+      }
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         if (error) throw error;
@@ -115,7 +120,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         }
 
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             data: {
@@ -299,7 +304,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Email
+              Email Address
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -308,10 +313,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                placeholder="your@email.com"
+                placeholder="name@example.com"
                 required
+                pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+                title="Please enter a valid email address (e.g., name@example.com)"
               />
             </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Use a valid email address (e.g., name@farmcastweather.com)
+            </p>
           </div>
 
           <div>

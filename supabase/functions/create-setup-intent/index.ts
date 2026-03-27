@@ -69,6 +69,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid email address format. Please use a valid email (e.g., name@example.com)" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Create or retrieve Stripe customer
     const customers = await stripe.customers.list({
       email: userEmail,

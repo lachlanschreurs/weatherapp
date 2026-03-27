@@ -74,6 +74,18 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(userEmail)) {
+      console.error('Invalid email format:', userEmail);
+      return new Response(
+        JSON.stringify({ error: "Invalid email address format. Please use a valid email (e.g., name@example.com)" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     console.log('Fetching customer ID for user:', userId);
 
     // Get or create customer

@@ -114,6 +114,13 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
         return;
       }
 
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!user.email || !emailRegex.test(user.email)) {
+        setMessage({ type: 'error', text: 'Invalid email address. Please update your account with a valid email.' });
+        setIsSaving(false);
+        return;
+      }
+
       // Check if user can enable email subscriptions
       if (!isInFreePeriod && !hasActiveFarmerJoeSubscription) {
         setMessage({
