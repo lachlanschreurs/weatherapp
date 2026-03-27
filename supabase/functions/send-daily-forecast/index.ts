@@ -30,7 +30,17 @@ Deno.serve(async (req: Request) => {
 
     const { data: subscribers, error: subError } = await supabaseAdmin
       .from('email_subscriptions')
-      .select('*')
+      .select(`
+        *,
+        profiles:user_id (
+          default_location_id,
+          saved_locations:default_location_id (
+            name,
+            latitude,
+            longitude
+          )
+        )
+      `)
       .eq('daily_forecast_enabled', true);
 
     if (subError) throw subError;
@@ -75,7 +85,28 @@ Deno.serve(async (req: Request) => {
     for (const subscriber of eligibleSubscribers) {
       try {
         console.log(`Processing subscriber: ${subscriber.email}`);
-        const location = subscriber.location || 'Sydney, Australia';
+
+        let location = 'Melbourne, Australia';
+
+        if (subscriber.location) {
+          location = subscriber.location;
+        } else if (subscriber.profiles?.saved_locations?.name) {
+          location = subscriber.profiles.saved_locations.name;
+        } else {
+          const { data: favoriteLocations } = await supabaseAdmin
+            .from('saved_locations')
+            .select('name')
+            .eq('user_id', subscriber.user_id)
+            .or('is_primary.eq.true,is_favorite.eq.true')
+            .order('is_primary', { ascending: false })
+            .order('last_accessed_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (favoriteLocations?.name) {
+            location = favoriteLocations.name;
+          }
+        }
 
         const geoResponse = await fetch(
           `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${weatherApiKey}`
