@@ -235,6 +235,14 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                     <span className="text-xs text-cyan-300 font-medium">{hour.rainChance}%</span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <Thermometer className="w-3 h-3 text-orange-400" />
+                    <span className="text-xs text-orange-300 font-medium">{hour.temp}°C</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Wind className="w-3 h-3 text-white" />
+                    <span className="text-xs text-slate-300 font-medium">{hour.windSpeed}km/h</span>
+                  </div>
+                  <div className="flex items-center gap-1">
                     <Navigation className="w-3 h-3 text-white" style={{ transform: `rotate(${hour.windDirection}deg)` }} />
                     <span className="text-xs text-slate-300 font-medium">{getWindDirectionLabel(hour.windDirection)}</span>
                   </div>
