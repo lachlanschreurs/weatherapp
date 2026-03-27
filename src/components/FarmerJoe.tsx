@@ -374,7 +374,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       {!isOpen && (
         <div className="fixed right-6 bottom-6 z-50">
           {showBubble && !hasEngaged && (
-            <div className="absolute bottom-full right-0 mb-4 animate-vibrate">
+            <div className="absolute bottom-full right-0 mb-4 animate-bounce-gentle">
               <div className="relative bg-white rounded-2xl shadow-2xl px-6 py-4 max-w-[220px] border-2 border-green-400">
                 <button
                   onClick={() => setShowBubble(false)}
@@ -400,7 +400,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                 setHasEngaged(true);
               }
             }}
-            className="bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 group p-1"
+            className={`bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 group p-1 ${!hasEngaged ? 'animate-vibrate' : ''}`}
           >
             <div className="relative">
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
