@@ -165,13 +165,13 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
       if (!stripePriceId) {
-        setMessage({ type: 'error', text: 'Subscription not configured. Please contact support.' });
+        setMessage({ type: 'error', text: 'Subscription not configured. Please contact support@farmcastweather.com' });
         setIsProcessing(false);
         return;
       }
 
       if (!stripePublishableKey) {
-        setMessage({ type: 'error', text: 'Stripe publishable key not configured. Please contact support.' });
+        setMessage({ type: 'error', text: 'Stripe publishable key not configured. Please contact support@farmcastweather.com' });
         setIsProcessing(false);
         return;
       }
@@ -293,7 +293,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         if (data.errorType === 'portal_not_activated') {
           setMessage({
             type: 'error',
-            text: 'Stripe billing portal needs to be activated. Please contact support.'
+            text: 'Stripe billing portal needs to be activated. Please contact support@farmcastweather.com'
           });
         } else {
           throw new Error(data.error || `Server error: ${response.status}`);
