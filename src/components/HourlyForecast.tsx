@@ -288,27 +288,26 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
               <g
                 onMouseDown={handleNowBarMouseDown}
-                style={{ cursor: isDraggingNow ? 'grabbing' : 'grab' }}
+                style={{ cursor: isDraggingNow ? 'grabbing' : 'pointer' }}
               >
-                <line
-                  x1={nowPosition * 20}
-                  y1="0"
-                  x2={nowPosition * 20}
-                  y2="400"
-                  stroke="#22c55e"
-                  strokeWidth="3"
-                  opacity="0.8"
-                  pointerEvents="stroke"
-                  style={{ strokeWidth: 20, opacity: 0, cursor: 'grab' }}
+                <rect
+                  x={nowPosition * 20 - 30}
+                  y="0"
+                  width="60"
+                  height="400"
+                  fill="transparent"
+                  pointerEvents="all"
+                  style={{ cursor: isDraggingNow ? 'grabbing' : 'pointer' }}
                 />
                 <line
                   x1={nowPosition * 20}
                   y1="0"
                   x2={nowPosition * 20}
                   y2="400"
-                  stroke="#22c55e"
-                  strokeWidth="3"
-                  opacity="0.8"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeDasharray="8,6"
+                  opacity="0.9"
                   pointerEvents="none"
                 />
                 <rect
