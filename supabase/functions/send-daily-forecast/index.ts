@@ -30,17 +30,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: subscribers, error: subError } = await supabaseAdmin
       .from('email_subscriptions')
-      .select(`
-        *,
-        profiles:user_id (
-          default_location_id,
-          saved_locations:default_location_id (
-            name,
-            latitude,
-            longitude
-          )
-        )
-      `)
+      .select('*')
       .eq('daily_forecast_enabled', true);
 
     if (subError) throw subError;
@@ -90,10 +80,8 @@ Deno.serve(async (req: Request) => {
 
         if (subscriber.location) {
           location = subscriber.location;
-        } else if (subscriber.profiles?.saved_locations?.name) {
-          location = subscriber.profiles.saved_locations.name;
-        } else {
-          const { data: favoriteLocations } = await supabaseAdmin
+        } else if (subscriber.user_id) {
+          const { data: favoriteLocation } = await supabaseAdmin
             .from('saved_locations')
             .select('name')
             .eq('user_id', subscriber.user_id)
@@ -103,8 +91,8 @@ Deno.serve(async (req: Request) => {
             .limit(1)
             .maybeSingle();
 
-          if (favoriteLocations?.name) {
-            location = favoriteLocations.name;
+          if (favoriteLocation?.name) {
+            location = favoriteLocation.name;
           }
         }
 
