@@ -29,55 +29,26 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const authHeader = req.headers.get('Authorization');
-    console.log('Auth header present:', !!authHeader);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (!authHeader) {
-      console.error('No Authorization header');
+    const supabaseClient = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    );
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+      console.error('Failed to verify user:', userError);
       return new Response(
-        JSON.stringify({ error: "Unauthorized", details: "Missing Authorization header. Please sign in." }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Supabase environment variables not configured');
-      throw new Error("Server configuration error");
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-
-    if (userError) {
-      console.error('Auth error:', userError.message);
-      return new Response(
-        JSON.stringify({
-          error: "Authentication failed",
-          details: "Invalid or expired session. Please sign in again."
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found from token');
-      return new Response(
-        JSON.stringify({
-          error: "Unauthorized",
-          details: "User not found. Please sign in."
-        }),
+        JSON.stringify({ error: "Unauthorized" }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
