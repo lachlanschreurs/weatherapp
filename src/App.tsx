@@ -18,6 +18,7 @@ import { PremiumTeaser } from './components/PremiumTeaser';
 import FarmerJoe from './components/FarmerJoe';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
+import { registerSession, checkSessionValidity, updateSessionActivity, deactivateSession } from './utils/sessionManager';
 import type { User } from '@supabase/supabase-js';
 
 interface WeatherData {
@@ -112,17 +113,40 @@ function App() {
   }, [location.lat, location.lon]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        // Check if this session is still valid
+        const isValid = await checkSessionValidity(session.access_token);
+
+        if (!isValid) {
+          // Session was deactivated (user logged in on another device)
+          await supabase.auth.signOut();
+          setUser(null);
+          setIsAdmin(false);
+          setShowAdminPanel(false);
+          alert('You have been logged out because you signed in on another device.');
+          return;
+        }
+
+        setUser(session.user);
         checkAdminStatus(session.user.id);
+
+        // Update session activity
+        updateSessionActivity(session.access_token);
+      } else {
+        setUser(null);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
-        setUser(session?.user ?? null);
         if (session?.user) {
+          // Register new session on sign in
+          if (event === 'SIGNED_IN') {
+            await registerSession(session.access_token, session.user.id);
+          }
+
+          setUser(session.user);
           checkAdminStatus(session.user.id);
 
           // Only send welcome notification on actual signup, not every login
@@ -130,6 +154,15 @@ function App() {
             processWeatherNotifications(weather);
           }
         } else {
+          // Deactivate session on sign out
+          if (event === 'SIGNED_OUT') {
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            if (currentSession?.access_token) {
+              await deactivateSession(currentSession.access_token);
+            }
+          }
+
+          setUser(null);
           setIsAdmin(false);
           setShowAdminPanel(false);
         }
@@ -144,7 +177,31 @@ function App() {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    return () => subscription.unsubscribe();
+    // Periodic session validity check (every 30 seconds)
+    const sessionCheckInterval = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const isValid = await checkSessionValidity(session.access_token);
+
+        if (!isValid) {
+          // Session was deactivated on another device
+          clearInterval(sessionCheckInterval);
+          await supabase.auth.signOut();
+          setUser(null);
+          setIsAdmin(false);
+          setShowAdminPanel(false);
+          alert('You have been logged out because you signed in on another device.');
+        } else {
+          // Update last activity
+          await updateSessionActivity(session.access_token);
+        }
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(sessionCheckInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
