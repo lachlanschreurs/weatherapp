@@ -476,6 +476,16 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                         <p className="text-2xl font-bold text-green-600 mb-1">$5.99<span className="text-sm text-gray-600">/month</span></p>
                         <p className="text-xs text-gray-500">3 month free trial • cancel anytime</p>
                       </div>
+
+                      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4">
+                        <p className="text-sm font-bold text-blue-900 mb-1">
+                          No Charge Until Trial Ends
+                        </p>
+                        <p className="text-xs text-blue-800">
+                          Start your 3-month free trial today. You will NOT be charged anything until the trial period ends. Cancel anytime before the trial ends to avoid any charges.
+                        </p>
+                      </div>
+
                       <ul className="space-y-2 mb-4">
                         <li className="flex items-center gap-2 text-sm text-gray-700">
                           <Check className="w-4 h-4 text-green-600" />
@@ -509,7 +519,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             Processing...
                           </>
                         ) : (
-                          'Unlock Farmer Joe Premium'
+                          'Start 3-Month Free Trial'
                         )}
                       </button>
                       <p className="text-xs text-center text-gray-500">
