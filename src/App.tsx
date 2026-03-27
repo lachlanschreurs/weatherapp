@@ -19,6 +19,8 @@ import FarmerJoe from './components/FarmerJoe';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import { registerSession, checkSessionValidity, updateSessionActivity, deactivateSession } from './utils/sessionManager';
+import { getFavoriteLocation } from './utils/savedLocations';
+import { getUserLocation } from './utils/geolocation';
 import type { User } from '@supabase/supabase-js';
 
 interface WeatherData {
@@ -84,6 +86,7 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [appError, setAppError] = useState<string | null>(null);
+  const [hasLoadedInitialLocation, setHasLoadedInitialLocation] = useState(false);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -133,8 +136,17 @@ function App() {
 
         // Update session activity
         updateSessionActivity(session.access_token);
+
+        // Load favorite location
+        if (!hasLoadedInitialLocation) {
+          loadUserLocation(session.user.id);
+        }
       } else {
         setUser(null);
+        // Load geolocation for non-authenticated users
+        if (!hasLoadedInitialLocation) {
+          loadGuestLocation();
+        }
       }
     });
 
@@ -144,6 +156,8 @@ function App() {
           // Register new session on sign in
           if (event === 'SIGNED_IN') {
             await registerSession(session.access_token, session.user.id);
+            // Load favorite location on sign in
+            loadUserLocation(session.user.id);
           }
 
           setUser(session.user);
@@ -160,6 +174,8 @@ function App() {
             if (currentSession?.access_token) {
               await deactivateSession(currentSession.access_token);
             }
+            // Load geolocation for guest users
+            loadGuestLocation();
           }
 
           setUser(null);
@@ -204,6 +220,29 @@ function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadUserLocation = async (userId: string) => {
+    try {
+      const favoriteLocation = await getFavoriteLocation(userId);
+      if (favoriteLocation) {
+        setLocation(favoriteLocation);
+        setHasLoadedInitialLocation(true);
+      }
+    } catch (error) {
+      console.error('Error loading favorite location:', error);
+    }
+  };
+
+  const loadGuestLocation = async () => {
+    try {
+      const userLocation = await getUserLocation();
+      setLocation(userLocation);
+      setHasLoadedInitialLocation(true);
+    } catch (error) {
+      console.error('Error getting user location:', error);
+      setHasLoadedInitialLocation(true);
+    }
+  };
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
@@ -657,6 +696,7 @@ function App() {
           <LocationSearch
             onLocationSelect={handleLocationSelect}
             currentLocation={location.name}
+            userId={user?.id}
           />
         </div>
 

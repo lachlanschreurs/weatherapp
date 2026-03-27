@@ -1,0 +1,46 @@
+import { Location } from '../components/LocationSearch';
+
+export async function getCurrentPosition(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      timeout: 10000,
+      maximumAge: 300000,
+      enableHighAccuracy: false,
+    });
+  });
+}
+
+export async function reverseGeocode(lat: number, lon: number): Promise<Location> {
+  const apiKey = '205a644e0f57ecf98260a957076e46db';
+  const response = await fetch(
+    `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to get location name');
+  }
+
+  const data = await response.json();
+  if (data.length === 0) {
+    throw new Error('Location not found');
+  }
+
+  const place = data[0];
+  return {
+    name: place.name,
+    lat: place.lat,
+    lon: place.lon,
+    country: place.country,
+    state: place.state,
+  };
+}
+
+export async function getUserLocation(): Promise<Location> {
+  const position = await getCurrentPosition();
+  return reverseGeocode(position.coords.latitude, position.coords.longitude);
+}
