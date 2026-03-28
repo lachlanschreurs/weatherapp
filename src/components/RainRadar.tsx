@@ -117,7 +117,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 9 : 8;
+      const zoom = isExpanded ? 11 : 10;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
@@ -135,10 +135,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       L.marker([lat, lon], {
         icon: L.divIcon({
           className: 'location-marker',
-          html: '<div style="background: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px #ef4444, 0 2px 4px rgba(0,0,0,0.3);"></div>',
-          iconSize: [12, 12],
-          iconAnchor: [6, 6]
+          html: '<div style="background: #ef4444; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 3px #ef4444, 0 3px 8px rgba(0,0,0,0.4);"></div>',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
         })
+      }).addTo(map);
+
+      L.circle([lat, lon], {
+        color: '#ef4444',
+        fillColor: '#ef4444',
+        fillOpacity: 0.1,
+        radius: 5000,
+        weight: 2,
+        opacity: 0.3
       }).addTo(map);
 
       mapInstanceRef.current = {
@@ -168,7 +177,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     const frame = radarFrames[currentFrame];
     if (!frame) return;
 
-    const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+    const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`;
 
     L.tileLayer(tileUrl, {
       opacity: opacity,
@@ -275,20 +284,28 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                       )}
                     </div>
 
-                    <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-                      <div className="text-xs font-semibold text-gray-700 mb-2">Precipitation</div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-2.5 rounded" style={{ background: 'rgba(140, 200, 255, 0.8)' }}></div>
-                          <span className="text-xs text-gray-600">Light</span>
+                    <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200 max-w-xs">
+                      <div className="text-xs font-bold text-gray-800 mb-2.5">Rainfall Intensity</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="w-8 h-3 rounded" style={{ background: 'rgba(150, 220, 255, 0.85)' }}></div>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Light</span>
+                          <span className="text-xs text-gray-500">0.5-2 mm/h</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-2.5 rounded" style={{ background: 'rgba(0, 150, 255, 0.8)' }}></div>
-                          <span className="text-xs text-gray-600">Moderate</span>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="w-8 h-3 rounded" style={{ background: 'rgba(0, 150, 255, 0.85)' }}></div>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Moderate</span>
+                          <span className="text-xs text-gray-500">2-10 mm/h</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-2.5 rounded" style={{ background: 'rgba(255, 100, 0, 0.8)' }}></div>
-                          <span className="text-xs text-gray-600">Heavy</span>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="w-8 h-3 rounded" style={{ background: 'rgba(255, 200, 0, 0.85)' }}></div>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Heavy</span>
+                          <span className="text-xs text-gray-500">10-50 mm/h</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="w-8 h-3 rounded" style={{ background: 'rgba(255, 100, 0, 0.85)' }}></div>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Intense</span>
+                          <span className="text-xs text-gray-500">&gt;50 mm/h</span>
                         </div>
                       </div>
                     </div>
