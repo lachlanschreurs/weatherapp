@@ -43,8 +43,9 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         from: 'FarmCast <support@farmcastweather.com>',
         to: email,
-        subject: 'Welcome to FarmCast - Your AI Farm Weather Assistant',
+        subject: 'Welcome to FarmCast - Your Farm Weather Assistant',
         html: emailHtml,
+        text: buildWelcomeEmailText(location || 'Sydney, Australia'),
       }),
     });
 
@@ -82,61 +83,115 @@ function buildWelcomeEmail(location: string): string {
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 40px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { background: #f9fafb; padding: 30px; }
-    .feature-box { background: white; padding: 20px; margin: 15px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #059669; }
-    .cta-button { display: inline-block; background: #059669; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
-    .footer { background: #374151; color: #9ca3af; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9fafb; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; background: white; }
+    .header { background: #059669; color: white; padding: 40px 20px; text-align: center; }
+    .content { padding: 30px 20px; }
+    .feature-box { background: #f9fafb; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #059669; }
+    .cta-button { display: inline-block; background: #059669; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .footer { background: #f3f4f6; color: #6b7280; padding: 20px; text-align: center; font-size: 12px; }
+    .footer a { color: #059669; text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🌾 Welcome to FarmCast!</h1>
-      <p style="font-size: 18px; margin-top: 10px;">Your AI-Powered Farm Weather Assistant</p>
+      <h1 style="margin: 0 0 10px 0;">Welcome to FarmCast</h1>
+      <p style="font-size: 16px; margin: 0;">Agricultural Weather Intelligence</p>
     </div>
 
     <div class="content">
-      <h2>Thanks for joining us!</h2>
-      <p>We're excited to have you on board. FarmCast is designed to help you make better farming decisions with accurate weather forecasts and AI-powered insights.</p>
+      <p>Thank you for joining FarmCast. We're here to help you make better farming decisions with accurate weather forecasts and intelligent insights.</p>
 
       <div class="feature-box">
-        <h3>📧 What You'll Receive</h3>
+        <h3 style="margin-top: 0;">What You'll Receive</h3>
         <ul style="margin: 10px 0; padding-left: 20px;">
-          <li><strong>Daily Weather Forecasts</strong> - Delivered at 7:00 AM with spray conditions and farming recommendations</li>
-          <li><strong>Weekly Soil Health Reports</strong> - Comprehensive analysis of your moisture probe data (when you upload probe information)</li>
-          <li><strong>Real-time Alerts</strong> - Important weather warnings and optimal spray windows</li>
+          <li>Daily Weather Forecasts - Delivered at 7:00 AM with spray conditions and farming recommendations</li>
+          <li>Weekly Soil Health Reports - Comprehensive analysis of your moisture probe data</li>
+          <li>Real-time Weather Alerts - Important weather warnings and optimal spray windows</li>
         </ul>
       </div>
 
       <div class="feature-box">
-        <h3>🎁 3-Month Free Trial</h3>
-        <p>Enjoy <strong>3 months of complimentary email reports</strong> to experience the full power of FarmCast. After your trial, email reports are available with our Farmer Joe AI subscription at just $5.99/month.</p>
+        <h3 style="margin-top: 0;">3-Month Trial Included</h3>
+        <p>Enjoy 3 months of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month.</p>
       </div>
 
       <div class="feature-box">
-        <h3>🚜 Your Location</h3>
-        <p>We've set your default location to <strong>${location}</strong>. You can change this anytime in your dashboard.</p>
+        <h3 style="margin-top: 0;">Your Location</h3>
+        <p>Default location: <strong>${location}</strong></p>
+        <p style="font-size: 14px; color: #6b7280; margin: 5px 0 0 0;">You can change this anytime in your dashboard.</p>
       </div>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="https://farmcast.app" class="cta-button">Visit Your Dashboard</a>
+        <a href="https://farmcast.app" class="cta-button">View Dashboard</a>
       </div>
 
-      <p style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-        💡 <strong>Pro Tip:</strong> Chat with Farmer Joe, our AI assistant, for personalized farming advice based on current weather conditions!
+      <p style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px; font-size: 14px;">
+        <strong>Tip:</strong> Chat with Farmer Joe for personalized farming advice based on current weather conditions.
       </p>
     </div>
 
     <div class="footer">
-      <p><strong>FarmCast</strong> - Smarter Farming Through Better Weather Intelligence</p>
-      <p style="margin-top: 10px;">You're receiving this as a new FarmCast member. Your daily forecasts start tomorrow at 7:00 AM.</p>
+      <p><strong>FarmCast Weather</strong></p>
+      <p style="margin: 10px 0;">You're receiving this as a new FarmCast member.</p>
+      <p style="margin: 10px 0;">
+        <a href="https://farmcast.app/preferences">Email Preferences</a> |
+        <a href="https://farmcast.app/unsubscribe">Unsubscribe</a>
+      </p>
+      <p style="margin: 15px 0 0 0; color: #9ca3af;">
+        FarmCast Weather Services<br>
+        This email was sent to an active FarmCast account.
+      </p>
     </div>
   </div>
 </body>
 </html>
+  `.trim();
+}
+
+function buildWelcomeEmailText(location: string): string {
+  return `
+Welcome to FarmCast - Agricultural Weather Intelligence
+
+Thank you for joining FarmCast. We're here to help you make better farming decisions with accurate weather forecasts and intelligent insights.
+
+WHAT YOU'LL RECEIVE:
+
+- Daily Weather Forecasts
+  Delivered at 7:00 AM with spray conditions and farming recommendations
+
+- Weekly Soil Health Reports
+  Comprehensive analysis of your moisture probe data
+
+- Real-time Weather Alerts
+  Important weather warnings and optimal spray windows
+
+3-MONTH TRIAL INCLUDED:
+
+Enjoy 3 months of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month.
+
+YOUR LOCATION:
+
+Default location: ${location}
+You can change this anytime in your dashboard.
+
+Visit your dashboard: https://farmcast.app
+
+Tip: Chat with Farmer Joe for personalized farming advice based on current weather conditions.
+
+---
+
+FarmCast Weather
+You're receiving this as a new FarmCast member.
+
+Manage preferences: https://farmcast.app/preferences
+Unsubscribe: https://farmcast.app/unsubscribe
+
+FarmCast Weather Services
+This email was sent to an active FarmCast account.
   `.trim();
 }

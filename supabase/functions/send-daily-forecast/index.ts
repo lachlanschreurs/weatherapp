@@ -164,8 +164,9 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             from: 'FarmCast Weather <noreply@farmcastweather.com>',
             to: subscriber.email,
-            subject: `Your Daily Farm Forecast - ${name}`,
+            subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
+            text: buildDailyForecastEmailText(weatherData, forecastData.list, name, country),
           }),
         });
 
@@ -670,14 +671,85 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
 
     <div class="footer">
       <div class="footer-brand">FarmCast Weather</div>
-      <p>AI-Powered Agricultural Weather Intelligence</p>
+      <p>Agricultural Weather Intelligence</p>
       <p style="margin-top: 10px; font-size: 11px;">
         <a href="https://farmcastweather.com">Visit Dashboard</a> ·
-        <a href="https://farmcastweather.com/settings">Manage Preferences</a>
+        <a href="https://farmcastweather.com/settings">Manage Preferences</a> ·
+        <a href="https://farmcastweather.com/unsubscribe">Unsubscribe</a>
+      </p>
+      <p style="margin-top: 10px; font-size: 10px;">
+        FarmCast Weather Services<br>
+        Sent to subscribers of daily weather forecasts
       </p>
     </div>
   </div>
 </body>
 </html>
+  `.trim();
+}
+
+function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], cityName: string, country: string): string {
+  const current = weatherData.current;
+  const forecast = weatherData.forecast.forecastday;
+
+  const deltaT = calculateDeltaT(current.temp_c, current.humidity);
+  const deltaTCond = getDeltaTCondition(deltaT);
+
+  const rainToday = forecast[0].day?.totalprecip_mm || 0;
+  const sprayCond = getSprayCondition(current.wind_kph, rainToday);
+
+  const rainChance = forecast[0].day?.daily_chance_of_rain || 0;
+  const windDir = degreesToDirection(current.wind_degree);
+
+  const next24Hours = hourlyForecast.slice(0, 8);
+  let bestSprayWindow = 'No ideal window';
+  let bestWindowTime = '';
+
+  for (const hour of next24Hours) {
+    const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
+    const hourWindSpeed = hour.wind.speed * 3.6;
+    if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
+        hourDeltaT >= 2 && hourDeltaT <= 8 &&
+        hour.main.temp >= 8 && hour.main.temp <= 30) {
+      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+      bestSprayWindow = 'Ideal';
+      bestWindowTime = time;
+      break;
+    }
+  }
+
+  return `
+FARMCAST DAILY FORECAST
+${cityName}, ${country}
+${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+
+CURRENT CONDITIONS:
+- Temperature: ${Math.round(current.temp_c)}°C (Feels like ${Math.round(current.feelslike_c)}°C)
+- Rainfall: ${rainToday.toFixed(1)}mm (${rainChance}% chance)
+- Wind: ${Math.round(current.wind_kph)} km/h ${windDir}
+- Humidity: ${current.humidity}%
+- Conditions: ${current.condition.text}
+
+SPRAY WINDOW ANALYSIS:
+- Spray Conditions: ${sprayCond.rating}
+- Delta T: ${deltaT.toFixed(1)}°C - ${deltaTCond.rating}
+- Best Window Today: ${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor conditions'}
+
+24-HOUR FORECAST:
+${next24Hours.slice(0, 8).map((hour: any) => {
+  const hourTime = new Date(hour.dt * 1000);
+  const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
+  const temp = Math.round(hour.main.temp);
+  const rainProb = Math.round((hour.pop || 0) * 100);
+  const weatherMain = hour.weather[0]?.main || 'Clear';
+  return `${timeStr}: ${temp}°C, ${weatherMain}, ${rainProb}% rain`;
+}).join('\n')}
+
+Visit your dashboard: https://farmcastweather.com
+Manage preferences: https://farmcastweather.com/settings
+Unsubscribe: https://farmcastweather.com/unsubscribe
+
+FarmCast Weather Services
+Sent to subscribers of daily weather forecasts
   `.trim();
 }

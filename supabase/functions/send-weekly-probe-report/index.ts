@@ -137,8 +137,9 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify({
             from: 'FarmCast <support@farmcastweather.com>',
             to: subscriber.email,
-            subject: 'Weekly Soil Health Report - FarmCast',
+            subject: 'Weekly Soil Health Report',
             html: emailHtml,
+            text: buildWeeklyProbeReportEmailText(reportData),
           }),
         });
 
@@ -271,8 +272,8 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🌱 Weekly Soil Health Report</h1>
-      <p>${weekStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+      <h1 style="margin: 0 0 10px 0;">Weekly Soil Health Report</h1>
+      <p style="margin: 0;">${weekStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
     </div>
 
     <div class="content">
@@ -292,7 +293,7 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
 
             ${probe.temperature.count > 0 ? `
               <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px;">🌡️ Temperature</h4>
+                <h4 style="margin-bottom: 10px;">Temperature</h4>
                 <div class="metric">
                   <div class="metric-label">Average</div>
                   <div class="metric-value">${(probe.temperature.sum / probe.temperature.count).toFixed(1)}°C</div>
@@ -310,7 +311,7 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
 
             ${probe.moisture.count > 0 ? `
               <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px;">💧 Soil Moisture</h4>
+                <h4 style="margin-bottom: 10px;">Soil Moisture</h4>
                 <div class="metric">
                   <div class="metric-label">Average</div>
                   <div class="metric-value ${getMoistureStatus(probe.moisture.sum / probe.moisture.count)}">${(probe.moisture.sum / probe.moisture.count).toFixed(1)}%</div>
@@ -331,7 +332,7 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
 
             ${probe.ph.count > 0 ? `
               <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px;">⚖️ pH Level</h4>
+                <h4 style="margin-bottom: 10px;">pH Level</h4>
                 <div class="metric">
                   <div class="metric-label">Average</div>
                   <div class="metric-value ${getPhStatus(probe.ph.sum / probe.ph.count)}">${(probe.ph.sum / probe.ph.count).toFixed(2)}</div>
@@ -352,7 +353,7 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
 
             ${probe.ec.count > 0 ? `
               <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px;">⚡ Electrical Conductivity</h4>
+                <h4 style="margin-bottom: 10px;">Electrical Conductivity</h4>
                 <div class="metric">
                   <div class="metric-label">Average</div>
                   <div class="metric-value">${(probe.ec.sum / probe.ec.count).toFixed(2)} mS/cm</div>
@@ -377,16 +378,23 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
         </div>
       `}
 
-      <div style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-        💡 <strong>Tip:</strong> Regular monitoring of soil conditions helps optimize irrigation, fertilization, and crop health.
+      <div style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px; font-size: 14px;">
+        <strong>Tip:</strong> Regular monitoring of soil conditions helps optimize irrigation, fertilization, and crop health.
         Check your FarmCast dashboard for real-time updates.
       </div>
     </div>
 
     <div class="footer">
-      <p>FarmCast - Your AI-Powered Farm Management Assistant</p>
-      <p>You're receiving this because you subscribed to weekly probe reports.</p>
-      <p><a href="#" style="color: #60a5fa;">Manage Preferences</a> | <a href="#" style="color: #60a5fa;">Unsubscribe</a></p>
+      <p><strong>FarmCast Weather</strong></p>
+      <p style="margin: 10px 0;">You're receiving weekly soil health reports as part of your subscription.</p>
+      <p style="margin: 10px 0;">
+        <a href="https://farmcastweather.com/settings" style="color: #60a5fa;">Manage Preferences</a> |
+        <a href="https://farmcastweather.com/unsubscribe" style="color: #60a5fa;">Unsubscribe</a>
+      </p>
+      <p style="margin: 15px 0 0 0; color: #9ca3af; font-size: 11px;">
+        FarmCast Weather Services<br>
+        Sent to subscribers of weekly probe reports
+      </p>
     </div>
   </div>
 </body>
@@ -401,9 +409,9 @@ function getMoistureStatus(moisture: number): string {
 }
 
 function getMoistureRecommendation(moisture: number): string {
-  if (moisture < 20) return '⚠️ Low moisture detected. Consider irrigation.';
-  if (moisture > 80) return '⚠️ High moisture detected. Monitor drainage.';
-  return '✅ Moisture levels are optimal.';
+  if (moisture < 20) return 'Low moisture detected. Consider irrigation.';
+  if (moisture > 80) return 'High moisture detected. Monitor drainage.';
+  return 'Moisture levels are optimal.';
 }
 
 function getPhStatus(ph: number): string {
@@ -413,9 +421,84 @@ function getPhStatus(ph: number): string {
 }
 
 function getPhRecommendation(ph: number): string {
-  if (ph < 5.5) return '⚠️ Soil is too acidic. Consider lime application.';
-  if (ph > 7.5) return '⚠️ Soil is too alkaline. Consider sulfur application.';
-  if (ph < 6.0) return '📊 Slightly acidic. Monitor for sensitive crops.';
-  if (ph > 7.0) return '📊 Slightly alkaline. Monitor for sensitive crops.';
-  return '✅ pH levels are optimal for most crops.';
+  if (ph < 5.5) return 'Soil is too acidic. Consider lime application.';
+  if (ph > 7.5) return 'Soil is too alkaline. Consider sulfur application.';
+  if (ph < 6.0) return 'Slightly acidic. Monitor for sensitive crops.';
+  if (ph > 7.0) return 'Slightly alkaline. Monitor for sensitive crops.';
+  return 'pH levels are optimal for most crops.';
+}
+
+function buildWeeklyProbeReportEmailText(reportData: any): string {
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  const weekEnd = new Date();
+
+  let text = `
+WEEKLY SOIL HEALTH REPORT
+${weekStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' })}
+
+OVERVIEW:
+- Active Probes: ${reportData.probeCount}
+- Total Readings This Week: ${reportData.totalReadings}
+- Average Readings Per Day: ${(reportData.totalReadings / 7).toFixed(1)}
+
+`;
+
+  if (reportData.probeStats.length > 0) {
+    text += 'PROBE DETAILS:\n\n';
+
+    reportData.probeStats.forEach((probe: any) => {
+      text += `${probe.name}\n`;
+      text += `${probe.readings} readings this week\n\n`;
+
+      if (probe.temperature.count > 0) {
+        text += `Temperature:\n`;
+        text += `  Average: ${(probe.temperature.sum / probe.temperature.count).toFixed(1)}°C\n`;
+        text += `  Min: ${probe.temperature.min.toFixed(1)}°C\n`;
+        text += `  Max: ${probe.temperature.max.toFixed(1)}°C\n\n`;
+      }
+
+      if (probe.moisture.count > 0) {
+        const avgMoisture = probe.moisture.sum / probe.moisture.count;
+        text += `Soil Moisture:\n`;
+        text += `  Average: ${avgMoisture.toFixed(1)}%\n`;
+        text += `  Min: ${probe.moisture.min.toFixed(1)}%\n`;
+        text += `  Max: ${probe.moisture.max.toFixed(1)}%\n`;
+        text += `  ${getMoistureRecommendation(avgMoisture).replace(/⚠️|✅/g, '').trim()}\n\n`;
+      }
+
+      if (probe.ph.count > 0) {
+        const avgPh = probe.ph.sum / probe.ph.count;
+        text += `pH Level:\n`;
+        text += `  Average: ${avgPh.toFixed(2)}\n`;
+        text += `  Min: ${probe.ph.min.toFixed(2)}\n`;
+        text += `  Max: ${probe.ph.max.toFixed(2)}\n`;
+        text += `  ${getPhRecommendation(avgPh)}\n\n`;
+      }
+
+      if (probe.ec.count > 0) {
+        text += `Electrical Conductivity:\n`;
+        text += `  Average: ${(probe.ec.sum / probe.ec.count).toFixed(2)} mS/cm\n`;
+        text += `  Min: ${probe.ec.min.toFixed(2)} mS/cm\n`;
+        text += `  Max: ${probe.ec.max.toFixed(2)} mS/cm\n\n`;
+      }
+
+      text += '---\n\n';
+    });
+  } else {
+    text += 'No probe data available for this week. Make sure your probe APIs are configured and actively sending data.\n\n';
+  }
+
+  text += `
+Tip: Regular monitoring of soil conditions helps optimize irrigation, fertilization, and crop health.
+
+Visit dashboard: https://farmcastweather.com
+Manage preferences: https://farmcastweather.com/settings
+Unsubscribe: https://farmcastweather.com/unsubscribe
+
+FarmCast Weather Services
+Sent to subscribers of weekly probe reports
+  `.trim();
+
+  return text;
 }
