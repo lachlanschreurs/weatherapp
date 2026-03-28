@@ -78,9 +78,7 @@ Deno.serve(async (req: Request) => {
 
         let location = 'Melbourne, Australia';
 
-        if (subscriber.location) {
-          location = subscriber.location;
-        } else if (subscriber.user_id) {
+        if (subscriber.user_id) {
           const { data: favoriteLocation } = await supabaseAdmin
             .from('saved_locations')
             .select('name')
@@ -93,7 +91,11 @@ Deno.serve(async (req: Request) => {
 
           if (favoriteLocation?.name) {
             location = favoriteLocation.name;
+          } else if (subscriber.location && subscriber.location !== 'Sydney, Australia') {
+            location = subscriber.location;
           }
+        } else if (subscriber.location && subscriber.location !== 'Sydney, Australia') {
+          location = subscriber.location;
         }
 
         const geoResponse = await fetch(
