@@ -99,10 +99,13 @@ Deno.serve(async (req: Request) => {
       customerId = customer.id;
     }
 
-    // Create setup intent for future payment
+    // Create setup intent for future payment with Apple Pay support
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      payment_method_types: ["card"],
+      payment_method_types: ["card", "link"],
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         supabase_user_id: user.id,
       },

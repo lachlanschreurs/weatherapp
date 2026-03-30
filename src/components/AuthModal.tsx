@@ -30,6 +30,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const stripeRef = useRef<any>(null);
   const elementsRef = useRef<any>(null);
   const [stripeInitialized, setStripeInitialized] = useState(false);
+  const [setupIntentClientSecret, setSetupIntentClientSecret] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -77,9 +78,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
     try {
       stripeRef.current = window.Stripe(publishableKey);
+
       const elements = stripeRef.current.elements({
         mode: 'setup',
         currency: 'aud',
+        setupFutureUsage: 'off_session',
+        paymentMethodCreation: 'manual',
         appearance: {
           theme: 'stripe',
           variables: {
@@ -97,11 +101,17 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       elementsRef.current = elements;
 
       setTimeout(() => {
-        const cardElement = elements.create('payment');
+        const paymentElement = elements.create('payment', {
+          layout: 'tabs',
+          wallets: {
+            applePay: 'auto',
+            googlePay: 'auto'
+          }
+        });
         const container = document.getElementById('card-element');
         if (container) {
-          cardElement.mount('#card-element');
-          cardElementRef.current = cardElement;
+          paymentElement.mount('#card-element');
+          cardElementRef.current = paymentElement;
           setStripeInitialized(true);
         }
       }, 100);
@@ -208,10 +218,18 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
           const { clientSecret, customerId } = await response.json();
 
-          const { error: confirmError } = await stripeRef.current.confirmSetup({
+          const { error: paymentMethodError, paymentMethod } = await stripeRef.current.createPaymentMethod({
             elements: elementsRef.current,
+          });
+
+          if (paymentMethodError) {
+            throw new Error(paymentMethodError.message);
+          }
+
+          const { error: confirmError } = await stripeRef.current.confirmSetup({
             clientSecret,
             confirmParams: {
+              payment_method: paymentMethod.id,
               return_url: window.location.origin,
             },
             redirect: 'if_required',
