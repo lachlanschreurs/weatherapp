@@ -612,7 +612,25 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
         </div>
       </div>
 
-      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+      <div class="spray-analysis">
+        <div class="section-header">Farm Operations Analysis</div>
+        <div class="spray-metrics">
+          <div class="spray-metric">
+            <span class="metric-label">🌾 Best Spray Window</span>
+            <span class="metric-badge" style="background: ${bestSprayWindow === 'Ideal' ? '#047857' : '#6b7280'};">
+              ${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor'}
+            </span>
+          </div>
+          <div class="spray-metric">
+            <span class="metric-label">Delta T</span>
+            <span class="metric-badge" style="background: ${deltaTCond.color};">${deltaT.toFixed(1)}°C - ${deltaTCond.rating}</span>
+          </div>
+          ${getPlantingConditions(weatherData, next24Hours)}
+          ${getIrrigationAdvice(rainToday, rainChance, current.temp_c, current.humidity)}
+        </div>
+      </div>
+
+      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: 10px; padding: 16px; margin-top: 20px;">
         <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
           💧 Total Rainfall Expected
         </div>
@@ -623,53 +641,6 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
           ⏰ ${rainTimingText}
         </div>
       </div>
-
-      <div class="spray-analysis">
-        <div class="section-header">Spray Window Analysis</div>
-        <div class="spray-metrics">
-          <div class="spray-metric">
-            <span class="metric-label">Spray Conditions</span>
-            <span class="metric-badge" style="background: ${sprayCond.color};">${sprayCond.rating}</span>
-          </div>
-          <div class="spray-metric">
-            <span class="metric-label">Delta T</span>
-            <span class="metric-badge" style="background: ${deltaTCond.color};">${deltaT.toFixed(1)}°C - ${deltaTCond.rating}</span>
-          </div>
-          <div class="spray-metric">
-            <span class="metric-label">Best Window Today</span>
-            <span class="metric-badge" style="background: ${bestSprayWindow === 'Ideal' ? '#047857' : '#6b7280'};">
-              ${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="forecast-section">
-        <div class="section-header">24-Hour Forecast</div>
-        <div class="forecast-grid">
-          ${next24Hours.slice(0, 8).map((hour: any, index: number) => {
-            const hourTime = new Date(hour.dt * 1000);
-            const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-            const temp = Math.round(hour.temp);
-            const rainProb = Math.round((hour.pop || 0) * 100);
-            const weatherMain = hour.weather[0]?.main || 'Clear';
-            const icon = weatherMain === 'Rain' ? '🌧️' :
-                        weatherMain === 'Clouds' ? '⛅' :
-                        weatherMain === 'Clear' ? '☀️' : '🌤️';
-
-            return `
-              <div class="forecast-card">
-                <div class="forecast-time">${timeStr}</div>
-                <div class="forecast-icon">${icon}</div>
-                <div class="forecast-temp">${temp}°</div>
-                <div class="forecast-rain">${rainProb}% Rain</div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-
-      ${generate48HourGraph(hourlyForecast)}
     </div>
 
     <div class="footer">
@@ -691,83 +662,62 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
   `.trim();
 }
 
-function generate48HourGraph(hourlyForecast: any[]): string {
-  const hours48 = hourlyForecast.slice(0, 48);
+function getPlantingConditions(weatherData: any, hourlyForecast: any[]): string {
+  const todayForecast = weatherData.forecast.forecastday[0].day;
+  const highTemp = todayForecast?.maxtemp_c || 0;
+  const lowTemp = todayForecast?.mintemp_c || 0;
+  const rainToday = todayForecast?.totalprecip_mm || 0;
+  const windSpeed = weatherData.current.wind_kph;
 
-  const temps = hours48.map((h: any) => Math.round(h.temp));
-  const minTemp = Math.min(...temps);
-  const maxTemp = Math.max(...temps);
-  const tempRange = maxTemp - minTemp;
+  let rating = 'Good';
+  let color = '#059669';
+  let bgColor = '#d1fae5';
 
-  const graphHeight = 180;
-  const graphWidth = 100;
-
-  const points = hours48.map((hour: any, index: number) => {
-    const temp = Math.round(hour.temp);
-    const x = (index / 47) * graphWidth;
-    const y = graphHeight - ((temp - minTemp) / tempRange) * (graphHeight - 20);
-    return `${x},${y}`;
-  }).join(' ');
-
-  const labels = [];
-  for (let i = 0; i < 48; i += 6) {
-    const hour = hours48[i];
-    const hourTime = new Date(hour.dt * 1000);
-    const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-    const x = (i / 47) * graphWidth;
-    labels.push({ x, timeStr, temp: Math.round(hour.temp) });
+  if (rainToday > 5 || windSpeed > 25) {
+    rating = 'Poor';
+    color = '#dc2626';
+    bgColor = '#fee2e2';
+  } else if (highTemp > 35 || lowTemp < 5 || rainToday > 2) {
+    rating = 'Moderate';
+    color = '#f59e0b';
+    bgColor = '#fef3c7';
+  } else if (highTemp >= 15 && highTemp <= 28 && rainToday < 2 && windSpeed < 15) {
+    rating = 'Excellent';
+    color = '#059669';
+    bgColor = '#d1fae5';
   }
 
   return `
-    <div class="forecast-section">
-      <div class="section-header">48-Hour Temperature Forecast</div>
-      <div style="background: white; border: 2px solid #047857; border-radius: 10px; padding: 20px; overflow-x: auto;">
-        <svg viewBox="0 0 100 200" style="width: 100%; height: auto; min-height: 200px;">
-          <defs>
-            <linearGradient id="tempGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:#ef4444;stop-opacity:0.2" />
-              <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.2" />
-            </linearGradient>
-          </defs>
+    <div class="spray-metric">
+      <span class="metric-label">🌱 Planting Conditions</span>
+      <span class="metric-badge" style="background: ${color};">${rating}</span>
+    </div>
+  `;
+}
 
-          <polyline
-            fill="none"
-            stroke="#047857"
-            stroke-width="0.5"
-            points="${points}"
-          />
+function getIrrigationAdvice(rainToday: number, rainChance: number, temp: number, humidity: number): string {
+  let advice = 'Not Needed';
+  let color = '#6b7280';
+  let bgColor = '#f3f4f6';
 
-          <polyline
-            fill="url(#tempGradient)"
-            stroke="none"
-            points="${points} ${graphWidth},${graphHeight} 0,${graphHeight}"
-          />
+  const evapotranspiration = temp > 25 && humidity < 60;
 
-          ${hours48.map((hour: any, index: number) => {
-            const temp = Math.round(hour.temp);
-            const x = (index / 47) * graphWidth;
-            const y = graphHeight - ((temp - minTemp) / tempRange) * (graphHeight - 20);
-            return `<circle cx="${x}" cy="${y}" r="0.4" fill="#047857" />`;
-          }).join('')}
+  if (rainToday < 5 && rainChance < 30) {
+    if (evapotranspiration) {
+      advice = 'Recommended';
+      color = '#2563eb';
+      bgColor = '#dbeafe';
+    } else if (rainToday < 2) {
+      advice = 'Consider';
+      color = '#f59e0b';
+      bgColor = '#fef3c7';
+    }
+  }
 
-          ${labels.map((label: any) => `
-            <text x="${label.x}" y="${graphHeight + 8}"
-                  text-anchor="middle"
-                  font-size="3"
-                  fill="#065f46"
-                  font-weight="700">${label.timeStr}</text>
-            <text x="${label.x}" y="${graphHeight + 12}"
-                  text-anchor="middle"
-                  font-size="3.5"
-                  fill="#047857"
-                  font-weight="800">${label.temp}°</text>
-          `).join('')}
-
-          <text x="50" y="4" text-anchor="middle" font-size="3" fill="#047857" font-weight="700">
-            High: ${maxTemp}°C | Low: ${minTemp}°C
-          </text>
-        </svg>
-      </div>
+  return `
+    <div class="spray-metric">
+      <span class="metric-label">💧 Irrigation</span>
+      <span class="metric-badge" style="background: ${color};">${advice}</span>
     </div>
   `;
 }
