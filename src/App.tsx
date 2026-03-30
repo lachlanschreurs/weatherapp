@@ -593,7 +593,7 @@ function App() {
     windSpeedKmh,
     rainfall,
     weatherCode,
-    forecastList
+    hourlyList
   );
 
   const dailyData = dailyForecasts.map(day => ({
