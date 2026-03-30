@@ -639,12 +639,35 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
         </div>
       </div>
 
-      <div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
-        <div style="font-size: 12px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 6px;">
-          ⏰ Rain Timing
+      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
+              📈 Today's High
+            </div>
+            <div style="font-size: 22px; font-weight: 800; color: #1e3a8a;">
+              ${Math.round(highTemp)}°C
+            </div>
+          </div>
+          <div>
+            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
+              📉 Today's Low
+            </div>
+            <div style="font-size: 22px; font-weight: 800; color: #1e3a8a;">
+              ${Math.round(lowTemp)}°C
+            </div>
+          </div>
         </div>
-        <div style="font-size: 13px; color: #1e3a8a; font-weight: 600;">
-          ${rainTimingText}
+        <div style="border-top: 2px solid #60a5fa; padding-top: 12px;">
+          <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
+            💧 Total Rainfall Expected
+          </div>
+          <div style="font-size: 20px; font-weight: 800; color: #1e3a8a; margin-bottom: 6px;">
+            ${rainToday.toFixed(1)}mm
+          </div>
+          <div style="font-size: 12px; color: #1e40af; font-weight: 600;">
+            ⏰ ${rainTimingText}
+          </div>
         </div>
       </div>
 
