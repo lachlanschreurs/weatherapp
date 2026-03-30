@@ -548,10 +548,10 @@ function App() {
   });
 
   const todayHighTemp = todayForecasts.length > 0
-    ? Math.max(...todayForecasts.map((f: any) => f.main.temp_max))
+    ? Math.max(...todayForecasts.map((f: any) => f.main.temp))
     : tempC;
   const todayLowTemp = todayForecasts.length > 0
-    ? Math.min(...todayForecasts.map((f: any) => f.main.temp_min))
+    ? Math.min(...todayForecasts.map((f: any) => f.main.temp))
     : tempC;
 
   const dailyForecasts = forecastList.reduce((acc: any[], item: any) => {
@@ -563,8 +563,8 @@ function App() {
         date,
         dt: item.dt,
         temps: [item.main.temp],
-        tempMin: item.main.temp_min,
-        tempMax: item.main.temp_max,
+        tempMin: item.main.temp,
+        tempMax: item.main.temp,
         humidity: item.main.humidity,
         weather: item.weather[0]?.main || 'clear',
         windSpeed: item.wind.speed * 3.6,
@@ -575,8 +575,8 @@ function App() {
       });
     } else {
       existing.temps.push(item.main.temp);
-      existing.tempMin = Math.min(existing.tempMin, item.main.temp_min);
-      existing.tempMax = Math.max(existing.tempMax, item.main.temp_max);
+      existing.tempMin = Math.min(existing.tempMin, item.main.temp);
+      existing.tempMax = Math.max(existing.tempMax, item.main.temp);
       existing.rain += item.rain?.['3h'] || 0;
       existing.rainCount += item.rain?.['3h'] ? 1 : 0;
       existing.totalForecasts += 1;
