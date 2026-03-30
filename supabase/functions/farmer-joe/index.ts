@@ -200,9 +200,25 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
     });
 
     if (!openaiResponse.ok) {
-      const error = await openaiResponse.text();
-      console.error('OpenAI API error:', error);
-      throw new Error('Failed to get response from AI');
+      const errorText = await openaiResponse.text();
+      console.error('OpenAI API error:', {
+        status: openaiResponse.status,
+        statusText: openaiResponse.statusText,
+        error: errorText,
+      });
+
+      // Try to parse the error for better user feedback
+      let errorMessage = 'Failed to get response from AI';
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error?.message) {
+          errorMessage = errorData.error.message;
+        }
+      } catch (e) {
+        // Use default error message
+      }
+
+      throw new Error(errorMessage);
     }
 
     const openaiData = await openaiResponse.json();
