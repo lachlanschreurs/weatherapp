@@ -10,24 +10,21 @@ export interface WeatherAlert {
 
 interface ForecastItem {
   dt: number;
-  main: {
-    temp: number;
-    temp_min: number;
-    temp_max: number;
-    humidity: number;
-  };
+  temp: number;
+  feels_like: number;
+  pressure: number;
+  humidity: number;
+  dew_point: number;
+  clouds: number;
+  visibility: number;
+  wind_speed: number;
+  wind_deg: number;
+  wind_gust?: number;
   weather: Array<{
     main: string;
     description: string;
   }>;
-  wind: {
-    speed: number;
-    gust?: number;
-  };
-  rain?: {
-    '3h'?: number;
-  };
-  dt_txt: string;
+  pop: number;
 }
 
 export function generateWeatherAlerts(
@@ -47,8 +44,8 @@ export function generateWeatherAlerts(
     return hoursDiff <= 24 && hoursDiff >= 0;
   });
 
-  const totalRain24h = next24Hours.reduce((sum, item) => sum + (item.rain?.['3h'] || 0), 0);
-  const rainForecast = next24Hours.find(item => (item.rain?.['3h'] || 0) > 0);
+  const totalRain24h = next24Hours.reduce((sum, item) => sum + (item.pop * 10 || 0), 0);
+  const rainForecast = next24Hours.find(item => (item.pop || 0) > 0.3);
 
   if (rainForecast) {
     const rainTime = new Date(rainForecast.dt * 1000).toLocaleTimeString('en-AU', {
@@ -153,7 +150,7 @@ export function generateWeatherAlerts(
     });
   }
 
-  const minTemp24h = Math.min(...next24Hours.map(item => item.main.temp_min));
+  const minTemp24h = next24Hours.length > 0 ? Math.min(...next24Hours.map(item => item.temp)) : currentTemp;
   if (minTemp24h < 2) {
     alerts.push({
       id: 'frost',
@@ -168,7 +165,7 @@ export function generateWeatherAlerts(
       return hour >= 4 && hour <= 8;
     });
 
-    const coldMorning = morningForecasts.some(item => item.main.temp < 5);
+    const coldMorning = morningForecasts.some(item => item.temp < 5);
     if (coldMorning) {
       alerts.push({
         id: 'cold-morning',
@@ -180,7 +177,7 @@ export function generateWeatherAlerts(
     }
   }
 
-  const maxTemp24h = Math.max(...next24Hours.map(item => item.main.temp_max));
+  const maxTemp24h = next24Hours.length > 0 ? Math.max(...next24Hours.map(item => item.temp)) : currentTemp;
   if (maxTemp24h > 35) {
     alerts.push({
       id: 'severe-heat',
@@ -199,7 +196,9 @@ export function generateWeatherAlerts(
     });
   }
 
-  const avgHumidity = next24Hours.reduce((sum, item) => sum + item.main.humidity, 0) / next24Hours.length;
+  const avgHumidity = next24Hours.length > 0
+    ? next24Hours.reduce((sum, item) => sum + item.humidity, 0) / next24Hours.length
+    : currentHumidity;
   if (avgHumidity > 85) {
     alerts.push({
       id: 'humidity',
