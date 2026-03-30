@@ -668,6 +668,8 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
           }).join('')}
         </div>
       </div>
+
+      ${generate48HourGraph(hourlyForecast)}
     </div>
 
     <div class="footer">
@@ -687,6 +689,87 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
 </body>
 </html>
   `.trim();
+}
+
+function generate48HourGraph(hourlyForecast: any[]): string {
+  const hours48 = hourlyForecast.slice(0, 48);
+
+  const temps = hours48.map((h: any) => Math.round(h.temp));
+  const minTemp = Math.min(...temps);
+  const maxTemp = Math.max(...temps);
+  const tempRange = maxTemp - minTemp;
+
+  const graphHeight = 180;
+  const graphWidth = 100;
+
+  const points = hours48.map((hour: any, index: number) => {
+    const temp = Math.round(hour.temp);
+    const x = (index / 47) * graphWidth;
+    const y = graphHeight - ((temp - minTemp) / tempRange) * (graphHeight - 20);
+    return `${x},${y}`;
+  }).join(' ');
+
+  const labels = [];
+  for (let i = 0; i < 48; i += 6) {
+    const hour = hours48[i];
+    const hourTime = new Date(hour.dt * 1000);
+    const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
+    const x = (i / 47) * graphWidth;
+    labels.push({ x, timeStr, temp: Math.round(hour.temp) });
+  }
+
+  return `
+    <div class="forecast-section">
+      <div class="section-header">48-Hour Temperature Forecast</div>
+      <div style="background: white; border: 2px solid #047857; border-radius: 10px; padding: 20px; overflow-x: auto;">
+        <svg viewBox="0 0 100 200" style="width: 100%; height: auto; min-height: 200px;">
+          <defs>
+            <linearGradient id="tempGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#ef4444;stop-opacity:0.2" />
+              <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.2" />
+            </linearGradient>
+          </defs>
+
+          <polyline
+            fill="none"
+            stroke="#047857"
+            stroke-width="0.5"
+            points="${points}"
+          />
+
+          <polyline
+            fill="url(#tempGradient)"
+            stroke="none"
+            points="${points} ${graphWidth},${graphHeight} 0,${graphHeight}"
+          />
+
+          ${hours48.map((hour: any, index: number) => {
+            const temp = Math.round(hour.temp);
+            const x = (index / 47) * graphWidth;
+            const y = graphHeight - ((temp - minTemp) / tempRange) * (graphHeight - 20);
+            return `<circle cx="${x}" cy="${y}" r="0.4" fill="#047857" />`;
+          }).join('')}
+
+          ${labels.map((label: any) => `
+            <text x="${label.x}" y="${graphHeight + 8}"
+                  text-anchor="middle"
+                  font-size="3"
+                  fill="#065f46"
+                  font-weight="700">${label.timeStr}</text>
+            <text x="${label.x}" y="${graphHeight + 12}"
+                  text-anchor="middle"
+                  font-size="3.5"
+                  fill="#047857"
+                  font-weight="800">${label.temp}°</text>
+          `).join('')}
+
+          <text x="50" y="4" text-anchor="middle" font-size="3" fill="#047857" font-weight="700">
+            High: ${maxTemp}°C | Low: ${minTemp}°C
+          </text>
+        </svg>
+      </div>
+    </div>
+  `;
 }
 
 function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], cityName: string, country: string): string {
