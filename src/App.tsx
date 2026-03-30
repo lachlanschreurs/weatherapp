@@ -590,7 +590,7 @@ function App() {
   const alerts = generateWeatherAlerts(
     tempC,
     humidity,
-    current.wind.speed,
+    windSpeedKmh,
     rainfall,
     weatherCode,
     forecastList
