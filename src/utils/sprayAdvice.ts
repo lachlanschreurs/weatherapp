@@ -1,18 +1,20 @@
 interface ForecastItem {
   dt: number;
-  main: {
-    temp: number;
-    humidity: number;
-  };
-  wind: {
-    speed: number;
-  };
-  rain?: {
-    '3h'?: number;
-  };
+  temp: number;
+  feels_like: number;
+  pressure: number;
+  humidity: number;
+  dew_point: number;
+  clouds: number;
+  visibility: number;
+  wind_speed: number;
+  wind_deg: number;
+  wind_gust?: number;
   weather: Array<{
     main: string;
+    description: string;
   }>;
+  pop: number;
 }
 
 export interface SprayAdvice {
@@ -32,12 +34,12 @@ export function getSprayAdvice(
   const hasRainTonight = next24Hours.some(item => {
     const hour = new Date(item.dt * 1000).getHours();
     const isNight = hour >= 18 || hour <= 6;
-    const hasRain = item.weather[0]?.main === 'Rain' || (item.rain?.['3h'] || 0) > 0;
+    const hasRain = item.weather[0]?.main === 'Rain' || item.pop > 0.3;
     return isNight && hasRain;
   });
 
   const hasRainSoon = next24Hours.slice(0, 4).some(item =>
-    item.weather[0]?.main === 'Rain' || (item.rain?.['3h'] || 0) > 0
+    item.weather[0]?.main === 'Rain' || item.pop > 0.3
   );
 
   if (currentRainfall > 0) {
@@ -80,8 +82,8 @@ export function getSprayAdvice(
     .map((item, index) => ({
       item,
       index,
-      windSpeed: item.wind.speed * 3.6,
-      rainfall: item.rain?.['3h'] || 0,
+      windSpeed: item.wind_speed * 3.6,
+      rainfall: item.pop > 0.3 ? item.pop * 10 : 0,
     }))
     .filter(({ windSpeed, rainfall }) => windSpeed < 15 && rainfall === 0);
 

@@ -2,16 +2,21 @@ import { getSprayCondition } from './deltaT';
 
 interface ForecastItem {
   dt: number;
-  main: {
-    temp: number;
-    humidity: number;
-  };
-  wind: {
-    speed: number;
-  };
-  rain?: {
-    '3h'?: number;
-  };
+  temp: number;
+  feels_like: number;
+  pressure: number;
+  humidity: number;
+  dew_point: number;
+  clouds: number;
+  visibility: number;
+  wind_speed: number;
+  wind_deg: number;
+  wind_gust?: number;
+  weather: Array<{
+    main: string;
+    description: string;
+  }>;
+  pop: number;
 }
 
 export interface SprayWindow {
@@ -34,8 +39,8 @@ export function findBestSprayWindow(forecastItems: ForecastItem[]): SprayWindow 
 
   for (let i = 0; i < forecastItems.length; i++) {
     const item = forecastItems[i];
-    const windSpeedKmh = item.wind.speed * 3.6;
-    const rainfall = item.rain?.['3h'] || 0;
+    const windSpeedKmh = item.wind_speed * 3.6;
+    const rainfall = item.pop > 0.3 ? item.pop * 10 : 0;
     const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
     if (sprayCondition.rating === 'Good' || sprayCondition.rating === 'Moderate') {

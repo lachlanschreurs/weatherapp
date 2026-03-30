@@ -577,10 +577,10 @@ function App() {
     humidity: day.humidity,
     weather: day.weather[0]?.main || 'clear',
     windSpeed: day.wind_speed * 3.6,
-    rain: (day.rain || 0) + (day.snow || 0),
-    rainCount: (day.rain || 0) + (day.snow || 0) > 0 ? 1 : 0,
+    rain: day.pop ? day.pop * 10 : 0,
+    rainCount: day.pop > 0.3 ? 1 : 0,
     totalForecasts: 1,
-    forecastItems: [day],
+    forecastItems: hourlyList.slice(0, 8),
   }));
 
   const todayForecast = dailyForecasts[0];
