@@ -154,35 +154,22 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const { lat, lon, name, country } = geoData[0];
 
-        const forecastResponse = await fetch(
-          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=40`
+        const oneCallResponse = await fetch(
+          `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&exclude=minutely,alerts`
         );
 
-        if (!forecastResponse.ok) {
-          const errorMsg = `Failed to fetch weather for ${subscriber.email}: ${forecastResponse.status}`;
+        if (!oneCallResponse.ok) {
+          const errorMsg = `Failed to fetch weather for ${subscriber.email}: ${oneCallResponse.status}`;
           console.error(errorMsg);
           errors.push(errorMsg);
           continue;
         }
 
-        const forecastData = await forecastResponse.json();
+        const oneCallData = await oneCallResponse.json();
 
-        const currentResponse = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`
-        );
+        const weatherData = transformOneCallData(oneCallData, name, country);
 
-        if (!currentResponse.ok) {
-          const errorMsg = `Failed to fetch current weather for ${subscriber.email}: ${currentResponse.status}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
-
-        const currentData = await currentResponse.json();
-
-        const weatherData = transformForecastData(currentData, forecastData, name, country);
-
-        const emailHtml = buildDailyForecastEmail(weatherData, forecastData.list);
+        const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly);
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(subscriber.email)) {
@@ -203,7 +190,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
-            text: buildDailyForecastEmailText(weatherData, forecastData.list, name, country),
+            text: buildDailyForecastEmailText(weatherData, oneCallData.hourly, name, country),
           }),
         });
 
@@ -229,53 +216,22 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
   }
 }
 
-function transformForecastData(current: any, forecast: any, cityName: string, country: string) {
-  const dailyForecasts: any = {};
-  const today = new Date().toISOString().split('T')[0];
+function transformOneCallData(oneCallData: any, cityName: string, country: string) {
+  const current = oneCallData.current;
+  const daily = oneCallData.daily;
 
-  forecast.list.forEach((item: any) => {
-    const date = item.dt_txt.split(' ')[0];
-    if (!dailyForecasts[date]) {
-      dailyForecasts[date] = {
-        date,
-        temps: [],
-        conditions: [],
-        humidity: [],
-        wind: [],
-        rain: 0,
-        rainChance: 0,
-        isToday: date === today
-      };
-    }
-
-    dailyForecasts[date].temps.push(item.main.temp);
-    dailyForecasts[date].temps.push(item.main.temp_max);
-    dailyForecasts[date].temps.push(item.main.temp_min);
-    dailyForecasts[date].conditions.push(item.weather[0].description);
-    dailyForecasts[date].humidity.push(item.main.humidity);
-    dailyForecasts[date].wind.push(item.wind.speed * 3.6);
-    if (item.rain && item.rain['3h']) {
-      dailyForecasts[date].rain += item.rain['3h'];
-    }
-    if (item.pop) {
-      dailyForecasts[date].rainChance = Math.max(dailyForecasts[date].rainChance, item.pop * 100);
-    }
-  });
-
-  const forecastDays = Object.values(dailyForecasts).slice(0, 5).map((day: any) => {
-    const temps = day.temps;
-
+  const forecastDays = daily.slice(0, 5).map((day: any) => {
     return {
-      date: day.date,
+      date: new Date(day.dt * 1000).toISOString().split('T')[0],
       day: {
-        maxtemp_c: Math.max(...temps),
-        mintemp_c: Math.min(...temps),
+        maxtemp_c: day.temp.max,
+        mintemp_c: day.temp.min,
         condition: {
-          text: day.conditions[Math.floor(day.conditions.length / 2)]
+          text: day.weather[0].description
         },
-        daily_chance_of_rain: Math.round(day.rainChance),
-        totalprecip_mm: day.rain,
-        maxwind_kph: Math.max(...day.wind)
+        daily_chance_of_rain: Math.round((day.pop || 0) * 100),
+        totalprecip_mm: (day.rain || 0),
+        maxwind_kph: day.wind_speed * 3.6
       }
     };
   });
@@ -286,12 +242,12 @@ function transformForecastData(current: any, forecast: any, cityName: string, co
       country: country
     },
     current: {
-      temp_c: current.main.temp,
-      feelslike_c: current.main.feels_like,
-      humidity: current.main.humidity,
-      wind_kph: current.wind.speed * 3.6,
-      wind_degree: current.wind.deg,
-      wind_dir: degreesToDirection(current.wind.deg),
+      temp_c: current.temp,
+      feelslike_c: current.feels_like,
+      humidity: current.humidity,
+      wind_kph: current.wind_speed * 3.6,
+      wind_degree: current.wind_deg,
+      wind_dir: degreesToDirection(current.wind_deg),
       condition: {
         text: current.weather[0].description
       }
