@@ -26,6 +26,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [skipPayment, setSkipPayment] = useState(false);
   const cardElementRef = useRef<any>(null);
   const stripeRef = useRef<any>(null);
   const elementsRef = useRef<any>(null);
@@ -41,8 +42,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       setPassword('');
       setName('');
       setPhoneNumber('');
+      setSkipPayment(false);
 
-      if (!isLogin && initialMode === 'signup') {
+      if (!isLogin && initialMode === 'signup' && !skipPayment) {
         initializeStripe();
       }
     }
@@ -56,10 +58,10 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   }, [isOpen, initialMode]);
 
   useEffect(() => {
-    if (!isLogin && isOpen && !stripeInitialized) {
+    if (!isLogin && isOpen && !stripeInitialized && !skipPayment) {
       initializeStripe();
     }
-  }, [isLogin, isOpen]);
+  }, [isLogin, isOpen, skipPayment]);
 
   const initializeStripe = async () => {
     if (stripeInitialized || cardElementRef.current) return;
@@ -147,6 +149,28 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         onSuccess();
         onClose();
       } else {
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              name: name || email.split('@')[0],
+            },
+          },
+        });
+
+        if (signUpError) throw signUpError;
+
+        if (!authData.user) {
+          throw new Error('Failed to create account');
+        }
+
+        if (skipPayment) {
+          onSuccess();
+          onClose();
+          return;
+        }
+
         if (!phoneNumber || phoneNumber.length < 10) {
           throw new Error('Please enter a valid phone number');
         }
@@ -172,71 +196,57 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           throw new Error('This phone number is already registered.');
         }
 
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              name,
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Session not found');
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-setup-intent`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
             },
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to initialize payment');
+        }
+
+        const { clientSecret, customerId } = await response.json();
+
+        const { error: confirmError } = await stripeRef.current.confirmSetup({
+          elements: elementsRef.current,
+          clientSecret,
+          confirmParams: {
+            return_url: window.location.origin,
           },
+          redirect: 'if_required',
         });
 
-        if (signUpError) throw signUpError;
-
-        if (authData.user) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            throw new Error('Session not found');
-          }
-
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-setup-intent`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to initialize payment');
-          }
-
-          const { clientSecret, customerId } = await response.json();
-
-          const { error: confirmError } = await stripeRef.current.confirmSetup({
-            elements: elementsRef.current,
-            clientSecret,
-            confirmParams: {
-              return_url: window.location.origin,
-            },
-            redirect: 'if_required',
-          });
-
-          if (confirmError) {
-            throw new Error(confirmError.message);
-          }
-
-          const trialEndDate = new Date();
-          trialEndDate.setMonth(trialEndDate.getMonth() + 1);
-
-          await supabase
-            .from('profiles')
-            .update({
-              phone_number: normalizedPhone,
-              trial_end_date: trialEndDate.toISOString(),
-              stripe_customer_id: customerId,
-              payment_method_set: true
-            })
-            .eq('id', authData.user.id);
-
-          onSuccess();
-          onClose();
+        if (confirmError) {
+          throw new Error(confirmError.message);
         }
+
+        const trialEndDate = new Date();
+        trialEndDate.setMonth(trialEndDate.getMonth() + 1);
+
+        await supabase
+          .from('profiles')
+          .update({
+            phone_number: normalizedPhone,
+            trial_end_date: trialEndDate.toISOString(),
+            stripe_customer_id: customerId,
+            payment_method_set: true
+          })
+          .eq('id', authData.user.id);
+
+        onSuccess();
+        onClose();
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -276,7 +286,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 <div className="flex-1">
                   <h3 className="font-semibold text-green-900 mb-1">1 Month Free Trial</h3>
                   <p className="text-sm text-gray-700 mb-2">
-                    No charge today. Your card won't be charged until your trial ends.
+                    {skipPayment
+                      ? 'Start using FarmCast for free. Add payment later to continue after trial.'
+                      : 'No charge today. Your card won\'t be charged until your trial ends.'}
                   </p>
                   <ul className="text-xs text-gray-600 space-y-1">
                     <li className="flex items-center gap-1.5">
@@ -314,7 +326,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && !isForgotPassword && (
+            {!isLogin && !isForgotPassword && !skipPayment && (
               <>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -328,7 +340,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                       onChange={(e) => setName(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="John Smith"
-                      required={!isLogin}
+                      required={!isLogin && !skipPayment}
                     />
                   </div>
                 </div>
@@ -345,7 +357,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                       onChange={(e) => setPhoneNumber(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                       placeholder="0412 345 678"
-                      required={!isLogin}
+                      required={!isLogin && !skipPayment}
                       minLength={10}
                     />
                   </div>
@@ -423,7 +435,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               </div>
             )}
 
-            {!isLogin && !isForgotPassword && (
+            {!isLogin && !isForgotPassword && !skipPayment && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Payment Details
@@ -445,9 +457,22 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </button>
 
             {!isLogin && !isForgotPassword && (
-              <p className="text-xs text-center text-gray-500">
-                By signing up, you agree to our terms. After 1 month, you'll be charged $5.99/month recurring until you cancel.
-              </p>
+              <>
+                {!skipPayment && (
+                  <p className="text-xs text-center text-gray-500">
+                    By signing up, you agree to our terms. After 1 month, you'll be charged $5.99/month recurring until you cancel.
+                  </p>
+                )}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setSkipPayment(!skipPayment)}
+                    className="text-sm text-green-700 hover:text-green-800 font-semibold"
+                  >
+                    {skipPayment ? 'Add payment details now' : 'Skip payment, add later'}
+                  </button>
+                </div>
+              </>
             )}
           </form>
 
