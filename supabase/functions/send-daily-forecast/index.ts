@@ -647,7 +647,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
       <div class="forecast-section">
         <div class="section-header">24-Hour Forecast</div>
         <div class="forecast-grid">
-          ${next24Hours.map((hour: any) => {
+          ${next24Hours.slice(0, 8).map((hour: any, index: number) => {
             const hourTime = new Date(hour.dt * 1000);
             const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
             const temp = Math.round(hour.temp);
@@ -665,7 +665,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
                 <div class="forecast-rain">${rainProb}% Rain</div>
               </div>
             `;
-          }).slice(0, 8).join('')}
+          }).join('')}
         </div>
       </div>
     </div>
