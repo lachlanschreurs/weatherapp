@@ -231,6 +231,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
 function transformOpenWeatherData(current: any, forecast: any, cityName: string, country: string) {
   const dailyForecasts: any = {};
+  const today = new Date().toISOString().split('T')[0];
 
   forecast.list.forEach((item: any) => {
     const date = item.dt_txt.split(' ')[0];
@@ -242,7 +243,8 @@ function transformOpenWeatherData(current: any, forecast: any, cityName: string,
         humidity: [],
         wind: [],
         rain: 0,
-        rainChance: 0
+        rainChance: 0,
+        isToday: date === today
       };
     }
 
@@ -258,19 +260,23 @@ function transformOpenWeatherData(current: any, forecast: any, cityName: string,
     }
   });
 
-  const forecastDays = Object.values(dailyForecasts).slice(0, 5).map((day: any) => ({
-    date: day.date,
-    day: {
-      maxtemp_c: Math.max(...day.temps),
-      mintemp_c: Math.min(...day.temps),
-      condition: {
-        text: day.conditions[Math.floor(day.conditions.length / 2)]
-      },
-      daily_chance_of_rain: Math.round(day.rainChance),
-      totalprecip_mm: day.rain,
-      maxwind_kph: Math.max(...day.wind)
-    }
-  }));
+  const forecastDays = Object.values(dailyForecasts).slice(0, 5).map((day: any) => {
+    const temps = day.isToday ? [...day.temps, current.main.temp] : day.temps;
+
+    return {
+      date: day.date,
+      day: {
+        maxtemp_c: Math.max(...temps),
+        mintemp_c: Math.min(...temps),
+        condition: {
+          text: day.conditions[Math.floor(day.conditions.length / 2)]
+        },
+        daily_chance_of_rain: Math.round(day.rainChance),
+        totalprecip_mm: day.rain,
+        maxwind_kph: Math.max(...day.wind)
+      }
+    };
+  });
 
   return {
     location: {
