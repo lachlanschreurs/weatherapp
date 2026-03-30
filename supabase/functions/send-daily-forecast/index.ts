@@ -628,17 +628,17 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
         <div class="section-header">Today's Forecast</div>
         <div class="conditions-grid">
           <div class="condition-item">
-            <div class="condition-icon">🌡️</div>
-            <div class="condition-label">Current Temp</div>
-            <div class="condition-value">${Math.round(current.temp_c)}°C</div>
-            <div class="condition-sub">Feels ${Math.round(current.feelslike_c)}°C</div>
+            <div class="condition-icon">📈</div>
+            <div class="condition-label">Today's High</div>
+            <div class="condition-value">${Math.round(highTemp)}°C</div>
+            <div class="condition-sub">Maximum</div>
           </div>
 
           <div class="condition-item">
-            <div class="condition-icon">📊</div>
-            <div class="condition-label">High / Low</div>
-            <div class="condition-value">${Math.round(highTemp)}° / ${Math.round(lowTemp)}°</div>
-            <div class="condition-sub">Today's Range</div>
+            <div class="condition-icon">📉</div>
+            <div class="condition-label">Today's Low</div>
+            <div class="condition-value">${Math.round(lowTemp)}°C</div>
+            <div class="condition-sub">Minimum</div>
           </div>
 
           <div class="condition-item">
@@ -658,34 +658,14 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
       </div>
 
       <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 14px;">
-          <div>
-            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
-              📈 Today's High
-            </div>
-            <div style="font-size: 22px; font-weight: 800; color: #1e3a8a;">
-              ${Math.round(highTemp)}°C
-            </div>
-          </div>
-          <div>
-            <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
-              📉 Today's Low
-            </div>
-            <div style="font-size: 22px; font-weight: 800; color: #1e3a8a;">
-              ${Math.round(lowTemp)}°C
-            </div>
-          </div>
+        <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
+          💧 Total Rainfall Expected
         </div>
-        <div style="border-top: 2px solid #60a5fa; padding-top: 12px;">
-          <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
-            💧 Total Rainfall Expected
-          </div>
-          <div style="font-size: 20px; font-weight: 800; color: #1e3a8a; margin-bottom: 6px;">
-            ${rainToday.toFixed(1)}mm
-          </div>
-          <div style="font-size: 12px; color: #1e40af; font-weight: 600;">
-            ⏰ ${rainTimingText}
-          </div>
+        <div style="font-size: 20px; font-weight: 800; color: #1e3a8a; margin-bottom: 6px;">
+          ${rainToday.toFixed(1)}mm
+        </div>
+        <div style="font-size: 12px; color: #1e40af; font-weight: 600;">
+          ⏰ ${rainTimingText}
         </div>
       </div>
 
