@@ -283,6 +283,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
+      // For guest users, check free message limit
       if (!session) {
         if (guestQuestionCount >= MAX_FREE_MESSAGES) {
           const userMsgId = `temp-user-${Date.now()}`;
@@ -305,31 +306,6 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
           setIsLoading(false);
           return;
         }
-
-        const newCount = guestQuestionCount + 1;
-        setGuestQuestionCount(newCount);
-        localStorage.setItem('farmerJoeGuestQuestions', newCount.toString());
-
-        const remainingQuestions = MAX_FREE_MESSAGES - newCount;
-        const userMsgId = `temp-user-${Date.now()}`;
-        const assistantMsgId = `temp-assistant-${Date.now()}`;
-        setMessages(prev => [...prev,
-          {
-            id: userMsgId,
-            role: 'user',
-            content: userMessage,
-            created_at: new Date().toISOString(),
-            image_url: imageData ? 'attached' : null,
-          },
-          {
-            id: assistantMsgId,
-            role: 'assistant',
-            content: `Thanks for your question! ${remainingQuestions > 0 ? `You have ${remainingQuestions} free message${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free message!'} Sign in and subscribe for just $5.99/month to get unlimited access, personalized advice based on your location and weather, and save your chat history. Here's a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!`,
-            created_at: new Date().toISOString(),
-          }
-        ]);
-        setIsLoading(false);
-        return;
       }
 
       // Check if authenticated user has active subscription
@@ -385,8 +361,42 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       const data = await response.json();
       console.log('Received response from Farmer Joe:', data);
 
-      await loadChatHistory();
-      await checkSubscriptionStatus(); // Refresh counts after message
+      // For guest users, append promotional message
+      if (!session) {
+        const newCount = guestQuestionCount + 1;
+        setGuestQuestionCount(newCount);
+        localStorage.setItem('farmerJoeGuestQuestions', newCount.toString());
+
+        const remainingQuestions = MAX_FREE_MESSAGES - newCount;
+        const userMsgId = `temp-user-${Date.now()}`;
+        const assistantMsgId = `temp-assistant-${Date.now()}`;
+        const promoMsgId = `temp-promo-${Date.now()}`;
+
+        setMessages(prev => [...prev,
+          {
+            id: userMsgId,
+            role: 'user',
+            content: userMessage,
+            created_at: new Date().toISOString(),
+            image_url: imageData ? 'attached' : null,
+          },
+          {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: data.response,
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: promoMsgId,
+            role: 'assistant',
+            content: `${remainingQuestions > 0 ? `You have ${remainingQuestions} free message${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free message!'} Sign in and subscribe for just $5.99/month to get unlimited access, personalized advice based on your location and weather, and save your chat history.`,
+            created_at: new Date().toISOString(),
+          }
+        ]);
+      } else {
+        await loadChatHistory();
+        await checkSubscriptionStatus(); // Refresh counts after message
+      }
     } catch (error) {
       console.error('Error sending message:', error);
 
