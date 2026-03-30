@@ -186,7 +186,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'FarmCast Weather <support@farmcastweather.com>',
+            from: 'FarmCast <support@mail.farmcastweather.com>',
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
