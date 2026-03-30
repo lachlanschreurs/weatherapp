@@ -512,9 +512,9 @@ function App() {
   const bgGradient = getBackgroundGradient(weatherCode);
   const textColor = getTextColor(weatherCode);
 
-  const windSpeedKmh = current.wind_speed * 3.6;
+  const windSpeedKmh = (current.wind_speed || 0) * 3.6;
   const windGustKmh = current.wind_gust ? current.wind_gust * 3.6 : null;
-  const windDegrees = current.wind_deg;
+  const windDegrees = current.wind_deg || 0;
   const getWindDirection = (deg: number) => {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return directions[Math.round(deg / 45) % 8];
