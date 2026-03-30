@@ -67,11 +67,46 @@ Deno.serve(async (req: Request) => {
       throw new Error('Weather API key not configured');
     }
 
-    let emailsSent = 0;
-    const errors: string[] = [];
+    console.log(`Starting to process ${eligibleSubscribers.length} eligible subscribers`);
 
-    console.log(`Processing ${eligibleSubscribers.length} eligible subscribers`);
+    // Process emails asynchronously in the background
+    processEmailsInBackground(eligibleSubscribers, resendApiKey, weatherApiKey, supabaseAdmin);
 
+    // Return immediately
+    return new Response(
+      JSON.stringify({
+        message: `Processing ${eligibleSubscribers.length} daily forecast emails`,
+        total: eligibleSubscribers.length
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('Error in send-daily-forecast function:', error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+});
+
+async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKey: string, weatherApiKey: string, supabaseAdmin: any) {
+  let emailsSent = 0;
+  const errors: string[] = [];
+
+  console.log(`Processing ${eligibleSubscribers.length} eligible subscribers`);
+
+  try {
     for (const subscriber of eligibleSubscribers) {
       try {
         console.log(`Processing subscriber: ${subscriber.email}`);
@@ -188,34 +223,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        message: `Successfully sent ${emailsSent} emails to subscribers`,
-        total: eligibleSubscribers.length,
-        sent: emailsSent,
-        errors: errors.length > 0 ? errors : undefined
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.log(`Successfully sent ${emailsSent} emails, ${errors.length} errors`);
   } catch (error) {
-    console.error('Error in send-daily-forecast function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.error('Error in background email processing:', error);
   }
-});
+}
 
 function transformOpenWeatherData(current: any, forecast: any, cityName: string, country: string) {
   const dailyForecasts: any = {};
