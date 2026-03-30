@@ -93,7 +93,7 @@ You have access to real-time weather data and forecasts. Be conversational, help
     }
 
     // Call OpenAI API (using gpt-4 or gpt-3.5-turbo)
-    const openaiApiKey = Deno.env.get('API_KEY_FARMCAST');
+    const openaiApiKey = Deno.env.get('OPENAI_KEY_FARMCAST');
 
     if (!openaiApiKey) {
       // Fallback response if no API key

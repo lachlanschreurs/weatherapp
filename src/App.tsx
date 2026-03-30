@@ -152,6 +152,23 @@ function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
+        // Handle password recovery
+        if (event === 'PASSWORD_RECOVERY') {
+          const newPassword = prompt('Enter your new password:');
+          if (newPassword && newPassword.length >= 6) {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) {
+              alert('Error updating password: ' + error.message);
+            } else {
+              alert('Password updated successfully! You can now log in with your new password.');
+              window.location.href = '/';
+            }
+          } else {
+            alert('Password must be at least 6 characters long.');
+          }
+          return;
+        }
+
         if (session?.user) {
           // Register new session on sign in
           if (event === 'SIGNED_IN') {

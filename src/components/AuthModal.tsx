@@ -126,10 +126,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       if (isForgotPassword) {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${window.location.origin}`,
         });
         if (error) throw error;
-        setSuccessMessage('Password reset link sent! Check your email inbox.');
+        setSuccessMessage('Password reset link sent! Check your email inbox. Click the link to set a new password.');
+        setEmail('');
         setLoading(false);
         return;
       }
