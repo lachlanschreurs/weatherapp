@@ -586,15 +586,15 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
         <div class="section-header">Today's Forecast</div>
         <div class="conditions-grid">
           <div class="condition-item">
-            <div class="condition-icon">📈</div>
-            <div class="condition-label">Today's High</div>
+            <div class="condition-icon">🌡️</div>
+            <div class="condition-label">Actual High</div>
             <div class="condition-value">${Math.round(highTemp)}°C</div>
             <div class="condition-sub">Maximum</div>
           </div>
 
           <div class="condition-item">
-            <div class="condition-icon">📉</div>
-            <div class="condition-label">Today's Low</div>
+            <div class="condition-icon">🌡️</div>
+            <div class="condition-label">Actual Low</div>
             <div class="condition-value">${Math.round(lowTemp)}°C</div>
             <div class="condition-sub">Minimum</div>
           </div>
@@ -742,8 +742,8 @@ ${cityName}, ${country}
 ${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 
 TODAY'S FORECAST:
-- Current Temperature: ${Math.round(current.temp_c)}°C (Feels like ${Math.round(current.feelslike_c)}°C)
-- High / Low: ${Math.round(highTemp)}°C / ${Math.round(lowTemp)}°C
+- Actual High: ${Math.round(highTemp)}°C
+- Actual Low: ${Math.round(lowTemp)}°C
 - Rain Expected: ${rainToday.toFixed(1)}mm (${rainChance}% chance)
 - Rain Timing: ${rainTimingText}
 - Wind: ${Math.round(current.wind_kph)} km/h ${windDir}
