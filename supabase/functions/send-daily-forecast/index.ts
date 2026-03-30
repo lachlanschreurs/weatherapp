@@ -249,6 +249,8 @@ function transformForecastData(current: any, forecast: any, cityName: string, co
     }
 
     dailyForecasts[date].temps.push(item.main.temp);
+    dailyForecasts[date].temps.push(item.main.temp_max);
+    dailyForecasts[date].temps.push(item.main.temp_min);
     dailyForecasts[date].conditions.push(item.weather[0].description);
     dailyForecasts[date].humidity.push(item.main.humidity);
     dailyForecasts[date].wind.push(item.wind.speed * 3.6);
