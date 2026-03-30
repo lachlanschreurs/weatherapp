@@ -117,31 +117,31 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
   };
 
   const calculateEmailFreeMonthsRemaining = () => {
-    if (!subscription?.emailStartedAt) return 3;
+    if (!subscription?.emailStartedAt) return 1;
 
     const startDate = new Date(subscription.emailStartedAt);
     const freeEndDate = new Date(startDate);
-    freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+    freeEndDate.setMonth(freeEndDate.getMonth() + 1);
     const now = new Date();
 
     if (now >= freeEndDate) return 0;
 
     const monthsLeft = Math.ceil((freeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    return Math.max(0, Math.min(3, monthsLeft));
+    return Math.max(0, Math.min(1, monthsLeft));
   };
 
   const calculateProbeReportFreeMonthsRemaining = () => {
-    if (!subscription?.probeReportStartedAt) return 3;
+    if (!subscription?.probeReportStartedAt) return 1;
 
     const startDate = new Date(subscription.probeReportStartedAt);
     const freeEndDate = new Date(startDate);
-    freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+    freeEndDate.setMonth(freeEndDate.getMonth() + 1);
     const now = new Date();
 
     if (now >= freeEndDate) return 0;
 
     const monthsLeft = Math.ceil((freeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    return Math.max(0, Math.min(3, monthsLeft));
+    return Math.max(0, Math.min(1, monthsLeft));
   };
 
   const hasActiveSubscription = subscription?.status === 'active' &&

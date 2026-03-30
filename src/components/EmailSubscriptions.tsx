@@ -19,7 +19,7 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
   const [hasSubscription, setHasSubscription] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isInFreePeriod, setIsInFreePeriod] = useState(true);
-  const [freeMonthsRemaining, setFreeMonthsRemaining] = useState(3);
+  const [freeMonthsRemaining, setFreeMonthsRemaining] = useState(1);
   const [hasActiveFarmerJoeSubscription, setHasActiveFarmerJoeSubscription] = useState(false);
   const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
 
@@ -57,7 +57,7 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
         if (profile.email_subscription_started_at) {
           const startDate = new Date(profile.email_subscription_started_at);
           const freeEndDate = new Date(startDate);
-          freeEndDate.setMonth(freeEndDate.getMonth() + 3);
+          freeEndDate.setMonth(freeEndDate.getMonth() + 1);
           const now = new Date();
 
           if (now < freeEndDate) {
@@ -71,7 +71,7 @@ export default function EmailSubscriptions({ location }: EmailSubscriptionsProps
         } else {
           // Never started, so it's free
           setIsInFreePeriod(true);
-          setFreeMonthsRemaining(3);
+          setFreeMonthsRemaining(1);
         }
       }
 

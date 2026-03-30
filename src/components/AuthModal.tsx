@@ -202,7 +202,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           }
 
           const trialEndDate = new Date();
-          trialEndDate.setMonth(trialEndDate.getMonth() + 3);
+          trialEndDate.setMonth(trialEndDate.getMonth() + 1);
 
           await supabase
             .from('profiles')
@@ -242,7 +242,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             {isLogin ? 'Welcome Back' : 'Get Started with FarmCast'}
           </h2>
           <p className="text-gray-600 mb-6">
-            {isLogin ? 'Sign in to access your farm data' : 'Start your 3-month free trial today'}
+            {isLogin ? 'Sign in to access your farm data' : 'Start your 1-month free trial today'}
           </p>
 
           {!isLogin && (
@@ -376,7 +376,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 <div id="card-element" className="p-3 border border-gray-300 rounded-lg bg-white min-h-[44px]"></div>
                 <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
                   <Shield className="w-3.5 h-3.5 text-green-600" />
-                  <span>Secured by Stripe. No charge during your 3-month trial.</span>
+                  <span>Secured by Stripe. No charge during your 1-month trial.</span>
                 </div>
               </div>
             )}
