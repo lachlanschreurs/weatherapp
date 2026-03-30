@@ -34,24 +34,24 @@ Deno.serve(async (req: Request) => {
 
     const apiKey = Deno.env.get("OPENWEATHER_API_KEY") || "205a644e0f57ecf98260a957076e46db";
 
-    const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
-    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
+    const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
 
-    const [currentResponse, forecastResponse] = await Promise.all([
-      fetch(currentUrl),
-      fetch(forecastUrl),
-    ]);
+    const oneCallResponse = await fetch(oneCallUrl);
 
-    if (!currentResponse.ok || !forecastResponse.ok) {
-      throw new Error("Failed to fetch weather data from OpenWeather API");
+    if (!oneCallResponse.ok) {
+      const errorText = await oneCallResponse.text();
+      throw new Error(`Failed to fetch weather data from OpenWeather One Call API 3.0: ${oneCallResponse.status} - ${errorText}`);
     }
 
-    const currentData = await currentResponse.json();
-    const forecastData = await forecastResponse.json();
+    const oneCallData = await oneCallResponse.json();
 
     const weatherData = {
-      current: currentData,
-      forecast: forecastData,
+      current: oneCallData.current,
+      hourly: oneCallData.hourly,
+      daily: oneCallData.daily,
+      alerts: oneCallData.alerts || [],
+      timezone: oneCallData.timezone,
+      timezone_offset: oneCallData.timezone_offset,
     };
 
     return new Response(JSON.stringify(weatherData), {

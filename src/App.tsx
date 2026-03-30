@@ -25,47 +25,60 @@ import type { User } from '@supabase/supabase-js';
 
 interface WeatherData {
   current: {
-    main: {
-      temp: number;
-      humidity: number;
-      pressure: number;
-    };
+    temp: number;
+    humidity: number;
+    pressure: number;
     weather: Array<{
       main: string;
       description: string;
     }>;
-    wind: {
-      speed: number;
-      deg: number;
-      gust?: number;
-    };
+    wind_speed: number;
+    wind_deg: number;
+    wind_gust?: number;
     rain?: {
       '1h'?: number;
     };
+    feels_like: number;
+    uvi?: number;
   };
-  forecast: {
-    list: Array<{
-      dt: number;
-      main: {
-        temp: number;
-        temp_min: number;
-        temp_max: number;
-        humidity: number;
-      };
-      weather: Array<{
-        main: string;
-        description: string;
-      }>;
-      wind: {
-        speed: number;
-        gust?: number;
-      };
-      rain?: {
-        '3h'?: number;
-      };
-      dt_txt: string;
+  hourly: Array<{
+    dt: number;
+    temp: number;
+    humidity: number;
+    weather: Array<{
+      main: string;
+      description: string;
     }>;
-  };
+    wind_speed: number;
+    wind_gust?: number;
+    pop: number;
+    rain?: {
+      '1h'?: number;
+    };
+  }>;
+  daily: Array<{
+    dt: number;
+    temp: {
+      min: number;
+      max: number;
+      day: number;
+    };
+    humidity: number;
+    weather: Array<{
+      main: string;
+      description: string;
+    }>;
+    wind_speed: number;
+    pop: number;
+    rain?: number;
+    snow?: number;
+  }>;
+  alerts?: Array<{
+    event: string;
+    description: string;
+  }>;
+  timezone?: string;
+  timezone_offset?: number;
 }
 
 function App() {
@@ -280,20 +293,20 @@ function App() {
     if (!user) return;
 
     const current = weatherData.current;
-    const forecastList = weatherData.forecast.list;
+    const hourlyList = weatherData.hourly || [];
 
-    const tempC = Math.round(current.main.temp);
-    const humidity = current.main.humidity;
+    const tempC = Math.round(current.temp);
+    const humidity = current.humidity;
     const rainfall = current.rain?.['1h'] || 0;
     const weatherCode = current.weather[0]?.main || '';
 
     const alerts = generateWeatherAlerts(
       tempC,
       humidity,
-      current.wind.speed,
+      current.wind_speed,
       rainfall,
       weatherCode,
-      forecastList
+      hourlyList
     );
 
     if (alerts.length > 0) {
@@ -304,8 +317,8 @@ function App() {
       );
     }
 
-    const upcomingRain = forecastList.slice(0, 8).some((forecast: any) =>
-      forecast.weather[0]?.main === 'Rain' || forecast.rain?.['3h'] > 0
+    const upcomingRain = hourlyList.slice(0, 8).some((forecast: any) =>
+      forecast.weather[0]?.main === 'Rain' || forecast.rain?.['1h'] > 0
     );
 
     if (upcomingRain) {
@@ -473,9 +486,10 @@ function App() {
   }
 
   const current = weather?.current;
-  const forecastList = weather?.forecast?.list || [];
+  const hourlyList = weather?.hourly || [];
+  const dailyList = weather?.daily || [];
 
-  if (!current || !current.main || !current.weather || current.weather.length === 0) {
+  if (!current || !current.weather || current.weather.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
         <div className="text-center">
@@ -491,16 +505,16 @@ function App() {
     );
   }
 
-  const tempC = current.main.temp || 0;
-  const humidity = current.main.humidity || 0;
+  const tempC = current.temp || 0;
+  const humidity = current.humidity || 0;
   const weatherCode = current.weather[0]?.main || 'clear';
   const weatherDescription = current.weather[0]?.description || 'clear';
   const bgGradient = getBackgroundGradient(weatherCode);
   const textColor = getTextColor(weatherCode);
 
-  const windSpeedKmh = current.wind.speed * 3.6;
-  const windGustKmh = current.wind.gust ? current.wind.gust * 3.6 : null;
-  const windDegrees = current.wind.deg;
+  const windSpeedKmh = current.wind_speed * 3.6;
+  const windGustKmh = current.wind_gust ? current.wind_gust * 3.6 : null;
+  const windDegrees = current.wind_deg;
   const getWindDirection = (deg: number) => {
     const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return directions[Math.round(deg / 45) % 8];
@@ -514,7 +528,7 @@ function App() {
 
   const rainfall = current.rain?.['1h'] || 0;
   const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
-  const sprayAdvice = getSprayAdvice(windSpeedKmh, rainfall, forecastList);
+  const sprayAdvice = getSprayAdvice(windSpeedKmh, rainfall, hourlyList);
 
   const dewpointC = tempC - ((100 - humidity) / 5);
   const deltaT = calculateDeltaT(tempC, humidity);
@@ -542,49 +556,32 @@ function App() {
   const feelsLike = calculateFeelsLike(tempC, humidity, windSpeedKmh);
 
   const today = new Date().toLocaleDateString('en-AU');
-  const todayForecasts = forecastList.filter((item: any) => {
+  const todayHours = hourlyList.filter((item: any) => {
     const itemDate = new Date(item.dt * 1000).toLocaleDateString('en-AU');
     return itemDate === today;
   });
 
-  const todayHighTemp = todayForecasts.length > 0
-    ? Math.max(...todayForecasts.map((f: any) => f.main.temp))
+  const todayHighTemp = todayHours.length > 0
+    ? Math.max(...todayHours.map((f: any) => f.temp))
     : tempC;
-  const todayLowTemp = todayForecasts.length > 0
-    ? Math.min(...todayForecasts.map((f: any) => f.main.temp))
+  const todayLowTemp = todayHours.length > 0
+    ? Math.min(...todayHours.map((f: any) => f.temp))
     : tempC;
 
-  const dailyForecasts = forecastList.reduce((acc: any[], item: any) => {
-    const date = new Date(item.dt * 1000).toLocaleDateString('en-AU');
-    const existing = acc.find(f => f.date === date);
-
-    if (!existing) {
-      acc.push({
-        date,
-        dt: item.dt,
-        temps: [item.main.temp],
-        tempMin: item.main.temp,
-        tempMax: item.main.temp,
-        humidity: item.main.humidity,
-        weather: item.weather[0]?.main || 'clear',
-        windSpeed: item.wind.speed * 3.6,
-        rain: item.rain?.['3h'] || 0,
-        rainCount: item.rain?.['3h'] ? 1 : 0,
-        totalForecasts: 1,
-        forecastItems: [item],
-      });
-    } else {
-      existing.temps.push(item.main.temp);
-      existing.tempMin = Math.min(existing.tempMin, item.main.temp);
-      existing.tempMax = Math.max(existing.tempMax, item.main.temp);
-      existing.rain += item.rain?.['3h'] || 0;
-      existing.rainCount += item.rain?.['3h'] ? 1 : 0;
-      existing.totalForecasts += 1;
-      existing.forecastItems.push(item);
-    }
-
-    return acc;
-  }, []).slice(0, 5);
+  const dailyForecasts = dailyList.slice(0, 5).map((day: any) => ({
+    date: new Date(day.dt * 1000).toLocaleDateString('en-AU'),
+    dt: day.dt,
+    temps: [day.temp.min, day.temp.max],
+    tempMin: day.temp.min,
+    tempMax: day.temp.max,
+    humidity: day.humidity,
+    weather: day.weather[0]?.main || 'clear',
+    windSpeed: day.wind_speed * 3.6,
+    rain: (day.rain || 0) + (day.snow || 0),
+    rainCount: (day.rain || 0) + (day.snow || 0) > 0 ? 1 : 0,
+    totalForecasts: 1,
+    forecastItems: [day],
+  }));
 
   const todayForecast = dailyForecasts[0];
   const todayRainChance = todayForecast ? Math.round((todayForecast.rainCount / todayForecast.totalForecasts) * 100) : 0;
@@ -764,7 +761,7 @@ function App() {
               </div>
 
               {(() => {
-                const todayBestWindow = findBestSprayWindow(todayForecasts);
+                const todayBestWindow = findBestSprayWindow(todayHours);
                 if (todayBestWindow) {
                   return (
                     <div className={`${todayBestWindow.rating === 'Good' ? 'bg-green-50' : 'bg-yellow-50'} rounded-lg border-2 ${todayBestWindow.rating === 'Good' ? 'border-green-400' : 'border-yellow-400'} px-4 py-3 shadow-md min-w-[320px] max-w-[360px]`}>
@@ -855,7 +852,7 @@ function App() {
         </div>
 
         <div className="mb-8">
-          <HourlyForecast forecastList={forecastList} />
+          <HourlyForecast forecastList={hourlyList} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
@@ -1112,7 +1109,7 @@ function App() {
         weatherContext={{
           location: `${location.name}${location.state ? ', ' + location.state : ''}`,
           currentWeather: current,
-          forecast: forecastList.slice(0, 8),
+          forecast: hourlyList.slice(0, 8),
         }}
         isAuthenticated={!!user}
       />

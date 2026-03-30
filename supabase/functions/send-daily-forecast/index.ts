@@ -154,33 +154,22 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const { lat, lon, name, country } = geoData[0];
 
-        const [currentResponse, forecastResponse] = await Promise.all([
-          fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`),
-          fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`)
-        ]);
+        const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`;
+        const oneCallResponse = await fetch(oneCallUrl);
 
-        if (!currentResponse.ok) {
-          const errorText = await currentResponse.text();
-          const errorMsg = `Failed to fetch current weather for ${subscriber.email}: ${currentResponse.status} - ${errorText}`;
+        if (!oneCallResponse.ok) {
+          const errorText = await oneCallResponse.text();
+          const errorMsg = `Failed to fetch weather data for ${subscriber.email}: ${oneCallResponse.status} - ${errorText}`;
           console.error(errorMsg);
           errors.push(errorMsg);
           continue;
         }
 
-        if (!forecastResponse.ok) {
-          const errorText = await forecastResponse.text();
-          const errorMsg = `Failed to fetch forecast for ${subscriber.email}: ${forecastResponse.status} - ${errorText}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
+        const oneCallData = await oneCallResponse.json();
 
-        const currentData = await currentResponse.json();
-        const forecastData = await forecastResponse.json();
+        const weatherData = transformWeatherDataFromOneCall(oneCallData, name, country);
 
-        const weatherData = transformWeatherData(currentData, forecastData, name, country);
-
-        const emailHtml = buildDailyForecastEmail(weatherData, forecastData.list);
+        const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly);
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(subscriber.email)) {
@@ -201,7 +190,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
-            text: buildDailyForecastEmailText(weatherData, forecastData.list, name, country),
+            text: buildDailyForecastEmailText(weatherData, oneCallData.hourly, name, country),
           }),
         });
 
@@ -227,39 +216,19 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
   }
 }
 
-function transformWeatherData(currentData: any, forecastData: any, cityName: string, country: string) {
-  const dailyForecasts = new Map();
-
-  forecastData.list.forEach((item: any) => {
-    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
-    if (!dailyForecasts.has(date)) {
-      dailyForecasts.set(date, []);
-    }
-    dailyForecasts.get(date).push(item);
-  });
-
-  const forecastDays = Array.from(dailyForecasts.entries()).slice(0, 5).map(([date, items]: [string, any[]]) => {
-    const temps = items.map(i => i.main.temp);
-    const maxtemp_c = Math.max(...temps);
-    const mintemp_c = Math.min(...temps);
-    const rainAmounts = items.map(i => (i.rain?.['3h'] || 0));
-    const totalprecip_mm = rainAmounts.reduce((a, b) => a + b, 0);
-    const rainChances = items.map(i => (i.pop || 0) * 100);
-    const daily_chance_of_rain = Math.max(...rainChances);
-    const winds = items.map(i => i.wind.speed * 3.6);
-    const maxwind_kph = Math.max(...winds);
-
+function transformWeatherDataFromOneCall(oneCallData: any, cityName: string, country: string) {
+  const forecastDays = oneCallData.daily.slice(0, 8).map((day: any) => {
     return {
-      date,
+      date: new Date(day.dt * 1000).toISOString().split('T')[0],
       day: {
-        maxtemp_c,
-        mintemp_c,
+        maxtemp_c: day.temp.max,
+        mintemp_c: day.temp.min,
         condition: {
-          text: items[0].weather[0].description
+          text: day.weather[0].description
         },
-        daily_chance_of_rain: Math.round(daily_chance_of_rain),
-        totalprecip_mm,
-        maxwind_kph
+        daily_chance_of_rain: Math.round((day.pop || 0) * 100),
+        totalprecip_mm: (day.rain || 0) + (day.snow || 0),
+        maxwind_kph: day.wind_speed * 3.6
       }
     };
   });
@@ -270,14 +239,14 @@ function transformWeatherData(currentData: any, forecastData: any, cityName: str
       country: country
     },
     current: {
-      temp_c: currentData.main.temp,
-      feelslike_c: currentData.main.feels_like,
-      humidity: currentData.main.humidity,
-      wind_kph: currentData.wind.speed * 3.6,
-      wind_degree: currentData.wind.deg,
-      wind_dir: degreesToDirection(currentData.wind.deg),
+      temp_c: oneCallData.current.temp,
+      feelslike_c: oneCallData.current.feels_like,
+      humidity: oneCallData.current.humidity,
+      wind_kph: oneCallData.current.wind_speed * 3.6,
+      wind_degree: oneCallData.current.wind_deg,
+      wind_dir: degreesToDirection(oneCallData.current.wind_deg),
       condition: {
-        text: currentData.weather[0].description
+        text: oneCallData.current.weather[0].description
       }
     },
     forecast: {
@@ -337,19 +306,17 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
 
   const windDir = degreesToDirection(current.wind_degree);
 
-  const next24Hours = hourlyForecast.slice(0, 8);
+  const next24Hours = hourlyForecast.slice(0, 24);
   let bestSprayWindow = 'No ideal window';
   let bestWindowTime = '';
 
   const rainPeriods: string[] = [];
   for (const hour of next24Hours) {
-    if (!hour.main || !hour.wind) continue;
-
-    const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
-    const hourWindSpeed = hour.wind.speed * 3.6;
+    const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
+    const hourWindSpeed = hour.wind_speed * 3.6;
     if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
         hourDeltaT >= 2 && hourDeltaT <= 8 &&
-        hour.main.temp >= 8 && hour.main.temp <= 30) {
+        hour.temp >= 8 && hour.temp <= 30) {
       const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
       bestSprayWindow = 'Ideal';
       bestWindowTime = time;
@@ -683,7 +650,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
           ${next24Hours.map((hour: any) => {
             const hourTime = new Date(hour.dt * 1000);
             const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-            const temp = Math.round(hour.main.temp);
+            const temp = Math.round(hour.temp);
             const rainProb = Math.round((hour.pop || 0) * 100);
             const weatherMain = hour.weather[0]?.main || 'Clear';
             const icon = weatherMain === 'Rain' ? '🌧️' :
@@ -738,19 +705,17 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
 
   const windDir = degreesToDirection(current.wind_degree);
 
-  const next24Hours = hourlyForecast.slice(0, 8);
+  const next24Hours = hourlyForecast.slice(0, 24);
   let bestSprayWindow = 'No ideal window';
   let bestWindowTime = '';
 
   const rainPeriods: string[] = [];
   for (const hour of next24Hours) {
-    if (!hour.main || !hour.wind) continue;
-
-    const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
-    const hourWindSpeed = hour.wind.speed * 3.6;
+    const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
+    const hourWindSpeed = hour.wind_speed * 3.6;
     if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
         hourDeltaT >= 2 && hourDeltaT <= 8 &&
-        hour.main.temp >= 8 && hour.main.temp <= 30) {
+        hour.temp >= 8 && hour.temp <= 30) {
       const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
       bestSprayWindow = 'Ideal';
       bestWindowTime = time;
@@ -790,7 +755,7 @@ SPRAY WINDOW ANALYSIS:
 ${next24Hours.slice(0, 8).map((hour: any) => {
   const hourTime = new Date(hour.dt * 1000);
   const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-  const temp = Math.round(hour.main.temp);
+  const temp = Math.round(hour.temp);
   const rainProb = Math.round((hour.pop || 0) * 100);
   const weatherMain = hour.weather[0]?.main || 'Clear';
   return `${timeStr}: ${temp}°C, ${weatherMain}, ${rainProb}% rain`;

@@ -29,12 +29,12 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
   const now = Date.now();
 
-  for (let i = 0; i < 16 && i < forecastList.length; i++) {
+  for (let i = 0; i < 48 && i < forecastList.length; i++) {
     const item = forecastList[i];
     const date = new Date(item.dt * 1000);
-    const temp = item.main.temp;
-    const windSpeed = item.wind.speed * 3.6;
-    const windDirection = item.wind.deg || 0;
+    const temp = item.temp;
+    const windSpeed = item.wind_speed * 3.6;
+    const windDirection = item.wind_deg || 0;
     const rainChance = (item.pop || 0) * 100;
     const weatherIcon = item.weather?.[0]?.icon || '01d';
 
