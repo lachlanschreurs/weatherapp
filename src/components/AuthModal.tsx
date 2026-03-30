@@ -17,12 +17,15 @@ declare global {
 
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const cardElementRef = useRef<any>(null);
   const stripeRef = useRef<any>(null);
   const elementsRef = useRef<any>(null);
@@ -31,7 +34,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   useEffect(() => {
     if (isOpen) {
       setIsLogin(initialMode === 'login');
+      setIsForgotPassword(false);
       setError(null);
+      setSuccessMessage(null);
       setEmail('');
       setPassword('');
       setName('');
@@ -110,6 +115,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setLoading(true);
 
     try {
@@ -118,10 +124,23 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('Please enter a valid email address');
       }
 
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setSuccessMessage('Password reset link sent! Check your email inbox.');
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
+          options: {
+            persistSession: rememberMe,
+          },
         });
         if (error) throw error;
         onSuccess();
@@ -239,10 +258,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         <div className="p-8">
           <h2 className="text-3xl font-bold text-green-900 mb-2">
-            {isLogin ? 'Welcome Back' : 'Get Started with FarmCast'}
+            {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Get Started with FarmCast'}
           </h2>
           <p className="text-gray-600 mb-6">
-            {isLogin ? 'Sign in to access your farm data' : 'Start your 1-month free trial today'}
+            {isForgotPassword
+              ? 'Enter your email to receive a password reset link'
+              : isLogin ? 'Sign in to access your farm data' : 'Start your 1-month free trial today'}
           </p>
 
           {!isLogin && (
@@ -285,8 +306,14 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
+              {successMessage}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {!isLogin && !isForgotPassword && (
               <>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -345,30 +372,57 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
+            {!isForgotPassword && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                {!isLogin && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Minimum 6 characters
+                  </p>
+                )}
               </div>
-              {!isLogin && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Minimum 6 characters
-                </p>
-              )}
-            </div>
+            )}
 
-            {!isLogin && (
+            {isLogin && !isForgotPassword && (
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Remember me</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(true);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-sm text-green-700 hover:text-green-800 font-semibold"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {!isLogin && !isForgotPassword && (
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Payment Details
@@ -386,26 +440,40 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               disabled={loading}
               className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Start Free Trial'}
+              {loading ? 'Processing...' : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Start Free Trial'}
             </button>
 
-            {!isLogin && (
+            {!isLogin && !isForgotPassword && (
               <p className="text-xs text-center text-gray-500">
                 By signing up, you agree to our terms. After 1 month, you'll be charged $5.99/month recurring until you cancel.
               </p>
             )}
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError(null);
-              }}
-              className="text-green-700 hover:text-green-800 font-semibold text-sm"
-            >
-              {isLogin ? "Don't have an account? Start free trial" : 'Already have an account? Sign in'}
-            </button>
+          <div className="mt-6 text-center space-y-2">
+            {isForgotPassword ? (
+              <button
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-green-700 hover:text-green-800 font-semibold text-sm"
+              >
+                Back to sign in
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-green-700 hover:text-green-800 font-semibold text-sm"
+              >
+                {isLogin ? "Don't have an account? Start free trial" : 'Already have an account? Sign in'}
+              </button>
+            )}
           </div>
         </div>
       </div>
