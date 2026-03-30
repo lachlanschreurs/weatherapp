@@ -154,22 +154,33 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const { lat, lon, name, country } = geoData[0];
 
-        const oneCallResponse = await fetch(
-          `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&exclude=minutely,alerts`
-        );
+        const [currentResponse, forecastResponse] = await Promise.all([
+          fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`),
+          fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`)
+        ]);
 
-        if (!oneCallResponse.ok) {
-          const errorMsg = `Failed to fetch weather for ${subscriber.email}: ${oneCallResponse.status}`;
+        if (!currentResponse.ok) {
+          const errorText = await currentResponse.text();
+          const errorMsg = `Failed to fetch current weather for ${subscriber.email}: ${currentResponse.status} - ${errorText}`;
           console.error(errorMsg);
           errors.push(errorMsg);
           continue;
         }
 
-        const oneCallData = await oneCallResponse.json();
+        if (!forecastResponse.ok) {
+          const errorText = await forecastResponse.text();
+          const errorMsg = `Failed to fetch forecast for ${subscriber.email}: ${forecastResponse.status} - ${errorText}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+          continue;
+        }
 
-        const weatherData = transformOneCallData(oneCallData, name, country);
+        const currentData = await currentResponse.json();
+        const forecastData = await forecastResponse.json();
 
-        const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly);
+        const weatherData = transformWeatherData(currentData, forecastData, name, country);
+
+        const emailHtml = buildDailyForecastEmail(weatherData, forecastData.list);
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(subscriber.email)) {
@@ -190,7 +201,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
-            text: buildDailyForecastEmailText(weatherData, oneCallData.hourly, name, country),
+            text: buildDailyForecastEmailText(weatherData, forecastData.list, name, country),
           }),
         });
 
@@ -216,22 +227,39 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
   }
 }
 
-function transformOneCallData(oneCallData: any, cityName: string, country: string) {
-  const current = oneCallData.current;
-  const daily = oneCallData.daily;
+function transformWeatherData(currentData: any, forecastData: any, cityName: string, country: string) {
+  const dailyForecasts = new Map();
 
-  const forecastDays = daily.slice(0, 5).map((day: any) => {
+  forecastData.list.forEach((item: any) => {
+    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
+    if (!dailyForecasts.has(date)) {
+      dailyForecasts.set(date, []);
+    }
+    dailyForecasts.get(date).push(item);
+  });
+
+  const forecastDays = Array.from(dailyForecasts.entries()).slice(0, 5).map(([date, items]: [string, any[]]) => {
+    const temps = items.map(i => i.main.temp);
+    const maxtemp_c = Math.max(...temps);
+    const mintemp_c = Math.min(...temps);
+    const rainAmounts = items.map(i => (i.rain?.['3h'] || 0));
+    const totalprecip_mm = rainAmounts.reduce((a, b) => a + b, 0);
+    const rainChances = items.map(i => (i.pop || 0) * 100);
+    const daily_chance_of_rain = Math.max(...rainChances);
+    const winds = items.map(i => i.wind.speed * 3.6);
+    const maxwind_kph = Math.max(...winds);
+
     return {
-      date: new Date(day.dt * 1000).toISOString().split('T')[0],
+      date,
       day: {
-        maxtemp_c: day.temp.max,
-        mintemp_c: day.temp.min,
+        maxtemp_c,
+        mintemp_c,
         condition: {
-          text: day.weather[0].description
+          text: items[0].weather[0].description
         },
-        daily_chance_of_rain: Math.round((day.pop || 0) * 100),
-        totalprecip_mm: (day.rain || 0),
-        maxwind_kph: day.wind_speed * 3.6
+        daily_chance_of_rain: Math.round(daily_chance_of_rain),
+        totalprecip_mm,
+        maxwind_kph
       }
     };
   });
@@ -242,14 +270,14 @@ function transformOneCallData(oneCallData: any, cityName: string, country: strin
       country: country
     },
     current: {
-      temp_c: current.temp,
-      feelslike_c: current.feels_like,
-      humidity: current.humidity,
-      wind_kph: current.wind_speed * 3.6,
-      wind_degree: current.wind_deg,
-      wind_dir: degreesToDirection(current.wind_deg),
+      temp_c: currentData.main.temp,
+      feelslike_c: currentData.main.feels_like,
+      humidity: currentData.main.humidity,
+      wind_kph: currentData.wind.speed * 3.6,
+      wind_degree: currentData.wind.deg,
+      wind_dir: degreesToDirection(currentData.wind.deg),
       condition: {
-        text: current.weather[0].description
+        text: currentData.weather[0].description
       }
     },
     forecast: {
@@ -315,6 +343,8 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
 
   const rainPeriods: string[] = [];
   for (const hour of next24Hours) {
+    if (!hour.main || !hour.wind) continue;
+
     const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
     const hourWindSpeed = hour.wind.speed * 3.6;
     if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
@@ -714,6 +744,8 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
 
   const rainPeriods: string[] = [];
   for (const hour of next24Hours) {
+    if (!hour.main || !hour.wind) continue;
+
     const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
     const hourWindSpeed = hour.wind.speed * 3.6;
     if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
