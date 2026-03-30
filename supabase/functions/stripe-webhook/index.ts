@@ -67,7 +67,11 @@ Deno.serve(async (req: Request) => {
         const userId = session.metadata?.supabase_user_id;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
+        const customerEmail = session.customer_details?.email || session.customer_email;
 
+        console.log('Checkout session completed:', { userId, customerId, customerEmail });
+
+        // Case 1: User signed up through website first (has userId in metadata)
         if (userId && customerId) {
           await supabase
             .from("profiles")
@@ -80,7 +84,81 @@ Deno.serve(async (req: Request) => {
             })
             .eq("id", userId);
 
-          console.log(`Activated subscription for user ${userId}`);
+          console.log(`Activated subscription for existing user ${userId}`);
+        }
+        // Case 2: Direct Stripe checkout (no userId) - create auth user
+        else if (!userId && customerId && customerEmail) {
+          console.log(`No user ID found, checking if auth user exists for: ${customerEmail}`);
+
+          // Check if user already exists
+          const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+
+          if (listError) {
+            console.error('Error listing users:', listError);
+          }
+
+          const userExists = existingUsers?.users?.find(u => u.email === customerEmail);
+
+          if (userExists) {
+            console.log(`User already exists: ${userExists.id}, updating profile`);
+
+            // Update existing user's profile
+            await supabase
+              .from("profiles")
+              .update({
+                stripe_customer_id: customerId,
+                stripe_subscription_id: subscriptionId,
+                farmer_joe_subscription_status: "active",
+                farmer_joe_subscription_started_at: new Date().toISOString(),
+                farmer_joe_subscription_ends_at: null,
+              })
+              .eq("id", userExists.id);
+          } else {
+            console.log(`Creating new auth user for Stripe customer: ${customerEmail}`);
+
+            // Create new Supabase auth user
+            const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+              email: customerEmail,
+              email_confirm: true,
+              user_metadata: {
+                created_via: 'stripe_checkout',
+                stripe_customer_id: customerId,
+              },
+            });
+
+            if (createError) {
+              console.error('Error creating user:', createError);
+              throw createError;
+            }
+
+            if (newUser.user) {
+              console.log(`Successfully created user: ${newUser.user.id}`);
+
+              // Profile is auto-created by trigger, just update it with Stripe data
+              await supabase
+                .from("profiles")
+                .update({
+                  stripe_customer_id: customerId,
+                  stripe_subscription_id: subscriptionId,
+                  farmer_joe_subscription_status: "active",
+                  farmer_joe_subscription_started_at: new Date().toISOString(),
+                  farmer_joe_subscription_ends_at: null,
+                })
+                .eq("id", newUser.user.id);
+
+              // Send password reset email so they can set their password
+              const { data: resetLink, error: resetError } = await supabase.auth.admin.generateLink({
+                type: 'recovery',
+                email: customerEmail,
+              });
+
+              if (resetError) {
+                console.error('Error generating password reset link:', resetError);
+              } else {
+                console.log(`Password reset link generated for ${customerEmail}`);
+              }
+            }
+          }
         }
         break;
       }
