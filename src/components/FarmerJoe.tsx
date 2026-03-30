@@ -5,11 +5,10 @@ import SubscriptionManager from './SubscriptionManager';
 
 interface Message {
   id: string;
-  message: string;
-  response: string;
+  role: 'user' | 'assistant';
+  content: string;
   created_at: string;
   image_url?: string | null;
-  isUser?: boolean;
 }
 
 interface FarmerJoeProps {
@@ -180,11 +179,19 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const loadChatHistory = async () => {
     setIsLoadingHistory(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setMessages([]);
+        setIsLoadingHistory(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: true })
-        .limit(50);
+        .limit(100);
 
       if (error) throw error;
 
@@ -202,10 +209,13 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     }
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
       const { error } = await supabase
         .from('chat_messages')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all user's messages
+        .eq('user_id', session.user.id);
 
       if (error) throw error;
 
@@ -275,14 +285,23 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
 
       if (!session) {
         if (guestQuestionCount >= MAX_FREE_MESSAGES) {
-          const tempId = `temp-${Date.now()}`;
-          const tempMessage: Message = {
-            id: tempId,
-            message: userMessage,
-            response: "You've reached your 10 free messages! Sign in to subscribe and get unlimited access to Farmer Joe for just $5.99/month. Get personalized farming advice, weather insights, and save your conversation history. Click the sign-in button at the top right to get started!",
-            created_at: new Date().toISOString(),
-          };
-          setMessages(prev => [...prev, tempMessage]);
+          const userMsgId = `temp-user-${Date.now()}`;
+          const assistantMsgId = `temp-assistant-${Date.now()}`;
+          setMessages(prev => [...prev,
+            {
+              id: userMsgId,
+              role: 'user',
+              content: userMessage,
+              created_at: new Date().toISOString(),
+              image_url: imageData ? 'attached' : null,
+            },
+            {
+              id: assistantMsgId,
+              role: 'assistant',
+              content: "You've reached your 10 free messages! Sign in to subscribe and get unlimited access to Farmer Joe for just $5.99/month. Get personalized farming advice, weather insights, and save your conversation history. Click the sign-in button at the top right to get started!",
+              created_at: new Date().toISOString(),
+            }
+          ]);
           setIsLoading(false);
           return;
         }
@@ -292,14 +311,23 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         localStorage.setItem('farmerJoeGuestQuestions', newCount.toString());
 
         const remainingQuestions = MAX_FREE_MESSAGES - newCount;
-        const tempId = `temp-${Date.now()}`;
-        const tempMessage: Message = {
-          id: tempId,
-          message: userMessage,
-          response: `Thanks for your question! ${remainingQuestions > 0 ? `You have ${remainingQuestions} free message${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free message!'} Sign in and subscribe for just $5.99/month to get unlimited access, personalized advice based on your location and weather, and save your chat history. Here's a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!`,
-          created_at: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, tempMessage]);
+        const userMsgId = `temp-user-${Date.now()}`;
+        const assistantMsgId = `temp-assistant-${Date.now()}`;
+        setMessages(prev => [...prev,
+          {
+            id: userMsgId,
+            role: 'user',
+            content: userMessage,
+            created_at: new Date().toISOString(),
+            image_url: imageData ? 'attached' : null,
+          },
+          {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: `Thanks for your question! ${remainingQuestions > 0 ? `You have ${remainingQuestions} free message${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free message!'} Sign in and subscribe for just $5.99/month to get unlimited access, personalized advice based on your location and weather, and save your chat history. Here's a quick tip: Check the current spray conditions and 5-day forecast on the main dashboard!`,
+            created_at: new Date().toISOString(),
+          }
+        ]);
         setIsLoading(false);
         return;
       }
@@ -307,14 +335,23 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       // Check if authenticated user has active subscription
       if (subscriptionStatus?.needsSubscription) {
         setShowSubscriptionPrompt(true);
-        const tempId = `temp-${Date.now()}`;
-        const tempMessage: Message = {
-          id: tempId,
-          message: userMessage,
-          response: "To continue chatting with Farmer Joe, you'll need to subscribe for just $5.99/month. This gives you unlimited access to personalized farming advice, weather insights, and your conversation history is always saved. Click the 'Subscribe Now' button below to get started!",
-          created_at: new Date().toISOString(),
-        };
-        setMessages(prev => [...prev, tempMessage]);
+        const userMsgId = `temp-user-${Date.now()}`;
+        const assistantMsgId = `temp-assistant-${Date.now()}`;
+        setMessages(prev => [...prev,
+          {
+            id: userMsgId,
+            role: 'user',
+            content: userMessage,
+            created_at: new Date().toISOString(),
+            image_url: imageData ? 'attached' : null,
+          },
+          {
+            id: assistantMsgId,
+            role: 'assistant',
+            content: "To continue chatting with Farmer Joe, you'll need to subscribe for just $5.99/month. This gives you unlimited access to personalized farming advice, weather insights, and your conversation history is always saved. Click the 'Subscribe Now' button below to get started!",
+            created_at: new Date().toISOString(),
+          }
+        ]);
         setIsLoading(false);
         return;
       }
@@ -353,14 +390,23 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     } catch (error) {
       console.error('Error sending message:', error);
 
-      const tempId = `error-${Date.now()}`;
-      const errorMessage: Message = {
-        id: tempId,
-        message: userMessage,
-        response: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or check your connection.`,
-        created_at: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      const userMsgId = `error-user-${Date.now()}`;
+      const assistantMsgId = `error-assistant-${Date.now()}`;
+      setMessages(prev => [...prev,
+        {
+          id: userMsgId,
+          role: 'user',
+          content: userMessage,
+          created_at: new Date().toISOString(),
+          image_url: imageData ? 'attached' : null,
+        },
+        {
+          id: assistantMsgId,
+          role: 'assistant',
+          content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or check your connection.`,
+          created_at: new Date().toISOString(),
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -518,10 +564,9 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
               </div>
             ) : (
               messages.map((msg) => (
-                <div key={msg.id} className="space-y-3">
-                  {/* User Message - only show if message exists */}
-                  {msg.message && (
-                    <div className="flex justify-end items-end gap-2">
+                <div key={msg.id}>
+                  {msg.role === 'user' ? (
+                    <div className="flex justify-end items-end gap-2 mb-3">
                       <div className="bg-blue-600 text-white rounded-2xl rounded-br-none px-4 py-3 max-w-[80%] shadow-md">
                         {msg.image_url && (
                           <div className="mb-2">
@@ -531,20 +576,19 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                             </div>
                           </div>
                         )}
-                        <p className="text-sm leading-relaxed">{msg.message}</p>
+                        <p className="text-sm leading-relaxed">{msg.content}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-start items-start gap-2 mb-3">
+                      <div className="flex-shrink-0 mt-1">
+                        <FarmerJoeAvatar size="sm" />
+                      </div>
+                      <div className="bg-green-50 border-2 border-green-200 rounded-2xl rounded-tl-none px-4 py-3 max-w-[75%] shadow-sm">
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                       </div>
                     </div>
                   )}
-
-                  {/* Farmer Joe Response */}
-                  <div className="flex justify-start items-start gap-2">
-                    <div className="flex-shrink-0 mt-1">
-                      <FarmerJoeAvatar size="sm" />
-                    </div>
-                    <div className="bg-green-50 border-2 border-green-200 rounded-2xl rounded-tl-none px-4 py-3 max-w-[75%] shadow-sm">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{msg.response}</p>
-                    </div>
-                  </div>
                 </div>
               ))
             )}

@@ -103,13 +103,19 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
 
       // Save to database (only for authenticated users)
       if (user) {
-        await supabaseClient.from('chat_messages').insert({
-          user_id: user.id,
-          message: message,
-          response: fallbackResponse,
-          weather_context: weatherContext || {},
-          image_url: imageBase64 ? 'data:image/jpeg;base64,...' : null,
-        });
+        await supabaseClient.from('chat_messages').insert([
+          {
+            user_id: user.id,
+            role: 'user',
+            content: message,
+            image_url: imageBase64 ? 'data:image/jpeg;base64,...' : null,
+          },
+          {
+            user_id: user.id,
+            role: 'assistant',
+            content: fallbackResponse,
+          }
+        ]);
       }
 
       return new Response(
@@ -128,10 +134,10 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
     if (user) {
       const { data: chatHistory, error: historyError } = await supabaseClient
         .from('chat_messages')
-        .select('message, response, created_at')
+        .select('role, content, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
-        .limit(10);
+        .limit(20);
 
       if (!historyError && chatHistory) {
         conversationHistory = chatHistory;
@@ -149,12 +155,8 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
     // Add conversation history to context
     for (const chat of conversationHistory) {
       messages.push({
-        role: 'user',
-        content: chat.message,
-      });
-      messages.push({
-        role: 'assistant',
-        content: chat.response,
+        role: chat.role,
+        content: chat.content,
       });
     }
 
@@ -208,13 +210,19 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
 
     // Save chat message to database (only for authenticated users)
     if (user) {
-      await supabaseClient.from('chat_messages').insert({
-        user_id: user.id,
-        message: message,
-        response: aiResponse,
-        weather_context: weatherContext || {},
-        image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 50)}...` : null,
-      });
+      await supabaseClient.from('chat_messages').insert([
+        {
+          user_id: user.id,
+          role: 'user',
+          content: message,
+          image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 50)}...` : null,
+        },
+        {
+          user_id: user.id,
+          role: 'assistant',
+          content: aiResponse,
+        }
+      ]);
     }
 
     return new Response(
