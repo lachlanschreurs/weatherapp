@@ -324,16 +324,20 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
   const deltaT = calculateDeltaT(current.temp_c, current.humidity);
   const deltaTCond = getDeltaTCondition(deltaT);
 
-  const rainToday = forecast[0].day?.totalprecip_mm || 0;
+  const todayForecast = forecast[0].day;
+  const highTemp = todayForecast?.maxtemp_c || 0;
+  const lowTemp = todayForecast?.mintemp_c || 0;
+  const rainToday = todayForecast?.totalprecip_mm || 0;
+  const rainChance = todayForecast?.daily_chance_of_rain || 0;
   const sprayCond = getSprayCondition(current.wind_kph, rainToday);
 
-  const rainChance = forecast[0].day?.daily_chance_of_rain || 0;
   const windDir = degreesToDirection(current.wind_degree);
 
   const next24Hours = hourlyForecast.slice(0, 8);
   let bestSprayWindow = 'No ideal window';
   let bestWindowTime = '';
 
+  const rainPeriods: string[] = [];
   for (const hour of next24Hours) {
     const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
     const hourWindSpeed = hour.wind.speed * 3.6;
@@ -345,7 +349,17 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
       bestWindowTime = time;
       break;
     }
+
+    if ((hour.pop || 0) > 0.3) {
+      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
+      const prob = Math.round((hour.pop || 0) * 100);
+      rainPeriods.push(`${time} (${prob}%)`);
+    }
   }
+
+  const rainTimingText = rainPeriods.length > 0
+    ? `Expected around: ${rainPeriods.slice(0, 3).join(', ')}`
+    : 'No significant rain expected in next 24 hours';
 
   return `
 <!DOCTYPE html>
@@ -593,18 +607,25 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
 
     <div class="content">
       <div class="current-conditions">
-        <div class="section-header">Current Conditions</div>
+        <div class="section-header">Today's Forecast</div>
         <div class="conditions-grid">
           <div class="condition-item">
             <div class="condition-icon">🌡️</div>
-            <div class="condition-label">Temperature</div>
+            <div class="condition-label">Current Temp</div>
             <div class="condition-value">${Math.round(current.temp_c)}°C</div>
             <div class="condition-sub">Feels ${Math.round(current.feelslike_c)}°C</div>
           </div>
 
           <div class="condition-item">
+            <div class="condition-icon">📊</div>
+            <div class="condition-label">High / Low</div>
+            <div class="condition-value">${Math.round(highTemp)}° / ${Math.round(lowTemp)}°</div>
+            <div class="condition-sub">Today's Range</div>
+          </div>
+
+          <div class="condition-item">
             <div class="condition-icon">💧</div>
-            <div class="condition-label">Rainfall</div>
+            <div class="condition-label">Rain Expected</div>
             <div class="condition-value">${rainToday.toFixed(1)}mm</div>
             <div class="condition-sub">${rainChance}% Chance</div>
           </div>
@@ -615,13 +636,15 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
             <div class="condition-value">${Math.round(current.wind_kph)} km/h</div>
             <div class="condition-sub">${windDir}</div>
           </div>
+        </div>
+      </div>
 
-          <div class="condition-item">
-            <div class="condition-icon">💦</div>
-            <div class="condition-label">Humidity</div>
-            <div class="condition-value">${current.humidity}%</div>
-            <div class="condition-sub">${current.condition.text}</div>
-          </div>
+      <div style="background: #f0f9ff; border: 2px solid #3b82f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 6px;">
+          ⏰ Rain Timing
+        </div>
+        <div style="font-size: 13px; color: #1e3a8a; font-weight: 600;">
+          ${rainTimingText}
         </div>
       </div>
 
@@ -697,16 +720,20 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
   const deltaT = calculateDeltaT(current.temp_c, current.humidity);
   const deltaTCond = getDeltaTCondition(deltaT);
 
-  const rainToday = forecast[0].day?.totalprecip_mm || 0;
+  const todayForecast = forecast[0].day;
+  const highTemp = todayForecast?.maxtemp_c || 0;
+  const lowTemp = todayForecast?.mintemp_c || 0;
+  const rainToday = todayForecast?.totalprecip_mm || 0;
+  const rainChance = todayForecast?.daily_chance_of_rain || 0;
   const sprayCond = getSprayCondition(current.wind_kph, rainToday);
 
-  const rainChance = forecast[0].day?.daily_chance_of_rain || 0;
   const windDir = degreesToDirection(current.wind_degree);
 
   const next24Hours = hourlyForecast.slice(0, 8);
   let bestSprayWindow = 'No ideal window';
   let bestWindowTime = '';
 
+  const rainPeriods: string[] = [];
   for (const hour of next24Hours) {
     const hourDeltaT = calculateDeltaT(hour.main.temp, hour.main.humidity);
     const hourWindSpeed = hour.wind.speed * 3.6;
@@ -718,19 +745,30 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
       bestWindowTime = time;
       break;
     }
+
+    if ((hour.pop || 0) > 0.3) {
+      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
+      const prob = Math.round((hour.pop || 0) * 100);
+      rainPeriods.push(`${time} (${prob}%)`);
+    }
   }
+
+  const rainTimingText = rainPeriods.length > 0
+    ? `Expected around: ${rainPeriods.slice(0, 3).join(', ')}`
+    : 'No significant rain expected in next 24 hours';
 
   return `
 FARMCAST DAILY FORECAST
 ${cityName}, ${country}
 ${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 
-CURRENT CONDITIONS:
-- Temperature: ${Math.round(current.temp_c)}°C (Feels like ${Math.round(current.feelslike_c)}°C)
-- Rainfall: ${rainToday.toFixed(1)}mm (${rainChance}% chance)
+TODAY'S FORECAST:
+- Current Temperature: ${Math.round(current.temp_c)}°C (Feels like ${Math.round(current.feelslike_c)}°C)
+- High / Low: ${Math.round(highTemp)}°C / ${Math.round(lowTemp)}°C
+- Rain Expected: ${rainToday.toFixed(1)}mm (${rainChance}% chance)
+- Rain Timing: ${rainTimingText}
 - Wind: ${Math.round(current.wind_kph)} km/h ${windDir}
 - Humidity: ${current.humidity}%
-- Conditions: ${current.condition.text}
 
 SPRAY WINDOW ANALYSIS:
 - Spray Conditions: ${sprayCond.rating}

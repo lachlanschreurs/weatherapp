@@ -474,7 +474,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                       <div className="mb-4">
                         <p className="font-semibold text-gray-900 mb-1">Farmer Joe Premium</p>
                         <p className="text-2xl font-bold text-green-600 mb-1">$5.99<span className="text-sm text-gray-600">/month</span></p>
-                        <p className="text-xs text-gray-500">3 month free trial • cancel anytime</p>
+                        <p className="text-xs text-gray-500">1 month free trial • cancel anytime</p>
                       </div>
 
                       <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mb-4">

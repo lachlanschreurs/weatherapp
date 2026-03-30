@@ -116,8 +116,8 @@ function buildWelcomeEmail(location: string): string {
       </div>
 
       <div class="feature-box">
-        <h3 style="margin-top: 0;">3-Month Trial Included</h3>
-        <p>Enjoy 3 months of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month.</p>
+        <h3 style="margin-top: 0;">1-Month Free Trial</h3>
+        <p>Enjoy 1 month of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month, charged monthly until you cancel.</p>
       </div>
 
       <div class="feature-box">
@@ -170,9 +170,9 @@ WHAT YOU'LL RECEIVE:
 - Real-time Weather Alerts
   Important weather warnings and optimal spray windows
 
-3-MONTH TRIAL INCLUDED:
+1-MONTH FREE TRIAL:
 
-Enjoy 3 months of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month.
+Enjoy 1 month of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month, charged monthly until you cancel.
 
 YOUR LOCATION:
 

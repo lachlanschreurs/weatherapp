@@ -252,7 +252,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                   <Check className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-1">3 Months Free Trial</h3>
+                  <h3 className="font-semibold text-green-900 mb-1">1 Month Free Trial</h3>
                   <p className="text-sm text-gray-700 mb-2">
                     No charge today. Your card won't be charged until your trial ends.
                   </p>
@@ -391,7 +391,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
             {!isLogin && (
               <p className="text-xs text-center text-gray-500">
-                By signing up, you agree to our terms. After 3 months, you'll be charged $5.99/month unless you cancel.
+                By signing up, you agree to our terms. After 1 month, you'll be charged $5.99/month recurring until you cancel.
               </p>
             )}
           </form>
