@@ -236,42 +236,70 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         priceId: stripePriceId,
         userId: user.id,
         userEmail: user.email,
-        successUrl: `${window.location.origin}/?subscription=success`,
-        cancelUrl: `${window.location.origin}/?subscription=cancelled`,
+        successUrl: `https://farmcastweather.com/?subscription=success`,
+        cancelUrl: `https://farmcastweather.com/?subscription=cancelled`,
       };
 
       console.log('Sending checkout request:', { apiUrl, ...requestBody, userEmail: 'hidden' });
+
+      console.log('Sending fetch request to:', apiUrl);
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody),
       }).catch((fetchError) => {
-        console.error('Network error:', fetchError);
+        console.error('Network error during fetch:', fetchError);
         throw new Error(`Network error: ${fetchError.message}. Please check your connection and try again.`);
+      });
+
+      console.log('Fetch completed. Response received:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText
       });
 
       if (!response) {
         throw new Error('No response from server');
       }
 
-      const data = await response.json().catch(() => ({
-        error: 'Invalid response from server'
-      }));
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
 
-      console.log('Checkout response:', { status: response.status, data });
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Failed to parse JSON response:', parseError);
+        throw new Error(`Invalid server response. Please try again or contact support@farmcastweather.com`);
+      }
+
+      console.log('Checkout response parsed:', { status: response.status, data });
 
       if (!response.ok) {
-        console.error('Checkout error:', data);
-        throw new Error(data.error || `Server error: ${response.status}`);
+        console.error('Checkout error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data.error,
+          details: data.details,
+          hint: data.hint
+        });
+
+        const errorMsg = data.hint
+          ? `${data.error || 'Checkout failed'}. ${data.hint}`
+          : data.error || `Server error: ${response.status}`;
+
+        throw new Error(errorMsg);
       }
 
       if (!data.url) {
-        console.error('No URL in response:', data);
-        throw new Error('No checkout URL returned from Stripe');
+        console.error('No URL in successful response:', data);
+        throw new Error('No checkout URL returned from Stripe. Please contact support@farmcastweather.com');
       }
 
-      console.log('Redirecting to:', data.url);
+      console.log('Checkout session created successfully. Redirecting to Stripe:', data.url);
+
+      // Use window.location.href for redirect
       window.location.href = data.url;
     } catch (error) {
       console.error('Error creating checkout session:', error);
@@ -321,7 +349,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       const requestBody = {
         userId: user.id,
         userEmail: user.email,
-        returnUrl: window.location.origin,
+        returnUrl: 'https://farmcastweather.com',
       };
 
       console.log('API URL:', apiUrl);

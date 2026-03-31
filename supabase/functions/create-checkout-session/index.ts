@@ -222,10 +222,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // Ensure we have valid URLs
-    const origin = req.headers.get("origin") || req.headers.get("referer")?.split('?')[0];
-    const baseUrl = origin || "https://farmcast.app";
+    const baseUrl = "https://farmcastweather.com";
     const finalSuccessUrl = successUrl || `${baseUrl}?subscription=success`;
-    const finalCancelUrl = cancelUrl || baseUrl;
+    const finalCancelUrl = cancelUrl || `${baseUrl}?subscription=cancelled`;
 
     console.log('Creating checkout session with URLs:', { finalSuccessUrl, finalCancelUrl });
 
