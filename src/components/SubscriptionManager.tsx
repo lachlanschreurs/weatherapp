@@ -52,23 +52,29 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
   }, []);
 
   const loadSubscriptionInfo = async () => {
+    console.log('SubscriptionManager: Starting to load subscription info');
     setIsLoading(true);
     setMessage(null);
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('SubscriptionManager: User fetch result:', { hasUser: !!user, userError });
 
       if (userError || !user) {
+        console.log('SubscriptionManager: No user found, showing sign in message');
         setSubscription(null);
         setMessage({ type: 'error', text: 'Please sign in to manage your subscription.' });
         setIsLoading(false);
         return;
       }
 
+      console.log('SubscriptionManager: Fetching profile for user:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, stripe_customer_id')
         .eq('id', user.id)
         .maybeSingle();
+
+      console.log('SubscriptionManager: Profile fetch result:', { data, error });
 
       if (error) {
         console.error('Database error loading subscription:', error);
@@ -78,6 +84,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       }
 
       if (data) {
+        console.log('SubscriptionManager: Setting subscription data');
         setSubscription({
           status: data.farmer_joe_subscription_status || 'none',
           startedAt: data.farmer_joe_subscription_started_at,
@@ -88,6 +95,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           stripeCustomerId: data.stripe_customer_id
         });
       } else {
+        console.log('SubscriptionManager: No profile found, setting default values');
         // No profile data found, but user is authenticated - set default values
         setSubscription({
           status: 'none',
@@ -103,6 +111,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       console.error('Error loading subscription:', error);
       setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' });
     } finally {
+      console.log('SubscriptionManager: Finished loading, setting isLoading to false');
       setIsLoading(false);
     }
   };
@@ -482,7 +491,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                           No Charge Until Trial Ends
                         </p>
                         <p className="text-xs text-blue-800">
-                          Start your 3-month free trial today. You will NOT be charged anything until the trial period ends. Cancel anytime before the trial ends to avoid any charges.
+                          Start your 1-month free trial today. You will NOT be charged anything until the trial period ends. Cancel anytime before the trial ends to avoid any charges.
                         </p>
                       </div>
 
@@ -519,7 +528,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             Processing...
                           </>
                         ) : (
-                          'Start 3-Month Free Trial'
+                          'Start 1-Month Free Trial'
                         )}
                       </button>
                       <p className="text-xs text-center text-gray-500">
@@ -580,7 +589,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             <>
                               <p className="font-semibold text-amber-900 mb-1">Trial Expired</p>
                               <p className="text-sm text-amber-800 mb-3">
-                                Your 3-month free trial has ended. Subscribe to Farmer Joe to continue receiving email alerts.
+                                Your 1-month free trial has ended. Subscribe to Farmer Joe to continue receiving email alerts.
                               </p>
                               <button
                                 onClick={handleSubscribe}
@@ -655,7 +664,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             <>
                               <p className="font-semibold text-amber-900 mb-1">Trial Expired</p>
                               <p className="text-sm text-amber-800 mb-3">
-                                Your 3-month free trial has ended. Subscribe to Farmer Joe to continue receiving weekly probe reports.
+                                Your 1-month free trial has ended. Subscribe to Farmer Joe to continue receiving weekly probe reports.
                               </p>
                               <button
                                 onClick={handleSubscribe}
