@@ -45,9 +45,9 @@ Deno.serve(async (req: Request) => {
     console.log('Token received, length:', token.length);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       console.error('Missing Supabase environment variables');
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
@@ -58,20 +58,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('Creating Supabase client with anon key');
+    console.log('Creating Supabase admin client');
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    console.log('Attempting to get user');
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    console.log('Attempting to verify user with service role');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     console.log('Auth result:', {
       hasUser: !!user,
@@ -90,9 +81,9 @@ Deno.serve(async (req: Request) => {
       });
       return new Response(
         JSON.stringify({
-          error: "Unauthorized - Invalid token",
-          details: userError?.message || "No user found",
-          hint: "Please try signing out and signing back in"
+          error: "Session not found",
+          details: userError?.message || "Invalid or expired session",
+          hint: "Please sign out and sign back in, then try again"
         }),
         {
           status: 401,
@@ -102,19 +93,6 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('User verified successfully:', user.id, user.email);
-
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseServiceKey) {
-      console.error('Missing service role key');
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const requestBody = await req.json();
     console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
