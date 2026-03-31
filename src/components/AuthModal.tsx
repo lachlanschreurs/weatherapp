@@ -163,8 +163,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const checkoutPayload = {
         priceId: stripePriceId,
-        successUrl: `${window.location.origin}?subscription=success`,
-        cancelUrl: window.location.origin,
+        successUrl: `https://farmcastweather.com/?subscription=success`,
+        cancelUrl: `https://farmcastweather.com/?subscription=cancelled`,
       };
 
       console.log('6. Sending checkout request to:', checkoutUrl);
@@ -224,11 +224,17 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('No checkout URL returned from server');
       }
 
-      console.log('9. REDIRECTING TO STRIPE CHECKOUT...');
-      console.log('9. URL:', responseData.url);
+      console.log('=== STRIPE CHECKOUT REDIRECT (SIGNUP) ===');
+      console.log('Checkout URL received:', responseData.url);
+      console.log('URL starts with https:', responseData.url.startsWith('https://'));
+      console.log('URL contains stripe:', responseData.url.includes('stripe.com'));
+      console.log('Full URL:', responseData.url);
+      console.log('Redirecting in 100ms...');
 
-      // Redirect to Stripe Checkout
-      window.location.href = responseData.url;
+      setTimeout(() => {
+        console.log('EXECUTING REDIRECT NOW');
+        window.location.assign(responseData.url);
+      }, 100);
     } catch (err: any) {
       console.error('========================================');
       console.error('ERROR OCCURRED:', err);
