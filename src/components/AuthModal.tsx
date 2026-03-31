@@ -130,6 +130,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       console.log('Creating checkout session...');
 
+      const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
+      if (!stripePriceId) {
+        throw new Error('Stripe configuration error. Please contact support.');
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
         {
@@ -137,9 +142,10 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-            priceId: 'price_1QwjunP6i8f96UOBEpgpJIjJ',
+            priceId: stripePriceId,
             successUrl: `${window.location.origin}?subscription=success`,
             cancelUrl: window.location.origin,
           }),
