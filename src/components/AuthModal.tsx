@@ -162,15 +162,33 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       if (signUpError) throw signUpError;
 
       if (authData.user) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            phone_number: normalizedPhone,
-          })
-          .eq('id', authData.user.id);
+        // Wait for profile to be created by trigger, then update it
+        let retries = 0;
+        const maxRetries = 5;
+        let profileUpdated = false;
 
-        if (updateError) {
-          console.error('Error updating profile:', updateError);
+        while (retries < maxRetries && !profileUpdated) {
+          if (retries > 0) {
+            // Wait before retrying (exponential backoff)
+            await new Promise(resolve => setTimeout(resolve, 200 * retries));
+          }
+
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              phone_number: normalizedPhone,
+              full_name: name,
+            })
+            .eq('id', authData.user.id);
+
+          if (!updateError) {
+            profileUpdated = true;
+          } else if (retries === maxRetries - 1) {
+            console.error('Error updating profile after retries:', updateError);
+            throw new Error('Failed to save user profile. Please try again.');
+          }
+
+          retries++;
         }
 
         setNewUserId(authData.user.id);
@@ -245,18 +263,33 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       const trialEndDate = new Date();
       trialEndDate.setMonth(trialEndDate.getMonth() + 1);
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          trial_end_date: trialEndDate.toISOString(),
-          stripe_customer_id: customerId,
-          payment_method_set: true
-        })
-        .eq('id', newUserId);
+      // Retry logic for profile update
+      let retries = 0;
+      const maxRetries = 3;
+      let updateSuccess = false;
 
-      if (updateError) {
-        console.error('Error updating profile:', updateError);
-        throw new Error('Failed to save payment information. Please try again.');
+      while (retries < maxRetries && !updateSuccess) {
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 300 * retries));
+        }
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            trial_end_date: trialEndDate.toISOString(),
+            stripe_customer_id: customerId,
+            payment_method_set: true
+          })
+          .eq('id', newUserId);
+
+        if (!updateError) {
+          updateSuccess = true;
+        } else if (retries === maxRetries - 1) {
+          console.error('Error updating profile after retries:', updateError);
+          throw new Error('Failed to save payment information. Please try again.');
+        }
+
+        retries++;
       }
 
       onSuccess();
