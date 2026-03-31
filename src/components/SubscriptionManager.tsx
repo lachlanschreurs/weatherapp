@@ -13,7 +13,7 @@ interface SubscriptionInfo {
   messagesCount: number;
   emailStartedAt: string | null;
   probeReportStartedAt: string | null;
-  stripeCustomerId: string | null;
+  squareCustomerId: string | null;
 }
 
 export default function SubscriptionManager({ onClose }: SubscriptionManagerProps) {
@@ -25,29 +25,18 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
   useEffect(() => {
     loadSubscriptionInfo();
 
-    // Check for redirect from Stripe
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
-    const billingStatus = params.get('billing');
 
     if (subscriptionStatus === 'success') {
       setMessage({ type: 'success', text: 'Subscription activated successfully! It may take a moment to update.' });
-      // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
-      // Reload subscription info after a brief delay
       setTimeout(() => {
         loadSubscriptionInfo();
       }, 2000);
     } else if (subscriptionStatus === 'cancelled') {
       setMessage({ type: 'error', text: 'Subscription cancelled. You can try again anytime.' });
-      // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
-    } else if (billingStatus === 'complete') {
-      setMessage({ type: 'success', text: 'Payment details updated successfully!' });
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname);
-      // Reload subscription info
-      loadSubscriptionInfo();
     }
   }, []);
 
@@ -73,7 +62,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, stripe_customer_id')
+        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, square_customer_id')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -115,11 +104,10 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           messagesCount: data.farmer_joe_messages_count || 0,
           emailStartedAt: data.email_subscription_started_at,
           probeReportStartedAt: data.probe_report_subscription_started_at,
-          stripeCustomerId: data.stripe_customer_id
+          squareCustomerId: data.square_customer_id
         });
       } else {
         console.log('SubscriptionManager: No profile found, setting default values');
-        // No profile data found, but user is authenticated - set default values
         setSubscription({
           status: 'none',
           startedAt: null,
@@ -127,7 +115,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           messagesCount: 0,
           emailStartedAt: null,
           probeReportStartedAt: null,
-          stripeCustomerId: null
+          squareCustomerId: null
         });
       }
     } catch (error) {
@@ -142,7 +130,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         messagesCount: 0,
         emailStartedAt: null,
         probeReportStartedAt: null,
-        stripeCustomerId: null
+        squareCustomerId: null
       });
     } finally {
       console.log('SubscriptionManager: Finished loading, setting isLoading to false');
@@ -195,196 +183,48 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      // Get current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        setMessage({ type: 'error', text: 'Session error. Please sign out and sign back in.' });
+      if (sessionError || !session?.user || !session?.access_token) {
+        setMessage({ type: 'error', text: 'Session error. Please sign in again.' });
         setIsProcessing(false);
         return;
       }
 
-      if (!session?.user || !session?.access_token) {
-        console.error('No valid session found');
-        setMessage({ type: 'error', text: 'No active session. Please sign in again.' });
-        setIsProcessing(false);
-        return;
-      }
-
-      const user = session.user;
-      console.log('Session verified for checkout, user:', user.id, 'token length:', session.access_token.length);
-
-      const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
-      const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-
-      if (!stripePriceId) {
-        setMessage({ type: 'error', text: 'Subscription not configured. Please contact support@farmcastweather.com' });
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!stripePublishableKey) {
-        setMessage({ type: 'error', text: 'Stripe publishable key not configured. Please contact support@farmcastweather.com' });
-        setIsProcessing(false);
-        return;
-      }
-
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       };
 
-      const requestBody = {
-        priceId: stripePriceId,
-        userId: user.id,
-        userEmail: user.email,
-        successUrl: `https://farmcastweather.com/?subscription=success`,
-        cancelUrl: `https://farmcastweather.com/?subscription=cancelled`,
-      };
-
-      console.log('Checkout request details:', {
-        apiUrl,
-        hasToken: !!session.access_token,
-        tokenLength: session.access_token.length,
-        tokenStart: session.access_token.substring(0, 20),
-        userId: user.id,
-        userEmail: user.email
-      });
-
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify(requestBody),
-      }).catch((fetchError) => {
-        console.error('Network error during fetch:', fetchError);
-        throw new Error(`Network error: ${fetchError.message}. Please check your connection and try again.`);
       });
-
-      console.log('Fetch completed. Response received:', {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText
-      });
-
-      if (!response) {
-        throw new Error('No response from server');
-      }
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMsg = errorData.hint
-          ? `${errorData.error || 'Checkout failed'}. ${errorData.hint}`
-          : errorData.error || `Server error: ${response.status}`;
-        throw new Error(errorMsg);
+        throw new Error(errorData.error || 'Failed to create checkout');
       }
 
       const data = await response.json();
-      console.log('Checkout response:', data);
 
       if (data?.url) {
-        console.log('Redirecting to checkout URL:', data.url);
         window.location.href = data.url;
       } else {
-        console.error('Missing checkout URL', data);
-        throw new Error('No checkout URL returned from Stripe. Please contact support@farmcastweather.com');
+        throw new Error('No checkout URL returned');
       }
     } catch (error) {
-      console.error('Error creating checkout session:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error creating checkout:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout';
       setMessage({ type: 'error', text: errorMessage });
       setIsProcessing(false);
     }
   };
 
   const handleManageSubscription = async () => {
-    setIsProcessing(true);
-    setMessage(null);
-
-    try {
-      // Get current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error('Session error:', sessionError);
-        setMessage({ type: 'error', text: 'Session error. Please sign out and sign back in.' });
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!session?.user || !session?.access_token) {
-        console.error('No valid session found');
-        setMessage({ type: 'error', text: 'No active session. Please sign in again.' });
-        setIsProcessing(false);
-        return;
-      }
-
-      const user = session.user;
-
-      console.log('=== STRIPE PORTAL DEBUG START ===');
-      console.log('User ID:', user.id);
-      console.log('User Email:', user.email);
-      console.log('Has session token:', !!session.access_token);
-
-      // Check if user already has a Stripe customer ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('stripe_customer_id')
-        .eq('id', user.id)
-        .maybeSingle();
-
-      console.log('User has stripe_customer_id:', !!profile?.stripe_customer_id);
-
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
-      const headers = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-      };
-
-      const requestBody = {
-        userId: user.id,
-        userEmail: user.email,
-        returnUrl: 'https://farmcastweather.com',
-      };
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.errorType === 'portal_not_activated') {
-          setMessage({
-            type: 'error',
-            text: 'Stripe billing portal needs to be activated. Please contact support@farmcastweather.com'
-          });
-          setIsProcessing(false);
-          return;
-        }
-        throw new Error(errorData.error || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Portal response:', data);
-
-      if (data?.url) {
-        console.log('Redirecting to portal URL:', data.url);
-        window.location.href = data.url;
-      } else {
-        console.error('Missing portal URL', data);
-        throw new Error('No portal URL returned from Stripe');
-      }
-    } catch (error) {
-      console.error('PORTAL SESSION ERROR:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to open billing portal';
-      setMessage({ type: 'error', text: errorMessage });
-      setIsProcessing(false);
-    }
+    setMessage({ type: 'error', text: 'Please contact support@farmcastweather.com to manage your subscription' });
   };
 
 
@@ -565,7 +405,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                         )}
                       </button>
                       <p className="text-xs text-center text-gray-500">
-                        Secure payments powered by Stripe
+                        Secure payments powered by Square
                       </p>
                     </div>
                   </div>
