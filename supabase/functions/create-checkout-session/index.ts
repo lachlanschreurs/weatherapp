@@ -33,7 +33,10 @@ Deno.serve(async (req: Request) => {
     if (!authHeader) {
       console.error('No Authorization header');
       return new Response(
-        JSON.stringify({ error: "Unauthorized - No auth header" }),
+        JSON.stringify({
+          error: "No authorization header",
+          hint: "Please sign in again"
+        }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -42,7 +45,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    console.log('Token received, length:', token.length);
+    console.log('Token received, length:', token.length, 'starts with:', token.substring(0, 20));
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -61,29 +64,53 @@ Deno.serve(async (req: Request) => {
     console.log('Creating Supabase admin client');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Attempting to verify user with service role');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    console.log('Attempting to verify user with service role, token length:', token.length);
 
-    console.log('Auth result:', {
-      hasUser: !!user,
-      userId: user?.id,
-      email: user?.email,
-      error: userError?.message,
-      errorStatus: userError?.status
-    });
+    let user;
+    let userError;
+
+    try {
+      const result = await supabase.auth.getUser(token);
+      user = result.data.user;
+      userError = result.error;
+
+      console.log('Auth getUser result:', {
+        hasUser: !!user,
+        userId: user?.id,
+        email: user?.email,
+        hasError: !!userError,
+        errorMessage: userError?.message,
+        errorStatus: userError?.status,
+        errorCode: userError?.code
+      });
+    } catch (err: any) {
+      console.error('Exception during getUser:', err);
+      return new Response(
+        JSON.stringify({
+          error: "Authentication failed",
+          details: err.message || "Failed to verify user",
+          hint: "Please sign out and sign back in, then try again"
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     if (userError || !user) {
-      console.error('Failed to verify user:', {
+      console.error('User verification failed:', {
         error: userError,
         message: userError?.message,
         status: userError?.status,
+        code: userError?.code,
         name: userError?.name
       });
       return new Response(
         JSON.stringify({
           error: "Session not found",
           details: userError?.message || "Invalid or expired session",
-          hint: "Please sign out and sign back in, then try again"
+          hint: "Your session has expired. Please sign out and sign back in"
         }),
         {
           status: 401,

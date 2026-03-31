@@ -198,17 +198,25 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      // Refresh session to ensure we have a valid token
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError || !session?.user) {
-        console.error('Session refresh error:', sessionError);
-        setMessage({ type: 'error', text: 'Please sign out and sign back in, then try again.' });
+      // Get current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setMessage({ type: 'error', text: 'Session error. Please sign out and sign back in.' });
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!session?.user || !session?.access_token) {
+        console.error('No valid session found');
+        setMessage({ type: 'error', text: 'No active session. Please sign in again.' });
         setIsProcessing(false);
         return;
       }
 
       const user = session.user;
-      console.log('Session refreshed for checkout, user:', user.id);
+      console.log('Session verified for checkout, user:', user.id, 'token length:', session.access_token.length);
 
       const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
       const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
@@ -240,9 +248,14 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         cancelUrl: `https://farmcastweather.com/?subscription=cancelled`,
       };
 
-      console.log('Sending checkout request:', { apiUrl, ...requestBody, userEmail: 'hidden' });
-
-      console.log('Sending fetch request to:', apiUrl);
+      console.log('Checkout request details:', {
+        apiUrl,
+        hasToken: !!session.access_token,
+        tokenLength: session.access_token.length,
+        tokenStart: session.access_token.substring(0, 20),
+        userId: user.id,
+        userEmail: user.email
+      });
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -314,11 +327,19 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setMessage(null);
 
     try {
-      // Refresh session to ensure we have a valid token
-      const { data: { session }, error: sessionError } = await supabase.auth.refreshSession();
-      if (sessionError || !session?.user) {
-        console.error('Session refresh error:', sessionError);
-        setMessage({ type: 'error', text: 'Please sign out and sign back in, then try again.' });
+      // Get current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        setMessage({ type: 'error', text: 'Session error. Please sign out and sign back in.' });
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!session?.user || !session?.access_token) {
+        console.error('No valid session found');
+        setMessage({ type: 'error', text: 'No active session. Please sign in again.' });
         setIsProcessing(false);
         return;
       }
