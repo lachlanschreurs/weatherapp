@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { X, Mail, Lock, User, Phone, Shield, Check, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Mail, Lock, User, Phone, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -9,16 +9,9 @@ interface AuthModalProps {
   initialMode?: 'login' | 'signup';
 }
 
-declare global {
-  interface Window {
-    Stripe: any;
-  }
-}
-
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [signupStep, setSignupStep] = useState<'details' | 'payment'>('details');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -27,98 +20,19 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const cardElementRef = useRef<any>(null);
-  const stripeRef = useRef<any>(null);
-  const elementsRef = useRef<any>(null);
-  const [stripeInitialized, setStripeInitialized] = useState(false);
-  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setIsLogin(initialMode === 'login');
       setIsForgotPassword(false);
-      setSignupStep('details');
       setError(null);
       setSuccessMessage(null);
       setEmail('');
       setPassword('');
       setName('');
       setPhoneNumber('');
-      setPaymentMethodId(null);
-      setStripeInitialized(false);
     }
-
-    return () => {
-      if (cardElementRef.current) {
-        cardElementRef.current.destroy();
-        cardElementRef.current = null;
-      }
-    };
   }, [isOpen, initialMode]);
-
-  useEffect(() => {
-    if (signupStep === 'payment' && isOpen && !stripeInitialized && !isLogin) {
-      initializeStripe();
-    }
-  }, [signupStep, isOpen, isLogin]);
-
-  const initializeStripe = async () => {
-    if (stripeInitialized || cardElementRef.current) return;
-
-    if (!window.Stripe) {
-      console.error('Stripe not loaded');
-      return;
-    }
-
-    const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-    if (!publishableKey) {
-      console.error('Stripe publishable key not configured');
-      return;
-    }
-
-    try {
-      stripeRef.current = window.Stripe(publishableKey);
-
-      const elements = stripeRef.current.elements({
-        mode: 'setup',
-        currency: 'aud',
-        setupFutureUsage: 'off_session',
-        paymentMethodCreation: 'manual',
-        appearance: {
-          theme: 'stripe',
-          variables: {
-            colorPrimary: '#16a34a',
-            colorBackground: '#ffffff',
-            colorText: '#1a202c',
-            colorDanger: '#dc2626',
-            fontFamily: 'system-ui, sans-serif',
-            spacingUnit: '4px',
-            borderRadius: '8px',
-          },
-        },
-      });
-
-      elementsRef.current = elements;
-
-      setTimeout(() => {
-        const paymentElement = elements.create('payment', {
-          layout: 'tabs',
-          wallets: {
-            applePay: 'auto',
-            googlePay: 'auto'
-          }
-        });
-        const container = document.getElementById('card-element');
-        if (container) {
-          paymentElement.mount('#card-element');
-          cardElementRef.current = paymentElement;
-          setStripeInitialized(true);
-        }
-      }, 100);
-    } catch (err) {
-      console.error('Error initializing Stripe:', err);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -151,51 +65,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('This phone number is already registered.');
       }
 
-      // Check if email is already in use
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', (await supabase.auth.getUser()).data.user?.id || '')
-        .maybeSingle();
-
-      // Move to payment step
-      setSignupStep('payment');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCompleteSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      if (!stripeRef.current || !elementsRef.current) {
-        throw new Error('Payment system not ready. Please wait a moment and try again.');
-      }
-
-      const { error: submitError } = await elementsRef.current.submit();
-      if (submitError) {
-        throw new Error(submitError.message);
-      }
-
-      // Create payment method first
-      const { error: paymentMethodError, paymentMethod } = await stripeRef.current.createPaymentMethod({
-        elements: elementsRef.current,
-      });
-
-      if (paymentMethodError) {
-        throw new Error(paymentMethodError.message);
-      }
-
-      setPaymentMethodId(paymentMethod.id);
-
-      // Now create the account
-      const normalizedPhone = phoneNumber.replace(/\D/g, '');
-
+      // Create the account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -240,48 +110,13 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         retries++;
       }
 
-      // Now set up the payment method with Stripe
+      // Now redirect to Stripe Checkout
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Session not found');
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-setup-intent`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to initialize payment');
-      }
-
-      const { clientSecret, customerId } = await response.json();
-
-      const { error: confirmError } = await stripeRef.current.confirmSetup({
-        clientSecret,
-        confirmParams: {
-          payment_method: paymentMethod.id,
-          return_url: window.location.origin,
-        },
-        redirect: 'if_required',
-      });
-
-      if (confirmError) {
-        throw new Error(confirmError.message);
-      }
-
-      const trialEndDate = new Date();
-      trialEndDate.setMonth(trialEndDate.getMonth() + 1);
-
-      // Create Stripe subscription with trial period
-      const subscriptionResponse = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
         {
           method: 'POST',
@@ -290,42 +125,24 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            customerId,
-            isNewSignup: true,
+            priceId: 'price_1QwjunP6i8f96UOBEpgpJIjJ',
+            successUrl: `${window.location.origin}?subscription=success`,
+            cancelUrl: window.location.origin,
           }),
         }
       );
 
-      if (!subscriptionResponse.ok) {
-        const errorData = await subscriptionResponse.json();
-        throw new Error(errorData.error || 'Failed to create subscription');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initialize checkout');
       }
 
-      const { subscriptionId } = await subscriptionResponse.json();
+      const { url } = await response.json();
 
-      // Update profile with payment info and subscription
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          trial_end_date: trialEndDate.toISOString(),
-          stripe_customer_id: customerId,
-          stripe_subscription_id: subscriptionId,
-          payment_method_set: true,
-          farmer_joe_subscription_status: 'trialing',
-          farmer_joe_subscription_started_at: new Date().toISOString()
-        })
-        .eq('id', authData.user.id);
-
-      if (updateError) {
-        console.error('Error updating profile:', updateError);
-        throw new Error('Failed to save payment information. Please try again.');
-      }
-
-      onSuccess();
-      onClose();
+      // Redirect to Stripe Checkout
+      window.location.href = url;
     } catch (err: any) {
       setError(err.message || 'An error occurred');
-    } finally {
       setLoading(false);
     }
   };
@@ -384,85 +201,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
-  if (!isLogin && signupStep === 'payment') {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-8 relative">
-          <button
-            onClick={() => setSignupStep('details')}
-            className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 z-10"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
-          >
-            <X className="w-6 h-6" />
-          </button>
-
-          <div className="p-8 pt-12">
-            <div className="text-center mb-6">
-              <div className="bg-green-100 text-green-600 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-8 h-8" />
-              </div>
-              <h2 className="text-3xl font-bold text-green-900 mb-2">
-                Payment Details
-              </h2>
-              <p className="text-gray-600">
-                Add your payment method to complete signup
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
-                  <Shield className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-1">No Charge Today</h3>
-                  <p className="text-sm text-gray-700">
-                    Your card won't be charged for 1 month. Cancel anytime during your trial.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleCompleteSignup} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Payment Details
-                </label>
-                <div id="card-element" className="p-3 border border-gray-300 rounded-lg bg-white min-h-[44px]"></div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                  <Shield className="w-3.5 h-3.5 text-green-600" />
-                  <span>Secured by Stripe. No charge during your 1-month trial.</span>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Creating Account...' : 'Complete Signup'}
-              </button>
-
-              <p className="text-xs text-center text-gray-500">
-                After 1 month, you'll be charged $5.99/month recurring until you cancel.
-              </p>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -645,7 +383,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               disabled={loading}
               className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processing...' : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Continue to Payment'}
+              {loading ? 'Redirecting to checkout...' : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Continue to Payment'}
             </button>
           </form>
 
