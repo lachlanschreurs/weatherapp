@@ -82,20 +82,17 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         error,
         hasData: !!data,
         hasError: !!error,
-        errorKeys: error ? Object.keys(error) : [],
         errorMessage: error?.message,
         errorCode: error?.code
       });
 
       if (error) {
         console.error('Database error loading subscription:', error);
-        console.error('Error details:', JSON.stringify(error));
 
-        // If error is an empty object, provide a more helpful message
-        const errorMessage = error.message || 'Database access error. Please refresh and try again.';
-        setMessage({ type: 'error', text: errorMessage });
+        if (error.message && error.message.trim()) {
+          setMessage({ type: 'error', text: error.message });
+        }
 
-        // Still set default subscription data so the UI can render
         setSubscription({
           status: 'none',
           startedAt: null,
@@ -277,17 +274,24 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       }
 
       const responseText = await response.text();
-      console.log('Response text:', responseText);
+      console.log('Response text length:', responseText.length);
+      console.log('Response text preview:', responseText.substring(0, 200));
 
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error('Failed to parse JSON response:', parseError);
+        console.error('Raw response was:', responseText);
         throw new Error(`Invalid server response. Please try again or contact support@farmcastweather.com`);
       }
 
-      console.log('Checkout response parsed:', { status: response.status, data });
+      console.log('Checkout response parsed:', {
+        status: response.status,
+        hasUrl: !!data.url,
+        urlPreview: data.url ? data.url.substring(0, 50) : 'NO URL',
+        sessionId: data.sessionId
+      });
 
       if (!response.ok) {
         console.error('Checkout error response:', {
@@ -310,10 +314,17 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         throw new Error('No checkout URL returned from Stripe. Please contact support@farmcastweather.com');
       }
 
-      console.log('Checkout session created successfully. Redirecting to Stripe:', data.url);
+      console.log('=== STRIPE CHECKOUT REDIRECT ===');
+      console.log('Checkout URL received:', data.url);
+      console.log('URL starts with https:', data.url.startsWith('https://'));
+      console.log('URL contains stripe:', data.url.includes('stripe.com'));
+      console.log('Full URL:', data.url);
+      console.log('Redirecting in 100ms...');
 
-      // Use window.location.href for redirect
-      window.location.href = data.url;
+      setTimeout(() => {
+        console.log('EXECUTING REDIRECT NOW');
+        window.location.assign(data.url);
+      }, 100);
     } catch (error) {
       console.error('Error creating checkout session:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

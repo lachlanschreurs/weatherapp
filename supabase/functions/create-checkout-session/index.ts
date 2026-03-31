@@ -346,10 +346,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('Checkout session created successfully:', { sessionId: session.id, hasUrl: !!session.url });
+    console.log('=== CHECKOUT SESSION CREATED ===');
+    console.log('Session ID:', session.id);
+    console.log('Session URL:', session.url);
+    console.log('URL length:', session.url.length);
+    console.log('URL starts with https:', session.url.startsWith('https://'));
+    console.log('URL contains checkout.stripe.com:', session.url.includes('checkout.stripe.com'));
+    console.log('=== RETURNING RESPONSE ===');
+
+    const responseData = {
+      sessionId: session.id,
+      url: session.url
+    };
+
+    console.log('Response data:', JSON.stringify(responseData));
 
     return new Response(
-      JSON.stringify({ sessionId: session.id, url: session.url }),
+      JSON.stringify(responseData),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
