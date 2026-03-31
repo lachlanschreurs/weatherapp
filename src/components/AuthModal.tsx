@@ -43,6 +43,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     setLoading(true);
 
     try {
+      console.log('Starting signup process...');
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         throw new Error('Please enter a valid email address');
@@ -65,6 +67,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('This phone number is already registered.');
       }
 
+      console.log('Creating account...');
+
       // Create the account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
@@ -76,11 +80,16 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw signUpError;
+      }
 
       if (!authData.user) {
         throw new Error('Failed to create account');
       }
+
+      console.log('Account created, updating profile...');
 
       // Wait for profile to be created by trigger, then update it
       let retries = 0;
@@ -102,6 +111,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         if (!updateError) {
           profileUpdated = true;
+          console.log('Profile updated successfully');
         } else if (retries === maxRetries - 1) {
           console.error('Error updating profile after retries:', updateError);
           throw new Error('Failed to save user profile. Please try again.');
@@ -110,11 +120,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         retries++;
       }
 
+      console.log('Getting session...');
+
       // Now redirect to Stripe Checkout
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Session not found');
       }
+
+      console.log('Creating checkout session...');
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
@@ -132,16 +146,26 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         }
       );
 
+      console.log('Checkout response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Checkout error:', errorData);
         throw new Error(errorData.error || 'Failed to initialize checkout');
       }
 
-      const { url } = await response.json();
+      const responseData = await response.json();
+      console.log('Checkout URL received:', responseData.url);
+
+      if (!responseData.url) {
+        throw new Error('No checkout URL returned from server');
+      }
 
       // Redirect to Stripe Checkout
-      window.location.href = url;
+      console.log('Redirecting to Stripe...');
+      window.location.href = responseData.url;
     } catch (err: any) {
+      console.error('Signup error:', err);
       setError(err.message || 'An error occurred');
       setLoading(false);
     }
