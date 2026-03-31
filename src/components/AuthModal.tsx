@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Mail, Lock, User, Phone, CreditCard, Shield, Check } from 'lucide-react';
+import { X, Mail, Lock, User, Phone, Shield, Check, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -18,7 +18,7 @@ declare global {
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [showPaymentStep, setShowPaymentStep] = useState(false);
+  const [signupStep, setSignupStep] = useState<'details' | 'payment'>('details');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -31,20 +31,21 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const stripeRef = useRef<any>(null);
   const elementsRef = useRef<any>(null);
   const [stripeInitialized, setStripeInitialized] = useState(false);
-  const [newUserId, setNewUserId] = useState<string | null>(null);
+  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setIsLogin(initialMode === 'login');
       setIsForgotPassword(false);
-      setShowPaymentStep(false);
+      setSignupStep('details');
       setError(null);
       setSuccessMessage(null);
       setEmail('');
       setPassword('');
       setName('');
       setPhoneNumber('');
-      setNewUserId(null);
+      setPaymentMethodId(null);
+      setStripeInitialized(false);
     }
 
     return () => {
@@ -56,10 +57,10 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   }, [isOpen, initialMode]);
 
   useEffect(() => {
-    if (showPaymentStep && isOpen && !stripeInitialized) {
+    if (signupStep === 'payment' && isOpen && !stripeInitialized && !isLogin) {
       initializeStripe();
     }
-  }, [showPaymentStep, isOpen]);
+  }, [signupStep, isOpen, isLogin]);
 
   const initializeStripe = async () => {
     if (stripeInitialized || cardElementRef.current) return;
@@ -121,7 +122,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
   if (!isOpen) return null;
 
-  const handleAccountCreation = async (e: React.FormEvent) => {
+  const handleDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -139,6 +140,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       const normalizedPhone = phoneNumber.replace(/\D/g, '');
 
+      // Check if phone number is already in use
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
@@ -149,51 +151,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('This phone number is already registered.');
       }
 
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            name,
-          },
-        },
-      });
+      // Check if email is already in use
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', (await supabase.auth.getUser()).data.user?.id || '')
+        .maybeSingle();
 
-      if (signUpError) throw signUpError;
-
-      if (authData.user) {
-        // Wait for profile to be created by trigger, then update it
-        let retries = 0;
-        const maxRetries = 5;
-        let profileUpdated = false;
-
-        while (retries < maxRetries && !profileUpdated) {
-          if (retries > 0) {
-            // Wait before retrying (exponential backoff)
-            await new Promise(resolve => setTimeout(resolve, 200 * retries));
-          }
-
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              phone_number: normalizedPhone,
-              full_name: name,
-            })
-            .eq('id', authData.user.id);
-
-          if (!updateError) {
-            profileUpdated = true;
-          } else if (retries === maxRetries - 1) {
-            console.error('Error updating profile after retries:', updateError);
-            throw new Error('Failed to save user profile. Please try again.');
-          }
-
-          retries++;
-        }
-
-        setNewUserId(authData.user.id);
-        setShowPaymentStep(true);
-      }
+      // Move to payment step
+      setSignupStep('payment');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -201,7 +167,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
-  const handlePaymentSetup = async (e: React.FormEvent) => {
+  const handleCompleteSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
@@ -216,6 +182,65 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error(submitError.message);
       }
 
+      // Create payment method first
+      const { error: paymentMethodError, paymentMethod } = await stripeRef.current.createPaymentMethod({
+        elements: elementsRef.current,
+      });
+
+      if (paymentMethodError) {
+        throw new Error(paymentMethodError.message);
+      }
+
+      setPaymentMethodId(paymentMethod.id);
+
+      // Now create the account
+      const normalizedPhone = phoneNumber.replace(/\D/g, '');
+
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (!authData.user) {
+        throw new Error('Failed to create account');
+      }
+
+      // Wait for profile to be created by trigger, then update it
+      let retries = 0;
+      const maxRetries = 5;
+      let profileUpdated = false;
+
+      while (retries < maxRetries && !profileUpdated) {
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 200 * retries));
+        }
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            phone_number: normalizedPhone,
+            full_name: name,
+          })
+          .eq('id', authData.user.id);
+
+        if (!updateError) {
+          profileUpdated = true;
+        } else if (retries === maxRetries - 1) {
+          console.error('Error updating profile after retries:', updateError);
+          throw new Error('Failed to save user profile. Please try again.');
+        }
+
+        retries++;
+      }
+
+      // Now set up the payment method with Stripe
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Session not found');
@@ -239,14 +264,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       const { clientSecret, customerId } = await response.json();
 
-      const { error: paymentMethodError, paymentMethod } = await stripeRef.current.createPaymentMethod({
-        elements: elementsRef.current,
-      });
-
-      if (paymentMethodError) {
-        throw new Error(paymentMethodError.message);
-      }
-
       const { error: confirmError } = await stripeRef.current.confirmSetup({
         clientSecret,
         confirmParams: {
@@ -263,33 +280,19 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       const trialEndDate = new Date();
       trialEndDate.setMonth(trialEndDate.getMonth() + 1);
 
-      // Retry logic for profile update
-      let retries = 0;
-      const maxRetries = 3;
-      let updateSuccess = false;
+      // Update profile with payment info
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          trial_end_date: trialEndDate.toISOString(),
+          stripe_customer_id: customerId,
+          payment_method_set: true
+        })
+        .eq('id', authData.user.id);
 
-      while (retries < maxRetries && !updateSuccess) {
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 300 * retries));
-        }
-
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            trial_end_date: trialEndDate.toISOString(),
-            stripe_customer_id: customerId,
-            payment_method_set: true
-          })
-          .eq('id', newUserId);
-
-        if (!updateError) {
-          updateSuccess = true;
-        } else if (retries === maxRetries - 1) {
-          console.error('Error updating profile after retries:', updateError);
-          throw new Error('Failed to save payment information. Please try again.');
-        }
-
-        retries++;
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        throw new Error('Failed to save payment information. Please try again.');
       }
 
       onSuccess();
@@ -355,12 +358,16 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
-  if (!isOpen) return null;
-
-  if (showPaymentStep) {
+  if (!isLogin && signupStep === 'payment') {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
         <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-8 relative">
+          <button
+            onClick={() => setSignupStep('details')}
+            className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 z-10"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
@@ -368,16 +375,16 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             <X className="w-6 h-6" />
           </button>
 
-          <div className="p-8">
+          <div className="p-8 pt-12">
             <div className="text-center mb-6">
               <div className="bg-green-100 text-green-600 rounded-full p-3 w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8" />
+                <Shield className="w-8 h-8" />
               </div>
               <h2 className="text-3xl font-bold text-green-900 mb-2">
-                Account Created!
+                Payment Details
               </h2>
               <p className="text-gray-600">
-                Now let's set up your payment method to start your free trial
+                Add your payment method to complete signup
               </p>
             </div>
 
@@ -401,7 +408,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               </div>
             )}
 
-            <form onSubmit={handlePaymentSetup} className="space-y-4">
+            <form onSubmit={handleCompleteSignup} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Payment Details
@@ -418,7 +425,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Processing...' : 'Complete Setup'}
+                {loading ? 'Creating Account...' : 'Complete Signup'}
               </button>
 
               <p className="text-xs text-center text-gray-500">
@@ -497,7 +504,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
-          <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleAccountCreation} className="space-y-4">
+          <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleDetailsSubmit} className="space-y-4">
             {!isLogin && !isForgotPassword && (
               <>
                 <div>
