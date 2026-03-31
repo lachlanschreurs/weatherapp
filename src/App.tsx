@@ -129,7 +129,9 @@ function App() {
   }, [location.lat, location.lon]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
       if (session?.user) {
         // Check if this session is still valid
         const isValid = await checkSessionValidity(session.access_token);
@@ -152,16 +154,18 @@ function App() {
 
         // Load favorite location
         if (!hasLoadedInitialLocation) {
-          loadUserLocation(session.user.id);
+          await loadUserLocation(session.user.id);
         }
       } else {
         setUser(null);
         // Load geolocation for non-authenticated users
         if (!hasLoadedInitialLocation) {
-          loadGuestLocation();
+          await loadGuestLocation();
         }
       }
-    });
+    };
+
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
@@ -223,13 +227,8 @@ function App() {
       // Clean up URL immediately to prevent blank page
       window.history.replaceState({}, '', window.location.pathname);
 
-      if (subscriptionStatus === 'success') {
-        // Force a refresh to ensure auth state is properly loaded
-        setTimeout(() => {
-          console.log('Forcing page refresh after Stripe success');
-          window.location.reload();
-        }, 100);
-      }
+      // Don't reload - just let the normal flow continue
+      // The auth state will be picked up by the useEffect above
     }
 
     // Periodic session validity check (every 30 seconds)
