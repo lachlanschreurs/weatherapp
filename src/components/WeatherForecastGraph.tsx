@@ -21,7 +21,8 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
   const displayData = rainData;
   const now = new Date();
 
-  const maxWind = Math.max(...displayData.map(d => d.windSpeed || 0), 30);
+  const actualMaxWind = Math.max(...displayData.map(d => d.windSpeed || 0));
+  const maxWind = Math.max(actualMaxWind, 10);
   const maxTemp = Math.max(...displayData.map(d => d.temperature || 0));
   const minTemp = Math.min(...displayData.map(d => d.temperature || 0));
   const tempRange = maxTemp - minTemp || 10;
@@ -401,7 +402,8 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
                   <div className="relative h-32 bg-gradient-to-b from-cyan-50 to-gray-50 rounded-lg p-4">
                     <div className="absolute inset-4 flex items-end justify-between gap-2">
                       {dailyForecast.slice(0, 5).map((day) => {
-                        const maxDailyWind = Math.max(...dailyForecast.slice(0, 5).map(d => d.windSpeed), 30);
+                        const actualMaxDailyWind = Math.max(...dailyForecast.slice(0, 5).map(d => d.windSpeed));
+                        const maxDailyWind = Math.max(actualMaxDailyWind, 10);
                         const windHeight = (day.windSpeed / maxDailyWind) * 100;
 
                         return (
