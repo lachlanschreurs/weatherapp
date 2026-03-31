@@ -191,6 +191,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Validate priceId format
+    if (!priceId.startsWith('price_')) {
+      console.error('Invalid priceId format:', priceId);
+      return new Response(
+        JSON.stringify({
+          error: "Invalid price ID format",
+          details: `Received: ${priceId.substring(0, 20)}... Expected format: price_xxx`,
+          hint: "Please check your VITE_STRIPE_PRICE_ID environment variable"
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log('Using priceId:', priceId);
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userEmail)) {
       console.error('Invalid email format:', userEmail);
@@ -206,24 +224,44 @@ Deno.serve(async (req: Request) => {
     console.log('Creating/retrieving Stripe customer for:', userEmail);
 
     // Create or retrieve Stripe customer
-    const customers = await stripe.customers.list({
-      email: userEmail,
-      limit: 1,
-    });
-
     let customerId: string;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      console.log('Found existing customer:', customerId);
-    } else {
-      const customer = await stripe.customers.create({
+    try {
+      const customers = await stripe.customers.list({
         email: userEmail,
-        metadata: {
-          supabase_user_id: userId,
-        },
+        limit: 1,
       });
-      customerId = customer.id;
-      console.log('Created new customer:', customerId);
+
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        console.log('Found existing customer:', customerId);
+      } else {
+        const customer = await stripe.customers.create({
+          email: userEmail,
+          metadata: {
+            supabase_user_id: userId,
+          },
+        });
+        customerId = customer.id;
+        console.log('Created new customer:', customerId);
+      }
+    } catch (stripeError: any) {
+      console.error('Stripe customer creation/retrieval failed:', {
+        message: stripeError?.message,
+        type: stripeError?.type,
+        code: stripeError?.code,
+        statusCode: stripeError?.statusCode
+      });
+      return new Response(
+        JSON.stringify({
+          error: "Failed to create Stripe customer",
+          details: stripeError?.message || "Unknown Stripe error",
+          hint: "Please contact support@farmcastweather.com"
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Ensure we have valid URLs
@@ -234,30 +272,79 @@ Deno.serve(async (req: Request) => {
     console.log('Creating checkout session with URLs:', { finalSuccessUrl, finalCancelUrl });
 
     // Create checkout session with 1-month trial
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url: finalSuccessUrl,
-      cancel_url: finalCancelUrl,
-      metadata: {
-        supabase_user_id: userId,
-      },
-      subscription_data: {
-        trial_period_days: 30,
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: "subscription",
+        success_url: finalSuccessUrl,
+        cancel_url: finalCancelUrl,
         metadata: {
           supabase_user_id: userId,
         },
-      },
-    });
+        subscription_data: {
+          trial_period_days: 30,
+          metadata: {
+            supabase_user_id: userId,
+          },
+        },
+      });
+      console.log('Checkout session created:', session.id);
+    } catch (stripeError: any) {
+      console.error('Stripe checkout session creation failed:', {
+        message: stripeError?.message,
+        type: stripeError?.type,
+        code: stripeError?.code,
+        param: stripeError?.param,
+        statusCode: stripeError?.statusCode,
+        raw: stripeError?.raw
+      });
 
-    console.log('Checkout session created:', session.id);
+      let errorMessage = stripeError?.message || "Failed to create checkout session";
+      let hint = "Please try again or contact support@farmcastweather.com";
+
+      // Provide specific hints based on error type
+      if (stripeError?.type === 'invalid_request_error') {
+        if (stripeError?.param === 'line_items[0].price') {
+          errorMessage = "Invalid price ID";
+          hint = "The price configuration is incorrect. Please contact support@farmcastweather.com";
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: errorMessage,
+          type: stripeError?.type || "stripe_error",
+          details: stripeError?.code || stripeError?.param || "No additional details",
+          hint: hint
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!session.url) {
+      console.error('Checkout session created but no URL returned:', session);
+      return new Response(
+        JSON.stringify({
+          error: "Checkout session created but no URL returned",
+          hint: "This is a Stripe configuration issue. Please contact support@farmcastweather.com"
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     console.log('Checkout session created successfully:', { sessionId: session.id, hasUrl: !!session.url });
 
