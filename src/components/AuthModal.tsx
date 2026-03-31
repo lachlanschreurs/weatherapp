@@ -242,7 +242,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           const trialEndDate = new Date();
           trialEndDate.setMonth(trialEndDate.getMonth() + 1);
 
-          await supabase
+          const { error: updateError } = await supabase
             .from('profiles')
             .update({
               phone_number: normalizedPhone,
@@ -251,6 +251,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               payment_method_set: true
             })
             .eq('id', authData.user.id);
+
+          if (updateError) {
+            console.error('Error updating profile:', updateError);
+            throw new Error('Failed to save payment information. Please try again.');
+          }
 
           onSuccess();
           onClose();
