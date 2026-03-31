@@ -270,21 +270,25 @@ Deno.serve(async (req: Request) => {
     );
   } catch (error: any) {
     console.error("Error creating checkout session:", {
-      message: error.message,
-      type: error.type,
-      code: error.code,
-      statusCode: error.statusCode,
-      stack: error.stack
+      message: error?.message,
+      type: error?.type,
+      code: error?.code,
+      statusCode: error?.statusCode,
+      stack: error?.stack,
+      fullError: JSON.stringify(error)
     });
+
+    const errorMessage = error?.message || error?.toString() || "Failed to create checkout session";
+    const statusCode = error?.statusCode || 500;
 
     return new Response(
       JSON.stringify({
-        error: error.message || "Failed to create checkout session",
-        type: error.type || "unknown_error",
-        details: error.code || error.statusCode || "No additional details"
+        error: errorMessage,
+        type: error?.type || "unknown_error",
+        details: error?.code || error?.statusCode || "No additional details"
       }),
       {
-        status: error.statusCode || 500,
+        status: statusCode,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

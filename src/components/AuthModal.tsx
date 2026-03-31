@@ -157,14 +157,23 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       if (!response.ok) {
         let errorData;
         try {
-          errorData = await response.json();
-        } catch (e) {
           const text = await response.text();
-          console.error('Checkout error (text):', text);
+          console.error('Checkout error response text:', text);
+
+          try {
+            errorData = JSON.parse(text);
+          } catch (parseError) {
+            console.error('Failed to parse error response:', parseError);
+            throw new Error(`Server error: ${response.status}. Please try again or contact support.`);
+          }
+        } catch (e) {
+          console.error('Failed to read error response:', e);
           throw new Error(`Failed to initialize checkout: ${response.status} ${response.statusText}`);
         }
-        console.error('Checkout error:', errorData);
-        throw new Error(errorData.error || errorData.message || 'Failed to initialize checkout');
+
+        console.error('Parsed checkout error:', errorData);
+        const errorMessage = errorData?.error || errorData?.message || 'Failed to initialize checkout';
+        throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
