@@ -71,20 +71,35 @@ Deno.serve(async (req: Request) => {
 
         console.log('Checkout session completed:', { userId, customerId, customerEmail });
 
+        // Get subscription details to check for trial
+        let trialEnd = null;
+        if (subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          if (subscription.trial_end) {
+            trialEnd = new Date(subscription.trial_end * 1000).toISOString();
+          }
+        }
+
         // Case 1: User signed up through website first (has userId in metadata)
         if (userId && customerId) {
+          const now = new Date().toISOString();
+
           await supabase
             .from("profiles")
             .update({
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
               farmer_joe_subscription_status: "active",
-              farmer_joe_subscription_started_at: new Date().toISOString(),
+              farmer_joe_subscription_started_at: now,
               farmer_joe_subscription_ends_at: null,
+              payment_method_set: true,
+              email_subscription_started_at: now,
+              probe_report_subscription_started_at: now,
+              trial_end_date: trialEnd,
             })
             .eq("id", userId);
 
-          console.log(`Activated subscription for existing user ${userId}`);
+          console.log(`Activated subscription for existing user ${userId} with trial until ${trialEnd}`);
         }
         // Case 2: Direct Stripe checkout (no userId) - create auth user
         else if (!userId && customerId && customerEmail) {
@@ -102,6 +117,8 @@ Deno.serve(async (req: Request) => {
           if (userExists) {
             console.log(`User already exists: ${userExists.id}, updating profile`);
 
+            const now = new Date().toISOString();
+
             // Update existing user's profile
             await supabase
               .from("profiles")
@@ -109,8 +126,12 @@ Deno.serve(async (req: Request) => {
                 stripe_customer_id: customerId,
                 stripe_subscription_id: subscriptionId,
                 farmer_joe_subscription_status: "active",
-                farmer_joe_subscription_started_at: new Date().toISOString(),
+                farmer_joe_subscription_started_at: now,
                 farmer_joe_subscription_ends_at: null,
+                payment_method_set: true,
+                email_subscription_started_at: now,
+                probe_report_subscription_started_at: now,
+                trial_end_date: trialEnd,
               })
               .eq("id", userExists.id);
           } else {
@@ -134,6 +155,8 @@ Deno.serve(async (req: Request) => {
             if (newUser.user) {
               console.log(`Successfully created user: ${newUser.user.id}`);
 
+              const now = new Date().toISOString();
+
               // Profile is auto-created by trigger, just update it with Stripe data
               await supabase
                 .from("profiles")
@@ -141,8 +164,12 @@ Deno.serve(async (req: Request) => {
                   stripe_customer_id: customerId,
                   stripe_subscription_id: subscriptionId,
                   farmer_joe_subscription_status: "active",
-                  farmer_joe_subscription_started_at: new Date().toISOString(),
+                  farmer_joe_subscription_started_at: now,
                   farmer_joe_subscription_ends_at: null,
+                  payment_method_set: true,
+                  email_subscription_started_at: now,
+                  probe_report_subscription_started_at: now,
+                  trial_end_date: trialEnd,
                 })
                 .eq("id", newUser.user.id);
 

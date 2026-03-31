@@ -37,10 +37,11 @@ Deno.serve(async (req: Request) => {
 
     const { data: expiredTrials, error: queryError } = await supabase
       .from("profiles")
-      .select("id, stripe_customer_id, email, trial_end_date, farmer_joe_subscription_status")
+      .select("id, stripe_customer_id, email, trial_end_date, farmer_joe_subscription_status, stripe_subscription_id")
       .lte("trial_end_date", today.toISOString())
       .eq("payment_method_set", true)
-      .is("farmer_joe_subscription_status", null);
+      .or("farmer_joe_subscription_status.is.null,farmer_joe_subscription_status.eq.trialing")
+      .is("stripe_subscription_id", null);
 
     if (queryError) {
       console.error("Error querying expired trials:", queryError);

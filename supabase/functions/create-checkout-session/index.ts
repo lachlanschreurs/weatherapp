@@ -119,10 +119,62 @@ Deno.serve(async (req: Request) => {
     const requestBody = await req.json();
     console.log('Request body received:', { ...requestBody, userEmail: requestBody.userEmail ? 'present' : 'missing' });
 
-    const { priceId, successUrl, cancelUrl } = requestBody;
+    const { priceId, successUrl, cancelUrl, customerId, isNewSignup } = requestBody;
     const userId = user.id;
     const userEmail = user.email;
 
+    // For new signups, we create a subscription directly (payment already collected)
+    if (isNewSignup && customerId) {
+      console.log('Creating subscription for new signup with customer:', customerId);
+
+      const stripePriceId = Deno.env.get("STRIPE_PRICE_ID");
+      if (!stripePriceId) {
+        throw new Error("STRIPE_PRICE_ID not configured");
+      }
+
+      // Calculate trial end date (1 month from now)
+      const trialEndDate = new Date();
+      trialEndDate.setMonth(trialEndDate.getMonth() + 1);
+      const trialEndTimestamp = Math.floor(trialEndDate.getTime() / 1000);
+
+      // Get the payment method that was just added
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customerId,
+        type: 'card',
+        limit: 1,
+      });
+
+      if (paymentMethods.data.length === 0) {
+        throw new Error('No payment method found for customer');
+      }
+
+      // Create subscription with trial period
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: stripePriceId }],
+        default_payment_method: paymentMethods.data[0].id,
+        trial_end: trialEndTimestamp,
+        metadata: {
+          supabase_user_id: userId,
+        },
+      });
+
+      console.log('Subscription created for new signup:', subscription.id);
+
+      return new Response(
+        JSON.stringify({
+          subscriptionId: subscription.id,
+          status: subscription.status,
+          trialEnd: subscription.trial_end,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Regular checkout flow for existing users
     if (!priceId || !userId || !userEmail) {
       console.error('Missing required fields:', { priceId: !!priceId, userId: !!userId, userEmail: !!userEmail });
       return new Response(
@@ -177,7 +229,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('Creating checkout session with URLs:', { finalSuccessUrl, finalCancelUrl });
 
-    // Create checkout session
+    // Create checkout session with 1-month trial
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -194,6 +246,7 @@ Deno.serve(async (req: Request) => {
         supabase_user_id: userId,
       },
       subscription_data: {
+        trial_period_days: 30,
         metadata: {
           supabase_user_id: userId,
         },

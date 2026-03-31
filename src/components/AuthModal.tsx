@@ -280,13 +280,39 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       const trialEndDate = new Date();
       trialEndDate.setMonth(trialEndDate.getMonth() + 1);
 
-      // Update profile with payment info
+      // Create Stripe subscription with trial period
+      const subscriptionResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerId,
+            isNewSignup: true,
+          }),
+        }
+      );
+
+      if (!subscriptionResponse.ok) {
+        const errorData = await subscriptionResponse.json();
+        throw new Error(errorData.error || 'Failed to create subscription');
+      }
+
+      const { subscriptionId } = await subscriptionResponse.json();
+
+      // Update profile with payment info and subscription
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           trial_end_date: trialEndDate.toISOString(),
           stripe_customer_id: customerId,
-          payment_method_set: true
+          stripe_subscription_id: subscriptionId,
+          payment_method_set: true,
+          farmer_joe_subscription_status: 'trialing',
+          farmer_joe_subscription_started_at: new Date().toISOString()
         })
         .eq('id', authData.user.id);
 
