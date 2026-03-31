@@ -25,25 +25,48 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
   const mapInstanceRef = useRef<any>(null);
+  const lastActivityRef = useRef<number>(Date.now());
+  const idleTimeoutRef = useRef<number>();
 
   useEffect(() => {
     fetchRadarData();
-    const interval = setInterval(fetchRadarData, 10 * 60 * 1000);
+    const interval = setInterval(() => {
+      const idleTime = Date.now() - lastActivityRef.current;
+      if (idleTime < 5 * 60 * 1000) {
+        fetchRadarData();
+      }
+    }, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (radarFrames.length > 0 && isPlaying) {
+    const resetIdleTimer = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('mousemove', resetIdleTimer);
+    window.addEventListener('keydown', resetIdleTimer);
+    window.addEventListener('touchstart', resetIdleTimer);
+
+    return () => {
+      window.removeEventListener('mousemove', resetIdleTimer);
+      window.removeEventListener('keydown', resetIdleTimer);
+      window.removeEventListener('touchstart', resetIdleTimer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (radarFrames.length > 0 && isPlaying && showRadar) {
       animationRef.current = window.setInterval(() => {
         setCurrentFrame((prev) => (prev + 1) % radarFrames.length);
-      }, 500);
+      }, 800);
     }
     return () => {
       if (animationRef.current) {
         clearInterval(animationRef.current);
       }
     };
-  }, [radarFrames.length, isPlaying]);
+  }, [radarFrames.length, isPlaying, showRadar]);
 
   async function fetchRadarData() {
     try {
@@ -62,17 +85,21 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
       setRadarHost(data.host);
 
-      const pastFrames = (data.radar.past || []).map((f: any) => ({
-        path: f.path,
-        time: f.time,
-        isForecast: false
-      }));
+      const pastFrames = (data.radar.past || [])
+        .slice(-4)
+        .map((f: any) => ({
+          path: f.path,
+          time: f.time,
+          isForecast: false
+        }));
 
-      const forecastFrames = (data.radar.nowcast || []).map((f: any) => ({
-        path: f.path,
-        time: f.time,
-        isForecast: true
-      }));
+      const forecastFrames = (data.radar.nowcast || [])
+        .slice(0, 4)
+        .map((f: any) => ({
+          path: f.path,
+          time: f.time,
+          isForecast: true
+        }));
 
       const allFrames = [...pastFrames, ...forecastFrames];
 
@@ -117,17 +144,22 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 11 : 10;
+      const zoom = isExpanded ? 10 : 9;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
         zoomControl: true,
-        attributionControl: true
+        attributionControl: true,
+        maxZoom: 11,
+        minZoom: 7
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
-        maxZoom: 19
+        maxZoom: 11,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: 2
       }).addTo(map);
 
       const radarLayer = L.layerGroup().addTo(map);
@@ -167,7 +199,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   }, [showRadar, lat, lon, isExpanded, radarHost, radarFrames.length]);
 
   useEffect(() => {
-    if (!mapInstanceRef.current || radarFrames.length === 0 || !radarHost) return;
+    if (!mapInstanceRef.current || radarFrames.length === 0 || !radarHost || !showRadar) return;
 
     const { radarLayer } = mapInstanceRef.current;
     const L = (window as any).L;
@@ -177,14 +209,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     const frame = radarFrames[currentFrame];
     if (!frame) return;
 
-    const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`;
+    const tileUrl = `${radarHost}${frame.path}/512/{z}/{x}/{y}/4/1_1.png`;
 
     L.tileLayer(tileUrl, {
       opacity: opacity,
-      tileSize: 256,
-      zIndex: 1000
+      tileSize: 512,
+      zIndex: 1000,
+      maxZoom: 11,
+      updateWhenIdle: true,
+      updateWhenZooming: false,
+      keepBuffer: 1,
+      maxNativeZoom: 10
     }).addTo(radarLayer);
-  }, [currentFrame, radarFrames, radarHost, opacity]);
+  }, [currentFrame, radarFrames, radarHost, opacity, showRadar]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
