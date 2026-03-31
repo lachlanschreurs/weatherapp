@@ -155,12 +155,20 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       console.log('Checkout response status:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          const text = await response.text();
+          console.error('Checkout error (text):', text);
+          throw new Error(`Failed to initialize checkout: ${response.status} ${response.statusText}`);
+        }
         console.error('Checkout error:', errorData);
-        throw new Error(errorData.error || 'Failed to initialize checkout');
+        throw new Error(errorData.error || errorData.message || 'Failed to initialize checkout');
       }
 
       const responseData = await response.json();
+      console.log('Checkout response data:', responseData);
       console.log('Checkout URL received:', responseData.url);
 
       if (!responseData.url) {
@@ -169,7 +177,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       // Redirect to Stripe Checkout
       console.log('Redirecting to Stripe...');
-      window.location.href = responseData.url;
+
+      // Use window.location.assign instead of href for better compatibility
+      setTimeout(() => {
+        window.location.assign(responseData.url);
+      }, 100);
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message || 'An error occurred');
@@ -411,9 +423,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? 'Redirecting to checkout...' : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Continue to Payment'}
+              {loading && (
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {loading ? (isLogin || isForgotPassword ? 'Please wait...' : 'Setting up your account...') : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Continue to Payment'}
             </button>
           </form>
 
