@@ -273,58 +273,24 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         throw new Error('No response from server');
       }
 
-      const responseText = await response.text();
-      console.log('Response text length:', responseText.length);
-      console.log('Response text preview:', responseText.substring(0, 200));
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse JSON response:', parseError);
-        console.error('Raw response was:', responseText);
-        throw new Error(`Invalid server response. Please try again or contact support@farmcastweather.com`);
-      }
-
-      console.log('Checkout response parsed:', {
-        status: response.status,
-        hasUrl: !!data.url,
-        urlPreview: data.url ? data.url.substring(0, 50) : 'NO URL',
-        sessionId: data.sessionId
-      });
-
       if (!response.ok) {
-        console.error('Checkout error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: data.error,
-          details: data.details,
-          hint: data.hint
-        });
-
-        const errorMsg = data.hint
-          ? `${data.error || 'Checkout failed'}. ${data.hint}`
-          : data.error || `Server error: ${response.status}`;
-
+        const errorData = await response.json();
+        const errorMsg = errorData.hint
+          ? `${errorData.error || 'Checkout failed'}. ${errorData.hint}`
+          : errorData.error || `Server error: ${response.status}`;
         throw new Error(errorMsg);
       }
 
-      if (!data.url) {
-        console.error('No URL in successful response:', data);
+      const data = await response.json();
+      console.log('Checkout response:', data);
+
+      if (data?.url) {
+        console.log('Redirecting to checkout URL:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error('Missing checkout URL', data);
         throw new Error('No checkout URL returned from Stripe. Please contact support@farmcastweather.com');
       }
-
-      console.log('=== STRIPE CHECKOUT REDIRECT ===');
-      console.log('Checkout URL received:', data.url);
-      console.log('URL starts with https:', data.url.startsWith('https://'));
-      console.log('URL contains stripe:', data.url.includes('stripe.com'));
-      console.log('Full URL:', data.url);
-      console.log('Redirecting in 100ms...');
-
-      setTimeout(() => {
-        console.log('EXECUTING REDIRECT NOW');
-        window.location.assign(data.url);
-      }, 100);
     } catch (error) {
       console.error('Error creating checkout session:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -384,74 +350,35 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         returnUrl: 'https://farmcastweather.com',
       };
 
-      console.log('API URL:', apiUrl);
-      console.log('Request body:', { ...requestBody, userEmail: 'REDACTED' });
-
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody),
-      }).catch((fetchError) => {
-        console.error('FETCH ERROR:', fetchError);
-        throw new Error(`Network error: ${fetchError.message}`);
       });
-
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      if (!response) {
-        throw new Error('No response from server');
-      }
-
-      const data = await response.json().catch((parseError) => {
-        console.error('JSON PARSE ERROR:', parseError);
-        return { error: 'Invalid response from server' };
-      });
-
-      console.log('Response data:', data);
 
       if (!response.ok) {
-        console.error('ERROR RESPONSE:', data);
-        if (data.errorType === 'portal_not_activated') {
+        const errorData = await response.json();
+        if (errorData.errorType === 'portal_not_activated') {
           setMessage({
             type: 'error',
             text: 'Stripe billing portal needs to be activated. Please contact support@farmcastweather.com'
           });
-        } else {
-          throw new Error(data.error || `Server error: ${response.status}`);
+          setIsProcessing(false);
+          return;
         }
-        setIsProcessing(false);
-        return;
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
 
-      if (!data.url) {
-        console.error('NO URL IN RESPONSE:', data);
+      const data = await response.json();
+      console.log('Portal response:', data);
+
+      if (data?.url) {
+        console.log('Redirecting to portal URL:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error('Missing portal URL', data);
         throw new Error('No portal URL returned from Stripe');
       }
-
-      console.log('Portal URL received:', data.url);
-      console.log('URL starts with https:', data.url.startsWith('https://'));
-      console.log('URL starts with stripe:', data.url.includes('stripe.com'));
-
-      // Verify URL is valid before redirecting
-      if (!data.url || !data.url.startsWith('https://')) {
-        console.error('INVALID URL:', data.url);
-        throw new Error('Invalid portal URL received');
-      }
-
-      console.log('REDIRECTING TO STRIPE IN 100MS...');
-      console.log('=== STRIPE PORTAL DEBUG END ===');
-
-      // Show loading message
-      setMessage({ type: 'success', text: 'Redirecting to Stripe billing portal...' });
-
-      // Force immediate redirect using replace to avoid navigation issues
-      setTimeout(() => {
-        console.log('EXECUTING REDIRECT NOW to:', data.url);
-        window.location.replace(data.url);
-      }, 100);
-
-      // Don't reset isProcessing - let the page redirect happen
     } catch (error) {
       console.error('PORTAL SESSION ERROR:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to open billing portal';

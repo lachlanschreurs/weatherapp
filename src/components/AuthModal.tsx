@@ -213,28 +213,16 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error(errorMessage);
       }
 
-      const responseData = await response.json();
-      console.log('8. ✓ CHECKOUT SUCCESS - Response data:', responseData);
-      console.log('8. Checkout URL:', responseData.url);
-      console.log('8. Session ID:', responseData.sessionId);
+      const data = await response.json();
+      console.log('Checkout response:', data);
 
-      if (!responseData.url) {
-        console.error('8. ERROR - No checkout URL in response');
-        console.error('8. Full response:', JSON.stringify(responseData, null, 2));
+      if (data?.url) {
+        console.log('Redirecting to checkout URL:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error('Missing checkout URL', data);
         throw new Error('No checkout URL returned from server');
       }
-
-      console.log('=== STRIPE CHECKOUT REDIRECT (SIGNUP) ===');
-      console.log('Checkout URL received:', responseData.url);
-      console.log('URL starts with https:', responseData.url.startsWith('https://'));
-      console.log('URL contains stripe:', responseData.url.includes('stripe.com'));
-      console.log('Full URL:', responseData.url);
-      console.log('Redirecting in 100ms...');
-
-      setTimeout(() => {
-        console.log('EXECUTING REDIRECT NOW');
-        window.location.assign(responseData.url);
-      }, 100);
     } catch (err: any) {
       console.error('========================================');
       console.error('ERROR OCCURRED:', err);
