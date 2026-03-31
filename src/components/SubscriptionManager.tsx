@@ -56,29 +56,55 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     setIsLoading(true);
     setMessage(null);
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('SubscriptionManager: User fetch result:', { hasUser: !!user, userError });
+      // Get the current session with the access token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('SubscriptionManager: Session fetch result:', { hasSession: !!session, sessionError });
 
-      if (userError || !user) {
-        console.log('SubscriptionManager: No user found, showing sign in message');
+      if (sessionError || !session?.user) {
+        console.log('SubscriptionManager: No session found, showing sign in message');
         setSubscription(null);
         setMessage({ type: 'error', text: 'Please sign in to manage your subscription.' });
         setIsLoading(false);
         return;
       }
 
+      const user = session.user;
       console.log('SubscriptionManager: Fetching profile for user:', user.id);
+
       const { data, error } = await supabase
         .from('profiles')
         .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, stripe_customer_id')
         .eq('id', user.id)
         .maybeSingle();
 
-      console.log('SubscriptionManager: Profile fetch result:', { data, error });
+      console.log('SubscriptionManager: Profile fetch result:', {
+        data,
+        error,
+        hasData: !!data,
+        hasError: !!error,
+        errorKeys: error ? Object.keys(error) : [],
+        errorMessage: error?.message,
+        errorCode: error?.code
+      });
 
       if (error) {
         console.error('Database error loading subscription:', error);
-        setMessage({ type: 'error', text: 'Unable to load subscription information. Please try again.' });
+        console.error('Error details:', JSON.stringify(error));
+
+        // If error is an empty object, provide a more helpful message
+        const errorMessage = error.message || 'Database access error. Please refresh and try again.';
+        setMessage({ type: 'error', text: errorMessage });
+
+        // Still set default subscription data so the UI can render
+        setSubscription({
+          status: 'none',
+          startedAt: null,
+          endsAt: null,
+          messagesCount: 0,
+          emailStartedAt: null,
+          probeReportStartedAt: null,
+          stripeCustomerId: null
+        });
         setIsLoading(false);
         return;
       }
@@ -110,6 +136,17 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     } catch (error) {
       console.error('Error loading subscription:', error);
       setMessage({ type: 'error', text: 'An unexpected error occurred. Please try again.' });
+
+      // Set default values so UI can still render
+      setSubscription({
+        status: 'none',
+        startedAt: null,
+        endsAt: null,
+        messagesCount: 0,
+        emailStartedAt: null,
+        probeReportStartedAt: null,
+        stripeCustomerId: null
+      });
     } finally {
       console.log('SubscriptionManager: Finished loading, setting isLoading to false');
       setIsLoading(false);
