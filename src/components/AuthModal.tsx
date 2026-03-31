@@ -38,12 +38,17 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
   const handleDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('========================================');
+    console.log('CONTINUE TO PAYMENT CLICKED');
+    console.log('========================================');
+
     setError(null);
     setSuccessMessage(null);
     setLoading(true);
 
     try {
-      console.log('Starting signup process...');
+      console.log('1. Starting signup process...');
+      console.log('Form data:', { email, name, phoneLength: phoneNumber.length });
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -81,15 +86,22 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       });
 
       if (signUpError) {
-        console.error('Signup error:', signUpError);
+        console.error('2. SIGNUP ERROR:', signUpError);
         throw signUpError;
       }
 
       if (!authData.user) {
+        console.error('2. SIGNUP FAILED - No user returned');
         throw new Error('Failed to create account');
       }
 
-      console.log('Account created, updating profile...');
+      console.log('2. ✓ SIGNUP SUCCESS - User created:', {
+        userId: authData.user.id,
+        email: authData.user.email,
+        hasSession: !!authData.session
+      });
+
+      console.log('3. Updating profile with phone number...');
 
       // Wait for profile to be created by trigger, then update it
       let retries = 0;
@@ -111,32 +123,55 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         if (!updateError) {
           profileUpdated = true;
-          console.log('Profile updated successfully');
+          console.log('3. ✓ PROFILE UPDATED successfully');
         } else if (retries === maxRetries - 1) {
-          console.error('Error updating profile after retries:', updateError);
+          console.error('3. PROFILE UPDATE ERROR after retries:', updateError);
           throw new Error('Failed to save user profile. Please try again.');
         }
 
         retries++;
       }
 
-      console.log('Getting session...');
+      console.log('4. Getting session for checkout...');
 
       // Now redirect to Stripe Checkout
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        console.error('4. SESSION ERROR - No session found');
         throw new Error('Session not found');
       }
 
-      console.log('Creating checkout session...');
+      console.log('4. ✓ SESSION RETRIEVED:', {
+        hasAccessToken: !!session.access_token,
+        tokenLength: session.access_token?.length,
+        expiresAt: session.expires_at
+      });
+
+      console.log('5. Preparing checkout request...');
 
       const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
       if (!stripePriceId) {
+        console.error('5. STRIPE CONFIG ERROR - No VITE_STRIPE_PRICE_ID');
         throw new Error('Stripe configuration error. Please contact support.');
       }
 
+      console.log('5. ✓ STRIPE CONFIG READY:', {
+        hasPriceId: true,
+        priceId: stripePriceId
+      });
+
+      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+      const checkoutPayload = {
+        priceId: stripePriceId,
+        successUrl: `${window.location.origin}?subscription=success`,
+        cancelUrl: window.location.origin,
+      };
+
+      console.log('6. Sending checkout request to:', checkoutUrl);
+      console.log('6. Checkout payload:', checkoutPayload);
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
+        checkoutUrl,
         {
           method: 'POST',
           headers: {
@@ -144,55 +179,62 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
           },
-          body: JSON.stringify({
-            priceId: stripePriceId,
-            successUrl: `${window.location.origin}?subscription=success`,
-            cancelUrl: window.location.origin,
-          }),
+          body: JSON.stringify(checkoutPayload),
         }
       );
 
-      console.log('Checkout response status:', response.status);
+      console.log('7. CHECKOUT RESPONSE RECEIVED:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
 
       if (!response.ok) {
+        console.error('7. CHECKOUT ERROR - Response not OK');
         let errorData;
         try {
           const text = await response.text();
-          console.error('Checkout error response text:', text);
+          console.error('7. Error response text:', text);
 
           try {
             errorData = JSON.parse(text);
+            console.error('7. Parsed error data:', errorData);
           } catch (parseError) {
-            console.error('Failed to parse error response:', parseError);
+            console.error('7. Failed to parse error response:', parseError);
             throw new Error(`Server error: ${response.status}. Please try again or contact support.`);
           }
         } catch (e) {
-          console.error('Failed to read error response:', e);
+          console.error('7. Failed to read error response:', e);
           throw new Error(`Failed to initialize checkout: ${response.status} ${response.statusText}`);
         }
 
-        console.error('Parsed checkout error:', errorData);
         const errorMessage = errorData?.error || errorData?.message || 'Failed to initialize checkout';
+        console.error('7. Final error message:', errorMessage);
         throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
-      console.log('Checkout response data:', responseData);
-      console.log('Checkout URL received:', responseData.url);
+      console.log('8. ✓ CHECKOUT SUCCESS - Response data:', responseData);
+      console.log('8. Checkout URL:', responseData.url);
+      console.log('8. Session ID:', responseData.sessionId);
 
       if (!responseData.url) {
+        console.error('8. ERROR - No checkout URL in response');
+        console.error('8. Full response:', JSON.stringify(responseData, null, 2));
         throw new Error('No checkout URL returned from server');
       }
 
-      // Redirect to Stripe Checkout
-      console.log('Redirecting to Stripe...');
+      console.log('9. REDIRECTING TO STRIPE CHECKOUT...');
+      console.log('9. URL:', responseData.url);
 
-      // Use window.location.assign instead of href for better compatibility
-      setTimeout(() => {
-        window.location.assign(responseData.url);
-      }, 100);
+      // Redirect to Stripe Checkout
+      window.location.href = responseData.url;
     } catch (err: any) {
-      console.error('Signup error:', err);
+      console.error('========================================');
+      console.error('ERROR OCCURRED:', err);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
+      console.error('========================================');
       setError(err.message || 'An error occurred');
       setLoading(false);
     }
