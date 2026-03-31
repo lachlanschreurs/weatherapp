@@ -272,14 +272,9 @@ function App() {
   };
 
   const loadGuestLocation = async () => {
-    try {
-      const userLocation = await getUserLocation();
-      setLocation(userLocation);
-      setHasLoadedInitialLocation(true);
-    } catch (error) {
-      console.error('Error getting user location:', error);
-      setHasLoadedInitialLocation(true);
-    }
+    const userLocation = await getUserLocation();
+    setLocation(userLocation);
+    setHasLoadedInitialLocation(true);
   };
 
   const checkAdminStatus = async (userId: string) => {
