@@ -219,8 +219,17 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
     if (subscriptionStatus) {
+      console.log('Stripe redirect detected:', subscriptionStatus);
       // Clean up URL immediately to prevent blank page
       window.history.replaceState({}, '', window.location.pathname);
+
+      if (subscriptionStatus === 'success') {
+        // Force a refresh to ensure auth state is properly loaded
+        setTimeout(() => {
+          console.log('Forcing page refresh after Stripe success');
+          window.location.reload();
+        }, 100);
+      }
     }
 
     // Periodic session validity check (every 30 seconds)
