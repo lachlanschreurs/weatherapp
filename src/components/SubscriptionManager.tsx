@@ -302,6 +302,15 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       console.log('User Email:', user.email);
       console.log('Has session token:', !!session.access_token);
 
+      // Check if user already has a Stripe customer ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('stripe_customer_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      console.log('User has stripe_customer_id:', !!profile?.stripe_customer_id);
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,

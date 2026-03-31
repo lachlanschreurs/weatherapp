@@ -31,11 +31,13 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
   const nowPosition = nowIndex >= 0 ? nowIndex * barWidth : -1;
 
   const getWindDirectionRotation = (direction?: string) => {
+    // Wind direction indicates where wind is coming FROM
+    // Arrow points DOWN (180 degrees) by default, so we rotate based on direction
     const directions: { [key: string]: number } = {
-      'N': 0, 'NNE': 22.5, 'NE': 45, 'ENE': 67.5,
-      'E': 90, 'ESE': 112.5, 'SE': 135, 'SSE': 157.5,
-      'S': 180, 'SSW': 202.5, 'SW': 225, 'WSW': 247.5,
-      'W': 270, 'WNW': 292.5, 'NW': 315, 'NNW': 337.5
+      'N': 180, 'NNE': 202.5, 'NE': 225, 'ENE': 247.5,
+      'E': 270, 'ESE': 292.5, 'SE': 315, 'SSE': 337.5,
+      'S': 0, 'SSW': 22.5, 'SW': 45, 'WSW': 67.5,
+      'W': 90, 'WNW': 112.5, 'NW': 135, 'NNW': 157.5
     };
     return directions[direction || 'N'] || 0;
   };
