@@ -18,7 +18,6 @@ import { PremiumTeaser } from './components/PremiumTeaser';
 import FarmerJoe from './components/FarmerJoe';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
-import { registerSession, checkSessionValidity, updateSessionActivity, deactivateSession } from './utils/sessionManager';
 import { getFavoriteLocation } from './utils/savedLocations';
 import { getUserLocation } from './utils/geolocation';
 import type { User } from '@supabase/supabase-js';
@@ -187,10 +186,8 @@ function App() {
         }
 
         if (session?.user) {
-          // Register new session on sign in
+          // Load favorite location on sign in
           if (event === 'SIGNED_IN') {
-            await registerSession(session.access_token, session.user.id);
-            // Load favorite location on sign in
             loadUserLocation(session.user.id);
           }
 
@@ -202,13 +199,8 @@ function App() {
             processWeatherNotifications(weather);
           }
         } else {
-          // Deactivate session on sign out
+          // Load geolocation for guest users on sign out
           if (event === 'SIGNED_OUT') {
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            if (currentSession?.access_token) {
-              await deactivateSession(currentSession.access_token);
-            }
-            // Load geolocation for guest users
             loadGuestLocation();
           }
 

@@ -120,21 +120,14 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         retries++;
       }
 
-      // Account created successfully, wait for session to be fully established
-      console.log('Account created successfully, waiting for session...');
+      // Account created successfully
+      console.log('Account created successfully, redirecting to payment setup...');
 
-      // Wait a moment for the session to be fully established
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // The auth state change listener will set the session
+      // Wait a bit longer to ensure the session is fully propagated
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Refresh the session to ensure we have a valid JWT
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError || !session) {
-        console.error('Session error after signup:', sessionError);
-        throw new Error('Session not established. Please try logging in.');
-      }
-
-      console.log('Session established, redirecting to payment setup...');
+      // Now redirect to payment setup
       await handlePaymentSetupDirect();
     } catch (err: any) {
       console.error('Signup error:', err);
@@ -160,10 +153,33 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     try {
       console.log('Initializing payment setup...');
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Please log in to continue');
+      // Get the current session with retry logic
+      let session = null;
+      let retries = 0;
+      const maxRetries = 3;
+
+      while (retries < maxRetries && !session) {
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+
+        if (currentSession) {
+          session = currentSession;
+          console.log('Session obtained successfully');
+          break;
+        }
+
+        if (retries < maxRetries - 1) {
+          console.log(`Session not ready, retrying... (${retries + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        retries++;
       }
+
+      if (!session) {
+        throw new Error('Session not available. Please sign in again.');
+      }
+
+      console.log('Calling Square checkout with session token...');
 
       const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
 
@@ -176,16 +192,20 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         }
       });
 
+      console.log('Square checkout response:', response.status, response.statusText);
+
       if (!response.ok) {
         const text = await response.text();
+        console.error('Square checkout error response:', text);
         let errorData;
         try {
           errorData = JSON.parse(text);
         } catch {
           throw new Error(`Server error: ${response.status}. Please try again.`);
         }
-        const errorMessage = errorData?.error || errorData?.message || 'Failed to initialize checkout';
-        throw new Error(errorMessage);
+        const errorMessage = errorData?.error || errorData?.details || errorData?.message || 'Failed to initialize checkout';
+        const hint = errorData?.hint || '';
+        throw new Error(`${errorMessage}${hint ? ' ' + hint : ''}`);
       }
 
       const data = await response.json();

@@ -28,11 +28,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const authHeader = req.headers.get('Authorization');
+    console.log('Authorization header present:', !!authHeader);
+
     if (!authHeader) {
-      console.error('No Authorization header');
+      console.error('MISSING Authorization header');
       return new Response(
         JSON.stringify({
-          error: "No authorization header",
+          error: "No authorization header provided",
+          details: "The request is missing the Authorization header",
           hint: "Please sign in again"
         }),
         {
@@ -43,13 +46,18 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    console.log('Token extracted, length:', token.length);
 
-    if (!supabaseUrl || !supabaseServiceKey) {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey) {
       console.error('Missing Supabase environment variables');
       return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
+        JSON.stringify({
+          error: "Server configuration error",
+          details: "Missing SUPABASE_URL or SUPABASE_ANON_KEY"
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,17 +65,24 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Use anon key to validate the user's JWT token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+    console.log('Validating user token...');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
-    if (userError || !user) {
-      console.error('User verification failed:', userError);
+    if (userError) {
+      console.error('User verification error:', {
+        message: userError.message,
+        status: userError.status,
+        name: userError.name
+      });
       return new Response(
         JSON.stringify({
-          error: "Session not found",
-          details: userError?.message || "Invalid or expired session",
-          hint: "Your session has expired. Please sign out and sign back in"
+          error: "Authentication failed",
+          details: userError.message,
+          errorCode: userError.name,
+          hint: "Your session may have expired. Please sign out and sign back in"
         }),
         {
           status: 401,
@@ -76,7 +91,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('User verified:', user.id, user.email);
+    if (!user) {
+      console.error('No user returned from getUser');
+      return new Response(
+        JSON.stringify({
+          error: "No user found",
+          details: "Token did not resolve to a user",
+          hint: "Please sign out and sign back in"
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log('User verified successfully:', user.id, user.email);
 
     const squareApiUrl = squareEnvironment === "sandbox"
       ? "https://connect.squareupsandbox.com"
