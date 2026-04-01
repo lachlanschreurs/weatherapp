@@ -208,7 +208,20 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       console.error('Error message:', err.message);
       console.error('Error stack:', err.stack);
       console.error('========================================');
-      setError(err.message || 'An error occurred');
+
+      let errorMessage = 'An error occurred. Please try again.';
+
+      if (err?.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err?.error_description) {
+        errorMessage = err.error_description;
+      } else if (err?.msg) {
+        errorMessage = err.msg;
+      }
+
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -236,7 +249,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      const errorMessage = err?.message || err?.error_description || 'Invalid email or password. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -261,7 +275,8 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       setSuccessMessage('Password reset link sent! Check your email inbox. Click the link to set a new password.');
       setEmail('');
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      const errorMessage = err?.message || err?.error_description || 'Failed to send reset link. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -322,7 +337,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
-          {error && (
+          {error && typeof error === 'string' && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {error}
             </div>
