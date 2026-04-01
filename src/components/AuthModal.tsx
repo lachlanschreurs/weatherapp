@@ -120,10 +120,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         retries++;
       }
 
-      // Account created successfully, show payment step
-      setLoading(false);
-      setShowPaymentStep(true);
-      setSuccessMessage('Account created successfully! Now set up your payment method to start your free trial.');
+      // Account created successfully, redirect to Square checkout immediately
+      console.log('Account created successfully, redirecting to payment setup...');
+      await handlePaymentSetupDirect();
     } catch (err: any) {
       console.error('Signup error:', err);
 
@@ -144,10 +143,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
-  const handlePaymentSetup = async () => {
-    setError(null);
-    setLoading(true);
-
+  const handlePaymentSetupDirect = async () => {
     try {
       console.log('Initializing payment setup...');
 
@@ -203,6 +199,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       setError(errorMessage);
       setLoading(false);
     }
+  };
+
+  const handlePaymentSetup = async () => {
+    setError(null);
+    setLoading(true);
+    await handlePaymentSetupDirect();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
