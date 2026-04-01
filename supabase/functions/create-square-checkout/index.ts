@@ -131,6 +131,9 @@ Deno.serve(async (req: Request) => {
     };
 
     console.log('Creating Square checkout with plan:', squareSubscriptionPlanId);
+    console.log('Square API URL:', `${squareApiUrl}/v2/online-checkout/payment-links`);
+    console.log('Square Environment:', squareEnvironment);
+    console.log('Request payload:', JSON.stringify(checkoutData, null, 2));
 
     const squareResponse = await fetch(`${squareApiUrl}/v2/online-checkout/payment-links`, {
       method: 'POST',
