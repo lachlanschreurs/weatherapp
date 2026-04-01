@@ -28,9 +28,16 @@ Deno.serve(async (req: Request) => {
       throw new Error("Supabase not configured");
     }
 
+    console.log('=== CHECKOUT SESSION DEBUG START ===');
+    console.log('Supabase URL:', supabaseUrl);
+    console.log('Service Role Key present:', !!supabaseServiceRoleKey);
+
     const authHeader = req.headers.get('Authorization');
+    console.log('Auth header present:', !!authHeader);
+    console.log('Auth header value:', authHeader?.substring(0, 20) + '...');
+
     if (!authHeader) {
-      console.log('No authorization header provided');
+      console.log('ERROR: No authorization header provided');
       return new Response(
         JSON.stringify({ error: "Missing authorization header. Please sign in." }),
         {
@@ -41,14 +48,19 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    console.log('Received token:', token ? 'yes' : 'no');
+    console.log('Token extracted:', !!token);
+    console.log('Token length:', token.length);
+    console.log('Token first 20 chars:', token.substring(0, 20) + '...');
 
+    console.log('Creating Supabase client with SERVICE_ROLE_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+    console.log('Calling supabase.auth.getUser(token)...');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError) {
-      console.log('JWT verification error:', userError);
+      console.log('ERROR: JWT verification failed');
+      console.log('Error object:', JSON.stringify(userError, null, 2));
       return new Response(
         JSON.stringify({ error: "Invalid JWT", details: userError.message }),
         {
@@ -59,7 +71,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!user) {
-      console.log('No user found from token');
+      console.log('ERROR: No user found from token');
       return new Response(
         JSON.stringify({ error: "User not found. Please sign in again." }),
         {
@@ -69,7 +81,9 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log('User verified:', user.id);
+    console.log('SUCCESS: User verified:', user.id);
+    console.log('User email:', user.email);
+    console.log('=== CHECKOUT SESSION DEBUG END ===');
 
     const { data: profile } = await supabase
       .from("profiles")
