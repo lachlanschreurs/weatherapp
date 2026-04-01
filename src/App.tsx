@@ -132,24 +132,8 @@ function App() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
-        // Check if this session is still valid
-        const isValid = await checkSessionValidity(session.access_token);
-
-        if (!isValid) {
-          // Session was deactivated (user logged in on another device)
-          await supabase.auth.signOut();
-          setUser(null);
-          setIsAdmin(false);
-          setShowAdminPanel(false);
-          alert('You have been logged out because you signed in on another device.');
-          return;
-        }
-
         setUser(session.user);
         checkAdminStatus(session.user.id);
-
-        // Update session activity
-        updateSessionActivity(session.access_token);
 
         // Load favorite location
         if (!hasLoadedInitialLocation) {
@@ -223,30 +207,8 @@ function App() {
       // The auth state will be picked up by the useEffect above
     }
 
-    // Periodic session validity check (every 30 seconds)
-    const sessionCheckInterval = setInterval(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        const isValid = await checkSessionValidity(session.access_token);
-
-        if (!isValid) {
-          // Session was deactivated on another device
-          clearInterval(sessionCheckInterval);
-          await supabase.auth.signOut();
-          setUser(null);
-          setIsAdmin(false);
-          setShowAdminPanel(false);
-          alert('You have been logged out because you signed in on another device.');
-        } else {
-          // Update last activity
-          await updateSessionActivity(session.access_token);
-        }
-      }
-    }, 30000); // Check every 30 seconds
-
     return () => {
       subscription.unsubscribe();
-      clearInterval(sessionCheckInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
