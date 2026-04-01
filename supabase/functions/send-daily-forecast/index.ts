@@ -126,11 +126,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
           if (favoriteLocation?.name) {
             location = favoriteLocation.name;
-          } else if (subscriber.location && subscriber.location !== 'Sydney, Australia') {
-            location = subscriber.location;
           }
-        } else if (subscriber.location && subscriber.location !== 'Sydney, Australia') {
-          location = subscriber.location;
         }
 
         const geoResponse = await fetch(
