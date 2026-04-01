@@ -191,7 +191,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         return;
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',

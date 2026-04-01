@@ -74,6 +74,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const origin = req.headers.get('origin') || 'https://farmcastweather.com';
+
     const portalResponse = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
       method: "POST",
       headers: {
@@ -82,7 +84,7 @@ Deno.serve(async (req: Request) => {
       },
       body: new URLSearchParams({
         customer: profile.stripe_customer_id,
-        return_url: "https://farmcastweather.com",
+        return_url: origin,
       }),
     });
 

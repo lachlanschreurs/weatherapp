@@ -93,6 +93,8 @@ Deno.serve(async (req: Request) => {
         .eq("id", user.id);
     }
 
+    const origin = req.headers.get('origin') || 'https://farmcastweather.com';
+
     const sessionResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: {
@@ -104,8 +106,8 @@ Deno.serve(async (req: Request) => {
         mode: "subscription",
         "line_items[0][price]": stripePriceId,
         "line_items[0][quantity]": "1",
-        success_url: "https://farmcastweather.com/success",
-        cancel_url: "https://farmcastweather.com/pricing",
+        success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/pricing`,
         "subscription_data[trial_period_days]": "30",
       }),
     });
