@@ -160,7 +160,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
   const maxTemp = Math.max(...hourlyData.map(d => d.temp));
   const minTemp = Math.min(...hourlyData.map(d => d.temp));
   const tempRange = maxTemp - minTemp || 1;
-  const maxWind = Math.max(...hourlyData.map(d => d.windSpeed), 1);
+  const maxWind = 60;
   const maxRain = Math.max(...hourlyData.map(d => d.rainChance), 1);
 
   const normalize = (value: number, max: number, min: number = 0) => {
@@ -188,7 +188,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
   };
 
   const gridYValues = [maxTemp, Math.round((maxTemp + minTemp) / 2), minTemp];
-  const windGridValues = [maxWind, Math.round(maxWind / 2), 0];
+  const windGridValues = [60, 30, 0];
 
   const getCurrentWeatherAtNow = () => {
     if (hourlyData.length < 2) return null;
@@ -315,13 +315,13 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
               <span className="text-right">{minTemp}°</span>
             </div>
 
-            <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-white font-semibold pl-3 w-16 text-right z-10 bg-slate-900">
-              <span>{maxWind}</span>
-              <span>{Math.round(maxWind / 2)}</span>
+            <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-white font-semibold pl-3 w-20 text-left z-10 bg-slate-900">
+              <span>60 km/h</span>
+              <span>30 km/h</span>
               <span>0 km/h</span>
             </div>
 
-            <div className="mx-14" style={{ width: 'calc(100% - 7rem)' }}>
+            <div className="mx-14" style={{ width: 'calc(100% - 8rem)' }}>
               <svg ref={svgRef} className="w-full h-full" viewBox="0 0 2000 400" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="rainGradient" x1="0%" y1="0%" x2="0%" y2="100%">
