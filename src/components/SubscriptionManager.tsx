@@ -224,7 +224,48 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
   };
 
   const handleManageSubscription = async () => {
-    setMessage({ type: 'error', text: 'Please contact support@farmcastweather.com to manage your subscription' });
+    setIsProcessing(true);
+    setMessage(null);
+
+    try {
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.user || !session?.access_token) {
+        setMessage({ type: 'error', text: 'Session error. Please sign in again.' });
+        setIsProcessing(false);
+        return;
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
+      const headers = {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout');
+      }
+
+      const data = await response.json();
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout';
+      setMessage({ type: 'error', text: errorMessage });
+      setIsProcessing(false);
+    }
   };
 
 
@@ -330,8 +371,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             </>
                           ) : (
                             <>
-                              <ExternalLink className="w-4 h-4" />
-                              Manage Subscription & Payment
+                              <CreditCard className="w-4 h-4" />
+                              Update Payment Method
                             </>
                           )}
                         </button>
