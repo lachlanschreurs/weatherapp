@@ -179,9 +179,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('Session not available. Please sign in again.');
       }
 
-      console.log('Calling Square checkout with session token...');
+      console.log('Calling Stripe checkout with session token...');
 
-      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
+      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
 
       const response = await fetch(checkoutUrl, {
         method: 'POST',
@@ -192,11 +192,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         }
       });
 
-      console.log('Square checkout response:', response.status, response.statusText);
+      console.log('Stripe checkout response:', response.status, response.statusText);
 
       if (!response.ok) {
         const text = await response.text();
-        console.error('Square checkout error response:', text);
+        console.error('Stripe checkout error response:', text);
         let errorData;
         try {
           errorData = JSON.parse(text);
@@ -211,7 +211,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       const data = await response.json();
 
       if (data?.url) {
-        console.log('Redirecting to Square checkout...');
+        console.log('Redirecting to Stripe checkout...');
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL returned from server');
@@ -380,7 +380,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                     </li>
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
-                      <span>Secure payment with Square</span>
+                      <span>Secure payment with Stripe</span>
                     </li>
                   </ul>
                 </div>
@@ -545,7 +545,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               )}
-              {loading ? (isLogin || isForgotPassword ? 'Please wait...' : 'Creating account...') : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Create Account'}
+              {loading ? (isLogin || isForgotPassword ? 'Please wait...' : 'Redirecting to payment...') : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Start Free Trial'}
             </button>
           </form>
           )}
