@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
       idempotency_key: idempotencyKey,
       checkout: {
         location_id: squareLocationId,
-        redirect_url: "https://farmcastweather.com/?subscription=success",
+        redirect_url: "https://farmcastweather.com/success",
         merchant_support_email: user.email,
         pre_populate_buyer_email: user.email,
         subscription_plan_variation_id: Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID"),

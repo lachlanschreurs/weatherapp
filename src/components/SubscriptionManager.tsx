@@ -355,7 +355,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                     <div className="bg-white border border-green-200 rounded-lg p-5 mb-4">
                       <div className="mb-4">
                         <p className="font-semibold text-gray-900 mb-1">Farmer Joe Premium</p>
-                        <p className="text-2xl font-bold text-green-600 mb-1">$2.99<span className="text-sm text-gray-600">/month</span></p>
+                        <p className="text-2xl font-bold text-green-600 mb-1">A$2.99<span className="text-sm text-gray-600">/month</span></p>
                         <p className="text-xs text-gray-500">1 month free trial • cancel anytime</p>
                       </div>
 
@@ -597,7 +597,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                 <ul className="space-y-2.5 text-sm text-gray-700">
                   <li className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span><strong>Farmer Joe Chat</strong> — Unlimited AI-powered farming advice ($2.99/month after trial)</span>
+                    <span><strong>Farmer Joe Chat</strong> — Unlimited AI-powered farming advice (A$2.99/month after trial)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
