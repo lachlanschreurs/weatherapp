@@ -334,6 +334,8 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/farmer-joe`;
 
+      console.log('Session token exists:', !!session?.access_token);
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
@@ -355,12 +357,13 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Edge function error:', {
+        console.error('Farmer Joe API error:', {
           status: response.status,
           statusText: response.statusText,
-          errorData
+          errorData,
+          hasAuth: !!session?.access_token
         });
-        throw new Error(errorData.error || `Server error: ${response.status} ${response.statusText}`);
+        throw new Error(errorData.error || `Failed to connect to Farmer Joe (${response.status})`);
       }
 
       const data = await response.json();

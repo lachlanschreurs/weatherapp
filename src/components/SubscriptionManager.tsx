@@ -191,6 +191,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         return;
       }
 
+      console.log('Session token exists:', !!session?.access_token);
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
@@ -204,9 +206,15 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Checkout API error:', errorData);
-        throw new Error(errorData.error || errorData.hint || 'Failed to create checkout');
+        const errorText = await response.text();
+        console.error('Checkout API error:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          throw new Error(`Failed to create checkout (${response.status})`);
+        }
+        throw new Error(errorData.error || errorData.hint || `Failed to create checkout (${response.status})`);
       }
 
       const data = await response.json();
@@ -237,6 +245,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         return;
       }
 
+      console.log('Session token exists:', !!session?.access_token);
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
@@ -250,9 +260,15 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Portal API error:', errorData);
-        throw new Error(errorData.error || errorData.hint || 'Failed to open customer portal');
+        const errorText = await response.text();
+        console.error('Portal API error:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          throw new Error(`Failed to open customer portal (${response.status})`);
+        }
+        throw new Error(errorData.error || errorData.hint || `Failed to open customer portal (${response.status})`);
       }
 
       const data = await response.json();
