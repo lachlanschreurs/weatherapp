@@ -3,8 +3,8 @@ import { createHmac } from "node:crypto";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey, x-square-signature",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, stripe-signature",
 };
 
 Deno.serve(async (req: Request) => {
@@ -16,89 +16,85 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const squareSignatureKey = Deno.env.get("SQUARE_WEBHOOK_SIGNATURE_KEY");
-    const squareWebhookUrl = Deno.env.get("SQUARE_WEBHOOK_URL");
+    const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!squareSignatureKey || !supabaseUrl || !supabaseServiceKey) {
+    if (!stripeWebhookSecret || !supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing required environment variables");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const signature = req.headers.get("x-square-signature");
+    const signature = req.headers.get("stripe-signature");
     const body = await req.text();
 
-    if (signature && squareWebhookUrl) {
-      const hmac = createHmac('sha256', squareSignatureKey);
-      hmac.update(squareWebhookUrl + body);
-      const hash = hmac.digest('base64');
+    if (!signature) {
+      console.error("No stripe signature provided");
+      return new Response(
+        JSON.stringify({ error: "No signature" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
-      if (hash !== signature) {
-        console.error("Invalid webhook signature");
-        return new Response(
-          JSON.stringify({ error: "Invalid signature" }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+    const signedPayload = `${signature.split(',').find(s => s.startsWith('t='))?.split('=')[1]}.${body}`;
+    const expectedSignature = signature.split(',').find(s => s.startsWith('v1='))?.split('=')[1];
+
+    const hmac = createHmac('sha256', stripeWebhookSecret);
+    hmac.update(signedPayload);
+    const computedSignature = hmac.digest('hex');
+
+    if (computedSignature !== expectedSignature) {
+      console.error("Invalid webhook signature");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const event = JSON.parse(body);
-    console.log("Processing Square event:", event.type);
+    console.log("Processing Stripe event:", event.type);
 
     switch (event.type) {
-      case "subscription.created":
-      case "subscription.updated": {
-        const subscription = event.data.object.subscription;
-        const customerId = subscription.customer_id;
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
         const subscriptionId = subscription.id;
         const status = subscription.status;
 
         console.log('Subscription event:', { customerId, subscriptionId, status });
 
-        // Try to find profile by square_customer_id first
-        let { data: profile } = await supabase
+        const { data: profile } = await supabase
           .from("profiles")
           .select("id")
-          .eq("square_customer_id", customerId)
+          .eq("stripe_customer_id", customerId)
           .maybeSingle();
-
-        // If not found, try to match by email from the subscription
-        if (!profile && subscription.customer_email) {
-          const { data: userByEmail } = await supabase.auth.admin.listUsers();
-          const matchingUser = userByEmail?.users?.find(u => u.email === subscription.customer_email);
-
-          if (matchingUser) {
-            // Update the profile with square_customer_id
-            await supabase
-              .from("profiles")
-              .update({ square_customer_id: customerId })
-              .eq("id", matchingUser.id);
-
-            profile = { id: matchingUser.id };
-          }
-        }
 
         if (profile) {
           let dbStatus = "active";
-          if (status === "CANCELED" || status === "DEACTIVATED") {
+          if (status === "canceled" || status === "incomplete_expired") {
             dbStatus = "cancelled";
-          } else if (status === "PAUSED") {
+          } else if (status === "past_due" || status === "unpaid") {
             dbStatus = "expired";
+          } else if (status === "trialing") {
+            dbStatus = "trial";
           }
 
           const now = new Date().toISOString();
           const updateData: any = {
-            square_subscription_id: subscriptionId,
-            square_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            stripe_subscription_status: dbStatus,
             farmer_joe_subscription_status: dbStatus,
           };
 
-          if (dbStatus === "active" && event.type === "subscription.created") {
+          if (dbStatus === "active" && event.type === "customer.subscription.created") {
             updateData.farmer_joe_subscription_started_at = now;
             updateData.farmer_joe_subscription_ends_at = null;
             updateData.email_subscription_started_at = now;
@@ -106,8 +102,8 @@ Deno.serve(async (req: Request) => {
             updateData.payment_method_set = true;
           }
 
-          if (subscription.canceled_date) {
-            updateData.farmer_joe_subscription_ends_at = subscription.canceled_date;
+          if (subscription.cancel_at) {
+            updateData.farmer_joe_subscription_ends_at = new Date(subscription.cancel_at * 1000).toISOString();
           }
 
           await supabase
@@ -115,8 +111,7 @@ Deno.serve(async (req: Request) => {
             .update(updateData)
             .eq("id", profile.id);
 
-          // Create or update email subscription when subscription is activated
-          if (dbStatus === "active" && event.type === "subscription.created") {
+          if (dbStatus === "active" && event.type === "customer.subscription.created") {
             const { data: existingEmailSub } = await supabase
               .from("email_subscriptions")
               .select("id")
@@ -178,38 +173,76 @@ Deno.serve(async (req: Request) => {
         break;
       }
 
-      case "payment.created":
-      case "payment.updated": {
-        const payment = event.data.object.payment;
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object;
+        const customerId = subscription.customer;
 
-        if (payment.status === "COMPLETED") {
-          console.log('Payment completed:', payment.id);
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (profile) {
+          await supabase
+            .from("profiles")
+            .update({
+              stripe_subscription_status: "cancelled",
+              farmer_joe_subscription_status: "cancelled",
+              farmer_joe_subscription_ends_at: new Date().toISOString(),
+            })
+            .eq("id", profile.id);
+
+          console.log(`Cancelled subscription for user ${profile.id}`);
         }
         break;
       }
 
-      case "invoice.created":
-      case "invoice.updated": {
-        const invoice = event.data.object.invoice;
-        const subscriptionId = invoice.subscription_id;
+      case "invoice.payment_failed": {
+        const invoice = event.data.object;
+        const customerId = invoice.customer;
 
-        if (invoice.status === "UNPAID" || invoice.status === "PAYMENT_PENDING") {
-          const { data: profile } = await supabase
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (profile) {
+          await supabase
             .from("profiles")
-            .select("id")
-            .eq("square_subscription_id", subscriptionId)
-            .maybeSingle();
+            .update({
+              stripe_subscription_status: "expired",
+              farmer_joe_subscription_status: "expired",
+            })
+            .eq("id", profile.id);
 
-          if (profile && invoice.status === "UNPAID") {
-            await supabase
-              .from("profiles")
-              .update({
-                farmer_joe_subscription_status: "expired",
-              })
-              .eq("id", profile.id);
+          console.log(`Marked subscription as expired for user ${profile.id} due to payment failure`);
+        }
+        break;
+      }
 
-            console.log(`Marked subscription as expired for user ${profile.id} due to unpaid invoice`);
-          }
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        const customerId = session.customer;
+        const subscriptionId = session.subscription;
+
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (profile) {
+          await supabase
+            .from("profiles")
+            .update({
+              stripe_subscription_id: subscriptionId,
+              payment_method_set: true,
+            })
+            .eq("id", profile.id);
+
+          console.log(`Updated payment method for user ${profile.id}`);
         }
         break;
       }

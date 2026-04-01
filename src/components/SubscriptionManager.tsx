@@ -13,7 +13,7 @@ interface SubscriptionInfo {
   messagesCount: number;
   emailStartedAt: string | null;
   probeReportStartedAt: string | null;
-  squareCustomerId: string | null;
+  stripeCustomerId: string | null;
 }
 
 export default function SubscriptionManager({ onClose }: SubscriptionManagerProps) {
@@ -62,7 +62,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, square_customer_id')
+        .select('farmer_joe_subscription_status, farmer_joe_subscription_started_at, farmer_joe_subscription_ends_at, farmer_joe_messages_count, email_subscription_started_at, probe_report_subscription_started_at, stripe_customer_id')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -89,7 +89,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           messagesCount: 0,
           emailStartedAt: null,
           probeReportStartedAt: null,
-          squareCustomerId: null
+          stripeCustomerId: null
         });
         setIsLoading(false);
         return;
@@ -104,7 +104,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           messagesCount: data.farmer_joe_messages_count || 0,
           emailStartedAt: data.email_subscription_started_at,
           probeReportStartedAt: data.probe_report_subscription_started_at,
-          squareCustomerId: data.square_customer_id
+          stripeCustomerId: data.stripe_customer_id
         });
       } else {
         console.log('SubscriptionManager: No profile found, setting default values');
@@ -115,7 +115,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           messagesCount: 0,
           emailStartedAt: null,
           probeReportStartedAt: null,
-          squareCustomerId: null
+          stripeCustomerId: null
         });
       }
     } catch (error) {
@@ -130,7 +130,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         messagesCount: 0,
         emailStartedAt: null,
         probeReportStartedAt: null,
-        squareCustomerId: null
+        stripeCustomerId: null
       });
     } finally {
       console.log('SubscriptionManager: Finished loading, setting isLoading to false');
@@ -237,7 +237,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         return;
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal-session`;
       const headers = {
         'Authorization': `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
@@ -251,8 +251,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Checkout API error:', errorData);
-        throw new Error(errorData.error || errorData.hint || 'Failed to create checkout');
+        console.error('Portal API error:', errorData);
+        throw new Error(errorData.error || errorData.hint || 'Failed to open customer portal');
       }
 
       const data = await response.json();
@@ -260,11 +260,11 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       if (data?.url) {
         window.location.href = data.url;
       } else {
-        throw new Error('No checkout URL returned');
+        throw new Error('No portal URL returned');
       }
     } catch (error) {
-      console.error('Error creating checkout:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout';
+      console.error('Error opening customer portal:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to open portal';
       setMessage({ type: 'error', text: `${errorMessage}. Please contact support@farmcastweather.com` });
       setIsProcessing(false);
     }
@@ -373,8 +373,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                             </>
                           ) : (
                             <>
-                              <CreditCard className="w-4 h-4" />
-                              Update Payment Method
+                              <ExternalLink className="w-4 h-4" />
+                              Manage Subscription
                             </>
                           )}
                         </button>
@@ -448,7 +448,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                         )}
                       </button>
                       <p className="text-xs text-center text-gray-500">
-                        Secure payments powered by Square
+                        Secure payments powered by Stripe
                       </p>
                     </div>
                   </div>

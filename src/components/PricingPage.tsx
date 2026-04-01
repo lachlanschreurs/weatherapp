@@ -80,7 +80,7 @@ export default function PricingPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Secure payments powered by Square
+              Secure payments powered by Stripe
             </p>
           </div>
         </div>
