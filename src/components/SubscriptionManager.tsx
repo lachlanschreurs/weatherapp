@@ -603,31 +603,6 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
                 })()}
               </div>
 
-              {/* Manage Payment Details - Show for all authenticated users without active subscription */}
-              {!hasActiveSubscription && (
-                <div className="mb-6">
-                  <button
-                    onClick={handleManageSubscription}
-                    disabled={isProcessing}
-                    className="w-full bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4" />
-                        Manage Payment Details
-                      </>
-                    )}
-                  </button>
-                  <p className="text-xs text-center text-gray-500 mt-2">
-                    Add or update payment methods without subscribing
-                  </p>
-                </div>
-              )}
 
               {/* Pricing Information */}
               <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-5">
