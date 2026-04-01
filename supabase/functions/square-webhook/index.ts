@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
             updateData.farmer_joe_subscription_ends_at = null;
             updateData.email_subscription_started_at = now;
             updateData.probe_report_subscription_started_at = now;
+            updateData.payment_method_set = true;
           }
 
           if (subscription.canceled_date) {
@@ -113,6 +114,62 @@ Deno.serve(async (req: Request) => {
             .from("profiles")
             .update(updateData)
             .eq("id", profile.id);
+
+          // Create or update email subscription when subscription is activated
+          if (dbStatus === "active" && event.type === "subscription.created") {
+            const { data: existingEmailSub } = await supabase
+              .from("email_subscriptions")
+              .select("id")
+              .eq("user_id", profile.id)
+              .maybeSingle();
+
+            if (existingEmailSub) {
+              await supabase
+                .from("email_subscriptions")
+                .update({
+                  daily_forecast_enabled: true,
+                  weekly_probe_report_enabled: true,
+                  trial_active: true,
+                  trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                  requires_subscription: false,
+                  updated_at: now,
+                })
+                .eq("user_id", profile.id);
+
+              console.log(`Updated email subscription for user ${profile.id}`);
+            } else {
+              const { data: userAuth } = await supabase.auth.admin.getUserById(profile.id);
+
+              if (userAuth?.user?.email) {
+                const { data: favoriteLocation } = await supabase
+                  .from("saved_locations")
+                  .select("name")
+                  .eq("user_id", profile.id)
+                  .or("is_primary.eq.true,is_favorite.eq.true")
+                  .order("is_primary", { ascending: false })
+                  .order("last_accessed_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                await supabase
+                  .from("email_subscriptions")
+                  .insert({
+                    user_id: profile.id,
+                    email: userAuth.user.email,
+                    daily_forecast_enabled: true,
+                    weekly_probe_report_enabled: true,
+                    location: favoriteLocation?.name || "Sydney, Australia",
+                    trial_active: true,
+                    trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    requires_subscription: false,
+                    created_at: now,
+                    updated_at: now,
+                  });
+
+                console.log(`Created email subscription for user ${profile.id}`);
+              }
+            }
+          }
 
           console.log(`Updated subscription status to ${dbStatus} for user ${profile.id}`);
         } else {

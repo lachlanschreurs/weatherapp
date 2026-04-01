@@ -57,19 +57,17 @@ export function AdminDashboard() {
 
       const { data: probesData } = await supabase
         .from('probe_apis')
-        .select('*')
+        .select(`
+          *,
+          profiles!inner(email)
+        `)
         .order('created_at', { ascending: false });
 
       if (probesData) {
-        const probesWithEmail = await Promise.all(
-          probesData.map(async (probe) => {
-            const { data } = await supabase.auth.admin.getUserById(probe.user_id);
-            return {
-              ...probe,
-              user_email: data.user?.email || 'Unknown',
-            };
-          })
-        );
+        const probesWithEmail = probesData.map((probe: any) => ({
+          ...probe,
+          user_email: probe.profiles?.email || 'Unknown',
+        }));
         setProbeAPIs(probesWithEmail);
         setStats(prev => ({ ...prev, totalProbes: probesWithEmail.length }));
       }

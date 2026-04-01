@@ -255,9 +255,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
-        options: {
-          persistSession: rememberMe,
-        },
       });
       if (error) throw error;
       onSuccess();
