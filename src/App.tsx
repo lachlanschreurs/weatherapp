@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Sunrise, Sunset } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -41,6 +41,8 @@ interface WeatherData {
     };
     feels_like: number;
     uvi?: number;
+    sunrise?: number;
+    sunset?: number;
   };
   hourly: Array<{
     dt: number;
@@ -714,7 +716,7 @@ function App() {
             </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/30">
+          <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-8 pt-6 border-t border-white/30">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
                 <Wind className="w-6 h-6" />
@@ -763,6 +765,44 @@ function App() {
               </div>
               <div className="text-sm opacity-80 mt-1">
                 Dew Point: {Math.round(dewpointC)}°C
+              </div>
+            </div>
+
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Sunrise className="w-6 h-6" />
+                <span className="font-semibold">Sunrise</span>
+              </div>
+              <div className="text-3xl font-bold">
+                {current.sunrise
+                  ? new Date(current.sunrise * 1000).toLocaleTimeString('en-AU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })
+                  : '--:--'}
+              </div>
+              <div className="text-sm opacity-80 mt-1">
+                Local time
+              </div>
+            </div>
+
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Sunset className="w-6 h-6" />
+                <span className="font-semibold">Sunset</span>
+              </div>
+              <div className="text-3xl font-bold">
+                {current.sunset
+                  ? new Date(current.sunset * 1000).toLocaleTimeString('en-AU', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })
+                  : '--:--'}
+              </div>
+              <div className="text-sm opacity-80 mt-1">
+                Local time
               </div>
             </div>
           </div>
