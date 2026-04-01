@@ -17,13 +17,13 @@ Deno.serve(async (req: Request) => {
   try {
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!stripeSecretKey) {
       throw new Error("Stripe not configured");
     }
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
       throw new Error("Supabase not configured");
     }
 
@@ -42,14 +42,14 @@ Deno.serve(async (req: Request) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Received token:', token ? 'yes' : 'no');
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError) {
       console.log('JWT verification error:', userError);
       return new Response(
-        JSON.stringify({ error: "Invalid or expired session. Please sign in again." }),
+        JSON.stringify({ error: "Invalid JWT", details: userError.message }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -69,14 +69,6 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('User verified:', user.id);
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader,
-        },
-      },
-    });
 
     const { data: profile } = await supabase
       .from("profiles")
