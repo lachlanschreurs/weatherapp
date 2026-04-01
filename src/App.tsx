@@ -15,11 +15,13 @@ import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
 import { PremiumTeaser } from './components/PremiumTeaser';
+import { WeatherEffects } from './components/WeatherEffects';
 import FarmerJoe from './components/FarmerJoe';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import { getFavoriteLocation } from './utils/savedLocations';
 import { getUserLocation } from './utils/geolocation';
+import { isNightTime, getWeatherBackground, getTextColor } from './utils/weatherEffects';
 import type { User } from '@supabase/supabase-js';
 
 interface WeatherData {
@@ -365,32 +367,6 @@ function App() {
     return <Sun className={`${size} text-yellow-400`} />;
   }
 
-  function getBackgroundGradient(weatherCode: string) {
-    const code = weatherCode?.toLowerCase() || '';
-
-    if (code.includes('thunder') || code.includes('storm')) {
-      return 'from-gray-800 via-slate-700 to-gray-900';
-    }
-    if (code.includes('rain') || code.includes('shower') || code.includes('drizzle')) {
-      return 'from-slate-600 via-gray-500 to-slate-600';
-    }
-    if (code.includes('cloud') || code.includes('overcast')) {
-      return 'from-gray-400 via-gray-300 to-gray-500';
-    }
-    return 'from-amber-300 via-yellow-200 to-sky-400';
-  }
-
-  function getTextColor(weatherCode: string) {
-    const code = weatherCode?.toLowerCase() || '';
-
-    if (code.includes('thunder') || code.includes('storm')) {
-      return 'text-white';
-    }
-    if (code.includes('rain')) {
-      return 'text-white';
-    }
-    return 'text-gray-800';
-  }
 
   if (appError) {
     return (
@@ -466,8 +442,9 @@ function App() {
   const humidity = current.humidity || 0;
   const weatherCode = current.weather[0]?.main || 'clear';
   const weatherDescription = current.weather[0]?.description || 'clear';
-  const bgGradient = getBackgroundGradient(weatherCode);
-  const textColor = getTextColor(weatherCode);
+  const isNight = isNightTime(weather?.timezone_offset);
+  const bgGradient = getWeatherBackground(weatherCode, isNight);
+  const textColor = getTextColor(weatherCode, isNight);
 
   const windSpeedKmh = (current.wind_speed || 0) * 3.6;
   const windGustKmh = current.wind_gust ? current.wind_gust * 3.6 : null;
@@ -678,24 +655,7 @@ function App() {
         )}
 
         <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
-          {weatherCode.toLowerCase().includes('rain') && (
-            <div className="absolute inset-0 pointer-events-none">
-              {[...Array(30)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute animate-rain opacity-40"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `-${Math.random() * 20}%`,
-                    animationDelay: `${Math.random() * 2}s`,
-                    animationDuration: `${0.5 + Math.random() * 0.5}s`,
-                  }}
-                >
-                  <div className="w-0.5 h-4 bg-blue-200 rounded-full"></div>
-                </div>
-              ))}
-            </div>
-          )}
+          <WeatherEffects weatherCode={weatherCode} isNight={isNight} />
           <div className="relative z-10">
             <div className="flex items-start justify-between gap-6 mb-6">
               <div className="flex items-center gap-6">

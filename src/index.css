@@ -87,3 +87,33 @@
   animation-delay: 0.5s;
   animation-fill-mode: backwards;
 }
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes fog {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateX(-10%);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateX(10%);
+  }
+}
+
+.animate-fog {
+  animation: fog 15s ease-in-out infinite;
+}
