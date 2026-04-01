@@ -192,6 +192,9 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       }
 
       console.log('Session token exists:', !!session?.access_token);
+      console.log('Access token length:', session.access_token.length);
+      console.log('Access token first 20 chars:', session.access_token.slice(0, 20));
+      console.log('Access token last 20 chars:', session.access_token.slice(-20));
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const headers = {
@@ -199,6 +202,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         'Content-Type': 'application/json',
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       };
+
+      console.log('Sending request with Authorization header:', headers.Authorization.substring(0, 30) + '...');
 
       const response = await fetch(apiUrl, {
         method: 'POST',

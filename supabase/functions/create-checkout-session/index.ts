@@ -33,8 +33,8 @@ Deno.serve(async (req: Request) => {
     console.log('Service Role Key present:', !!supabaseServiceRoleKey);
 
     const authHeader = req.headers.get('Authorization');
+    console.log('Raw Authorization header:', authHeader);
     console.log('Auth header present:', !!authHeader);
-    console.log('Auth header value:', authHeader?.substring(0, 20) + '...');
 
     if (!authHeader) {
       console.log('ERROR: No authorization header provided');
@@ -47,10 +47,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.replace('Bearer ', '').trim();
     console.log('Token extracted:', !!token);
-    console.log('Token length:', token.length);
-    console.log('Token first 20 chars:', token.substring(0, 20) + '...');
+    console.log('Extracted token length:', token.length);
+    console.log('First 20 chars:', token.slice(0, 20));
+    console.log('Last 20 chars:', token.slice(-20));
 
     console.log('Creating Supabase client with SERVICE_ROLE_KEY');
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -63,11 +64,21 @@ Deno.serve(async (req: Request) => {
     console.log('Calling supabase.auth.getUser(token)...');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
+    console.log('Verification error:', userError);
+    console.log('Verified user:', user);
+
     if (userError) {
       console.log('ERROR: JWT verification failed');
-      console.log('Error object:', JSON.stringify(userError, null, 2));
+      console.log('Full error object:', JSON.stringify(userError, null, 2));
+      console.log('Error name:', userError.name);
+      console.log('Error message:', userError.message);
+      console.log('Error status:', userError.status);
       return new Response(
-        JSON.stringify({ error: "Invalid JWT", details: userError.message }),
+        JSON.stringify({
+          error: "Invalid JWT",
+          details: userError.message,
+          fullError: userError
+        }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

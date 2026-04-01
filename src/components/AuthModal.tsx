@@ -180,6 +180,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       }
 
       console.log('Calling Stripe checkout with session token...');
+      console.log('Access token length:', session.access_token.length);
+      console.log('Access token first 20 chars:', session.access_token.slice(0, 20));
+      console.log('Access token last 20 chars:', session.access_token.slice(-20));
 
       const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
 
