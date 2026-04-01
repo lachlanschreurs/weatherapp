@@ -134,7 +134,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       console.log('4. Getting session for checkout...');
 
-      // Now redirect to Stripe Checkout
+      // Now redirect to Square Checkout
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         console.error('4. SESSION ERROR - No session found');
@@ -147,41 +147,20 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         expiresAt: session.expires_at
       });
 
-      console.log('5. Preparing checkout request...');
+      console.log('5. Preparing Square checkout request...');
 
-      const stripePriceId = import.meta.env.VITE_STRIPE_PRICE_ID;
-      if (!stripePriceId) {
-        console.error('5. STRIPE CONFIG ERROR - No VITE_STRIPE_PRICE_ID');
-        throw new Error('Stripe configuration error. Please contact support.');
-      }
-
-      console.log('5. ✓ STRIPE CONFIG READY:', {
-        hasPriceId: true,
-        priceId: stripePriceId
-      });
-
-      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
-      const checkoutPayload = {
-        priceId: stripePriceId,
-        successUrl: `https://farmcastweather.com/?subscription=success`,
-        cancelUrl: `https://farmcastweather.com/?subscription=cancelled`,
-      };
+      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
 
       console.log('6. Sending checkout request to:', checkoutUrl);
-      console.log('6. Checkout payload:', checkoutPayload);
 
-      const response = await fetch(
-        checkoutUrl,
-        {
+      const response = await fetch(checkoutUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
             'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify(checkoutPayload),
-        }
-      );
+          }
+      });
 
       console.log('7. CHECKOUT RESPONSE RECEIVED:', {
         status: response.status,

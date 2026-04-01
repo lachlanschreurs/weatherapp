@@ -60,11 +60,28 @@ Deno.serve(async (req: Request) => {
 
         console.log('Subscription event:', { customerId, subscriptionId, status });
 
-        const { data: profile } = await supabase
+        // Try to find profile by square_customer_id first
+        let { data: profile } = await supabase
           .from("profiles")
           .select("id")
           .eq("square_customer_id", customerId)
           .maybeSingle();
+
+        // If not found, try to match by email from the subscription
+        if (!profile && subscription.customer_email) {
+          const { data: userByEmail } = await supabase.auth.admin.listUsers();
+          const matchingUser = userByEmail?.users?.find(u => u.email === subscription.customer_email);
+
+          if (matchingUser) {
+            // Update the profile with square_customer_id
+            await supabase
+              .from("profiles")
+              .update({ square_customer_id: customerId })
+              .eq("id", matchingUser.id);
+
+            profile = { id: matchingUser.id };
+          }
+        }
 
         if (profile) {
           let dbStatus = "active";
@@ -77,6 +94,7 @@ Deno.serve(async (req: Request) => {
           const now = new Date().toISOString();
           const updateData: any = {
             square_subscription_id: subscriptionId,
+            square_customer_id: customerId,
             farmer_joe_subscription_status: dbStatus,
           };
 
@@ -97,6 +115,8 @@ Deno.serve(async (req: Request) => {
             .eq("id", profile.id);
 
           console.log(`Updated subscription status to ${dbStatus} for user ${profile.id}`);
+        } else {
+          console.log(`No profile found for customer ${customerId}`);
         }
         break;
       }

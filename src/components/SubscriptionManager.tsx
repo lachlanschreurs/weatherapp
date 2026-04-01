@@ -89,7 +89,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           messagesCount: 0,
           emailStartedAt: null,
           probeReportStartedAt: null,
-          stripeCustomerId: null
+          squareCustomerId: null
         });
         setIsLoading(false);
         return;

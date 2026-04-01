@@ -1,5 +1,4 @@
-import Stripe from "npm:stripe@14.11.0";
-import { createClient } from "npm:@supabase/supabase-js@2.39.3";
+import { createClient } from "npm:@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,32 +15,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-    const stripePriceId = Deno.env.get("STRIPE_PRICE_ID");
+    const squareAccessToken = Deno.env.get("SQUARE_ACCESS_TOKEN");
+    const squareEnvironment = Deno.env.get("SQUARE_ENVIRONMENT") || "production";
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!stripeSecretKey || !stripePriceId || !supabaseUrl || !supabaseServiceKey) {
+    if (!squareAccessToken || !supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing required environment variables");
     }
-
-    const stripe = new Stripe(stripeSecretKey, {
-      apiVersion: "2024-11-20.acacia",
-      httpClient: Stripe.createFetchHttpClient(),
-    });
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Find users whose trial has ended but don't have active subscription
     const { data: expiredTrials, error: queryError } = await supabase
       .from("profiles")
-      .select("id, stripe_customer_id, email, trial_end_date, farmer_joe_subscription_status, stripe_subscription_id")
+      .select("id, square_customer_id, email, trial_end_date, farmer_joe_subscription_status, square_subscription_id")
       .lte("trial_end_date", today.toISOString())
       .eq("payment_method_set", true)
       .or("farmer_joe_subscription_status.is.null,farmer_joe_subscription_status.eq.trialing")
-      .is("stripe_subscription_id", null);
+      .is("square_subscription_id", null);
 
     if (queryError) {
       console.error("Error querying expired trials:", queryError);
@@ -56,66 +51,19 @@ Deno.serve(async (req: Request) => {
       errors: [] as string[],
     };
 
+    // For Square, subscriptions are created at checkout time with trial period
+    // This function marks users as expired if they haven't completed checkout
     for (const profile of expiredTrials || []) {
       try {
-        if (!profile.stripe_customer_id) {
-          console.error(`User ${profile.id} has no Stripe customer ID`);
-          results.failed++;
-          results.errors.push(`User ${profile.id}: No Stripe customer ID`);
-          continue;
-        }
-
-        const customer = await stripe.customers.retrieve(profile.stripe_customer_id);
-
-        if (customer.deleted) {
-          console.error(`Customer ${profile.stripe_customer_id} has been deleted`);
-          results.failed++;
-          results.errors.push(`User ${profile.id}: Customer deleted`);
-          continue;
-        }
-
-        const paymentMethods = await stripe.paymentMethods.list({
-          customer: profile.stripe_customer_id,
-          type: "card",
-          limit: 1,
-        });
-
-        if (paymentMethods.data.length === 0) {
-          console.error(`No payment method found for customer ${profile.stripe_customer_id}`);
-
-          await supabase
-            .from("profiles")
-            .update({
-              payment_method_set: false,
-              farmer_joe_subscription_status: "cancelled",
-            })
-            .eq("id", profile.id);
-
-          results.failed++;
-          results.errors.push(`User ${profile.id}: No payment method`);
-          continue;
-        }
-
-        const subscription = await stripe.subscriptions.create({
-          customer: profile.stripe_customer_id,
-          items: [{ price: stripePriceId }],
-          default_payment_method: paymentMethods.data[0].id,
-          metadata: {
-            supabase_user_id: profile.id,
-          },
-        });
-
+        // Mark subscription as expired since trial ended and no active subscription
         await supabase
           .from("profiles")
           .update({
-            stripe_subscription_id: subscription.id,
-            farmer_joe_subscription_status: "active",
-            farmer_joe_subscription_started_at: new Date().toISOString(),
-            farmer_joe_subscription_ends_at: null,
+            farmer_joe_subscription_status: "expired",
           })
           .eq("id", profile.id);
 
-        console.log(`Created subscription ${subscription.id} for user ${profile.id}`);
+        console.log(`Marked trial as expired for user ${profile.id}`);
         results.processed++;
 
       } catch (error: any) {

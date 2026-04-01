@@ -90,7 +90,9 @@ Deno.serve(async (req: Request) => {
         merchant_support_email: user.email,
         pre_populate_buyer_email: user.email,
         subscription_plan_variation_id: Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID"),
-      }
+      },
+      redirect_url: "https://farmcastweather.com/success",
+      cancel_url: "https://farmcastweather.com/pricing"
     };
 
     console.log('Creating Square checkout with plan:', Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID"));

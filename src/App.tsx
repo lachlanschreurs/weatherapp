@@ -219,11 +219,11 @@ function App() {
       })();
     });
 
-    // Handle Stripe redirect
+    // Handle Square redirect
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
     if (subscriptionStatus) {
-      console.log('Stripe redirect detected:', subscriptionStatus);
+      console.log('Square redirect detected:', subscriptionStatus);
       // Clean up URL immediately to prevent blank page
       window.history.replaceState({}, '', window.location.pathname);
 
