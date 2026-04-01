@@ -19,11 +19,12 @@ Deno.serve(async (req: Request) => {
 
     const squareAccessToken = Deno.env.get("SQUARE_ACCESS_TOKEN");
     const squareLocationId = Deno.env.get("SQUARE_LOCATION_ID");
+    const squareSubscriptionPlanId = Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID");
     const squareEnvironment = Deno.env.get("SQUARE_ENVIRONMENT") || "production";
 
-    if (!squareAccessToken || !squareLocationId) {
+    if (!squareAccessToken || !squareLocationId || !squareSubscriptionPlanId) {
       console.error('Square credentials not configured');
-      throw new Error("Square not configured. Please add SQUARE_ACCESS_TOKEN and SQUARE_LOCATION_ID");
+      throw new Error("Square not configured. Missing SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID, or SQUARE_SUBSCRIPTION_PLAN_ID");
     }
 
     const authHeader = req.headers.get('Authorization');
@@ -82,20 +83,24 @@ Deno.serve(async (req: Request) => {
       : "https://connect.squareup.com";
 
     const idempotencyKey = crypto.randomUUID();
+
     const checkoutData = {
       idempotency_key: idempotencyKey,
-      checkout: {
+      order: {
         location_id: squareLocationId,
-        redirect_url: "https://farmcastweather.com/success",
-        merchant_support_email: user.email,
-        pre_populate_buyer_email: user.email,
-        subscription_plan_variation_id: Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID"),
+        subscription_plans: [
+          {
+            subscription_plan_variation_id: squareSubscriptionPlanId,
+          },
+        ],
       },
       redirect_url: "https://farmcastweather.com/success",
-      cancel_url: "https://farmcastweather.com/pricing"
+      ask_for_shipping_address: false,
+      merchant_support_email: "support@farmcastweather.com",
+      pre_populate_buyer_email: user.email,
     };
 
-    console.log('Creating Square checkout with plan:', Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID"));
+    console.log('Creating Square checkout with plan:', squareSubscriptionPlanId);
 
     const squareResponse = await fetch(`${squareApiUrl}/v2/online-checkout/payment-links`, {
       method: 'POST',
