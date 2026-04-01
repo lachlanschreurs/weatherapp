@@ -182,11 +182,22 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             'Authorization': `Bearer ${resendApiKey}`,
           },
           body: JSON.stringify({
-            from: 'FarmCast <support@mail.farmcastweather.com>',
+            from: 'FarmCast Daily Forecast <noreply@mail.farmcastweather.com>',
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
             text: buildDailyForecastEmailText(weatherData, oneCallData.hourly, name, country),
+            headers: {
+              'X-Entity-Ref-ID': `daily-forecast-${Date.now()}`,
+              'List-Unsubscribe': '<https://farmcastweather.com/unsubscribe>',
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
+            tags: [
+              {
+                name: 'category',
+                value: 'daily_forecast'
+              }
+            ]
           }),
         });
 
