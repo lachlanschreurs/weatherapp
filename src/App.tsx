@@ -716,7 +716,7 @@ function App() {
             </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-8 pt-6 border-t border-white/30">
+          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/30">
             <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
               <div className="flex items-center gap-3 mb-2">
                 <Wind className="w-6 h-6" />
