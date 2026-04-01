@@ -120,8 +120,21 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         retries++;
       }
 
-      // Account created successfully, redirect to Square checkout immediately
-      console.log('Account created successfully, redirecting to payment setup...');
+      // Account created successfully, wait for session to be fully established
+      console.log('Account created successfully, waiting for session...');
+
+      // Wait a moment for the session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Refresh the session to ensure we have a valid JWT
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.error('Session error after signup:', sessionError);
+        throw new Error('Session not established. Please try logging in.');
+      }
+
+      console.log('Session established, redirecting to payment setup...');
       await handlePaymentSetupDirect();
     } catch (err: any) {
       console.error('Signup error:', err);
