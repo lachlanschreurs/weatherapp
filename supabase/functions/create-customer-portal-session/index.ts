@@ -29,14 +29,46 @@ Deno.serve(async (req: Request) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.log('No authorization header provided');
       return new Response(
-        JSON.stringify({ error: "No authorization header" }),
+        JSON.stringify({ error: "Missing authorization header. Please sign in." }),
         {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
+
+    const token = authHeader.replace('Bearer ', '');
+    console.log('Received token:', token ? 'yes' : 'no');
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+
+    if (userError) {
+      console.log('JWT verification error:', userError);
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired session. Please sign in again." }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!user) {
+      console.log('No user found from token');
+      return new Response(
+        JSON.stringify({ error: "User not found. Please sign in again." }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log('User verified:', user.id);
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -45,18 +77,6 @@ Deno.serve(async (req: Request) => {
         },
       },
     });
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
 
     const { data: profile } = await supabase
       .from("profiles")
