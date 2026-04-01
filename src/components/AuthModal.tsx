@@ -12,6 +12,7 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [showPaymentStep, setShowPaymentStep] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -25,6 +26,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     if (isOpen) {
       setIsLogin(initialMode === 'login');
       setIsForgotPassword(false);
+      setShowPaymentStep(false);
       setError(null);
       setSuccessMessage(null);
       setEmail('');
@@ -36,19 +38,14 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
   if (!isOpen) return null;
 
-  const handleDetailsSubmit = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('========================================');
-    console.log('CONTINUE TO PAYMENT CLICKED');
-    console.log('========================================');
-
     setError(null);
     setSuccessMessage(null);
     setLoading(true);
 
     try {
-      console.log('1. Starting signup process...');
-      console.log('Form data:', { email, name, phoneLength: phoneNumber.length });
+      console.log('Starting signup process...');
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -72,8 +69,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('This phone number is already registered.');
       }
 
-      console.log('Creating account...');
-
       // Create the account
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
@@ -86,22 +81,15 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       });
 
       if (signUpError) {
-        console.error('2. SIGNUP ERROR:', signUpError);
+        console.error('Signup error:', signUpError);
         throw signUpError;
       }
 
       if (!authData.user) {
-        console.error('2. SIGNUP FAILED - No user returned');
         throw new Error('Failed to create account');
       }
 
-      console.log('2. ✓ SIGNUP SUCCESS - User created:', {
-        userId: authData.user.id,
-        email: authData.user.email,
-        hasSession: !!authData.session
-      });
-
-      console.log('3. Updating profile with phone number...');
+      console.log('Account created successfully');
 
       // Wait for profile to be created by trigger, then update it
       let retries = 0;
@@ -123,91 +111,21 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         if (!updateError) {
           profileUpdated = true;
-          console.log('3. ✓ PROFILE UPDATED successfully');
+          console.log('Profile updated successfully');
         } else if (retries === maxRetries - 1) {
-          console.error('3. PROFILE UPDATE ERROR after retries:', updateError);
+          console.error('Profile update error:', updateError);
           throw new Error('Failed to save user profile. Please try again.');
         }
 
         retries++;
       }
 
-      console.log('4. Getting session for checkout...');
-
-      // Now redirect to Square Checkout
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('4. SESSION ERROR - No session found');
-        throw new Error('Session not found');
-      }
-
-      console.log('4. ✓ SESSION RETRIEVED:', {
-        hasAccessToken: !!session.access_token,
-        tokenLength: session.access_token?.length,
-        expiresAt: session.expires_at
-      });
-
-      console.log('5. Preparing Square checkout request...');
-
-      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
-
-      console.log('6. Sending checkout request to:', checkoutUrl);
-
-      const response = await fetch(checkoutUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          }
-      });
-
-      console.log('7. CHECKOUT RESPONSE RECEIVED:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
-      if (!response.ok) {
-        console.error('7. CHECKOUT ERROR - Response not OK');
-        let errorData;
-        try {
-          const text = await response.text();
-          console.error('7. Error response text:', text);
-
-          try {
-            errorData = JSON.parse(text);
-            console.error('7. Parsed error data:', errorData);
-          } catch (parseError) {
-            console.error('7. Failed to parse error response:', parseError);
-            throw new Error(`Server error: ${response.status}. Please try again or contact support.`);
-          }
-        } catch (e) {
-          console.error('7. Failed to read error response:', e);
-          throw new Error(`Failed to initialize checkout: ${response.status} ${response.statusText}`);
-        }
-
-        const errorMessage = errorData?.error || errorData?.message || 'Failed to initialize checkout';
-        console.error('7. Final error message:', errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      console.log('Checkout response:', data);
-
-      if (data?.url) {
-        console.log('Redirecting to checkout URL:', data.url);
-        window.location.href = data.url;
-      } else {
-        console.error('Missing checkout URL', data);
-        throw new Error('No checkout URL returned from server');
-      }
+      // Account created successfully, show payment step
+      setLoading(false);
+      setShowPaymentStep(true);
+      setSuccessMessage('Account created successfully! Now set up your payment method to start your free trial.');
     } catch (err: any) {
-      console.error('========================================');
-      console.error('ERROR OCCURRED:', err);
-      console.error('Error message:', err.message);
-      console.error('Error stack:', err.stack);
-      console.error('========================================');
+      console.error('Signup error:', err);
 
       let errorMessage = 'An error occurred. Please try again.';
 
@@ -219,6 +137,67 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         errorMessage = err.error_description;
       } else if (err?.msg) {
         errorMessage = err.msg;
+      }
+
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const handlePaymentSetup = async () => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      console.log('Initializing payment setup...');
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Please log in to continue');
+      }
+
+      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-square-checkout`;
+
+      const response = await fetch(checkoutUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        }
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          throw new Error(`Server error: ${response.status}. Please try again.`);
+        }
+        const errorMessage = errorData?.error || errorData?.message || 'Failed to initialize checkout';
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      if (data?.url) {
+        console.log('Redirecting to Square checkout...');
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned from server');
+      }
+    } catch (err: any) {
+      console.error('Payment setup error:', err);
+
+      let errorMessage = 'Failed to set up payment. Please try again.';
+
+      if (err?.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err?.error_description) {
+        errorMessage = err.error_description;
       }
 
       setError(errorMessage);
@@ -295,15 +274,25 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         <div className="p-8">
           <h2 className="text-3xl font-bold text-green-900 mb-2">
-            {isForgotPassword ? 'Reset Password' : isLogin ? 'Welcome Back' : 'Get Started with FarmCast'}
+            {showPaymentStep
+              ? 'Set Up Payment Method'
+              : isForgotPassword
+                ? 'Reset Password'
+                : isLogin
+                  ? 'Welcome Back'
+                  : 'Get Started with FarmCast'}
           </h2>
           <p className="text-gray-600 mb-6">
-            {isForgotPassword
-              ? 'Enter your email to receive a password reset link'
-              : isLogin ? 'Sign in to access your farm data' : 'Start your 1-month free trial today'}
+            {showPaymentStep
+              ? 'Add your payment method to activate your 1-month free trial'
+              : isForgotPassword
+                ? 'Enter your email to receive a password reset link'
+                : isLogin
+                  ? 'Sign in to access your farm data'
+                  : 'Start your 1-month free trial today'}
           </p>
 
-          {!isLogin && !isForgotPassword && (
+          {!isLogin && !isForgotPassword && !showPaymentStep && (
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
@@ -337,19 +326,73 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
+          {showPaymentStep && (
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
+                  <Check className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-900 mb-2">Account Created Successfully!</h3>
+                  <p className="text-sm text-gray-700 mb-3">
+                    Complete your setup by adding a payment method. You won't be charged for 1 month.
+                  </p>
+                  <ul className="text-xs text-gray-600 space-y-1.5">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>Free for the first month</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>Cancel anytime before trial ends</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>Secure payment with Square</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {error && typeof error === 'string' && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {error}
             </div>
           )}
 
-          {successMessage && (
+          {successMessage && !showPaymentStep && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {successMessage}
             </div>
           )}
 
-          <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleDetailsSubmit} className="space-y-4">
+          {showPaymentStep ? (
+            <div className="space-y-4">
+              <button
+                onClick={handlePaymentSetup}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading && (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {loading ? 'Redirecting to payment...' : 'Continue to Payment Setup'}
+              </button>
+
+              <button
+                onClick={onClose}
+                className="w-full text-gray-600 py-2 rounded-lg font-medium hover:text-gray-800 transition-colors"
+              >
+                I'll do this later
+              </button>
+            </div>
+          ) : (
+          <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleSignup} className="space-y-4">
             {!isLogin && !isForgotPassword && (
               <>
                 <div>
@@ -470,35 +513,38 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               )}
-              {loading ? (isLogin || isForgotPassword ? 'Please wait...' : 'Setting up your account...') : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Continue to Payment'}
+              {loading ? (isLogin || isForgotPassword ? 'Please wait...' : 'Creating account...') : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </form>
+          )}
 
-          <div className="mt-6 text-center space-y-2">
-            {isForgotPassword ? (
-              <button
-                onClick={() => {
-                  setIsForgotPassword(false);
-                  setError(null);
-                  setSuccessMessage(null);
-                }}
-                className="text-green-700 hover:text-green-800 font-semibold text-sm"
-              >
-                Back to sign in
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError(null);
-                  setSuccessMessage(null);
-                }}
-                className="text-green-700 hover:text-green-800 font-semibold text-sm"
-              >
-                {isLogin ? "Don't have an account? Start free trial" : 'Already have an account? Sign in'}
-              </button>
-            )}
-          </div>
+          {!showPaymentStep && (
+            <div className="mt-6 text-center space-y-2">
+              {isForgotPassword ? (
+                <button
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-green-700 hover:text-green-800 font-semibold text-sm"
+                >
+                  Back to sign in
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-green-700 hover:text-green-800 font-semibold text-sm"
+                >
+                  {isLogin ? "Don't have an account? Start free trial" : 'Already have an account? Sign in'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
