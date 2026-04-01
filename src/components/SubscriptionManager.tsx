@@ -205,7 +205,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create checkout');
+        console.error('Checkout API error:', errorData);
+        throw new Error(errorData.error || errorData.hint || 'Failed to create checkout');
       }
 
       const data = await response.json();
@@ -218,7 +219,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     } catch (error) {
       console.error('Error creating checkout:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout';
-      setMessage({ type: 'error', text: errorMessage });
+      setMessage({ type: 'error', text: `${errorMessage}. Please contact support@farmcastweather.com` });
       setIsProcessing(false);
     }
   };
@@ -250,7 +251,8 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create checkout');
+        console.error('Checkout API error:', errorData);
+        throw new Error(errorData.error || errorData.hint || 'Failed to create checkout');
       }
 
       const data = await response.json();
@@ -263,7 +265,7 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     } catch (error) {
       console.error('Error creating checkout:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout';
-      setMessage({ type: 'error', text: errorMessage });
+      setMessage({ type: 'error', text: `${errorMessage}. Please contact support@farmcastweather.com` });
       setIsProcessing(false);
     }
   };

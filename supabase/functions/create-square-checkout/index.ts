@@ -113,9 +113,22 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!squareResponse.ok) {
-      const errorData = await squareResponse.json();
-      console.error('Square API error:', errorData);
-      throw new Error(errorData.errors?.[0]?.detail || 'Failed to create Square checkout');
+      const errorText = await squareResponse.text();
+      console.error('Square API error response:', {
+        status: squareResponse.status,
+        statusText: squareResponse.statusText,
+        body: errorText
+      });
+
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        throw new Error(`Square API error (${squareResponse.status}): ${errorText}`);
+      }
+
+      const errorDetail = errorData.errors?.[0]?.detail || errorData.errors?.[0]?.message || 'Failed to create Square checkout';
+      throw new Error(errorDetail);
     }
 
     const data = await squareResponse.json();
