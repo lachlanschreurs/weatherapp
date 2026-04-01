@@ -176,11 +176,16 @@ Deno.serve(async (req: Request) => {
       }
     );
   } catch (error: any) {
-    console.error("Error creating Square checkout:", error);
+    console.error("Error creating Square checkout:", {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    });
 
     return new Response(
       JSON.stringify({
         error: error?.message || "Failed to create checkout",
+        details: error?.stack?.split('\n')[0] || 'Unknown error',
         hint: "Please contact support@farmcastweather.com"
       }),
       {
