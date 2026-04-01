@@ -288,6 +288,15 @@ function getSprayCondition(windSpeedKmh: number, rainfallMm: number): { rating: 
   return { rating: 'Good', color: '#059669', bgColor: '#d1fae5' };
 }
 
+function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: number): string {
+  if (rainfallMm > 5) return '❌';
+  if (windSpeedKmh > 25) return '❌';
+  if (windSpeedKmh >= 3 && windSpeedKmh <= 15 && deltaT >= 2 && deltaT <= 8) return '✅';
+  if (windSpeedKmh < 3 || windSpeedKmh > 20) return '⚠️';
+  if (deltaT < 2 || deltaT > 10) return '⚠️';
+  return '✓';
+}
+
 function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): string {
   const location = weatherData.location.name;
   const country = weatherData.location.country;
@@ -333,6 +342,28 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
   const rainTimingText = rainPeriods.length > 0
     ? `Expected around: ${rainPeriods.slice(0, 3).join(', ')}`
     : 'No significant rain expected in next 24 hours';
+
+  const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
+    const date = new Date(day.date);
+    const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
+    const avgWind = day.day.maxwind_kph;
+    const avgTemp = (day.day.maxtemp_c + day.day.mintemp_c) / 2;
+    const avgHumidity = day.hour?.[12]?.humidity || 60;
+    const sprayDeltaT = calculateDeltaT(avgTemp, avgHumidity);
+    const sprayWindow = getSprayWindowForDay(avgWind, day.day.totalprecip_mm, sprayDeltaT);
+
+    return {
+      dayName,
+      date: date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
+      high: Math.round(day.day.maxtemp_c),
+      low: Math.round(day.day.mintemp_c),
+      rain: day.day.totalprecip_mm.toFixed(1),
+      rainChance: day.day.daily_chance_of_rain,
+      wind: Math.round(avgWind),
+      windDir: degreesToDirection(day.hour?.[12]?.wind_deg || 0),
+      sprayWindow
+    };
+  });
 
   return `
 <!DOCTYPE html>
@@ -641,6 +672,47 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
           ⏰ ${rainTimingText}
         </div>
       </div>
+
+      <div style="margin-top: 24px;">
+        <div class="section-header">5-Day Forecast</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; background: #f9fafb; border-radius: 8px; overflow: hidden;">
+          <thead>
+            <tr style="background: linear-gradient(135deg, #047857 0%, #065f46 100%); color: white;">
+              <th style="padding: 10px 8px; text-align: left; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Day</th>
+              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Temps</th>
+              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Rain</th>
+              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Wind</th>
+              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Spray</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fiveDayForecast.map((day: any, index: number) => `
+              <tr style="background: ${index % 2 === 0 ? 'white' : '#f9fafb'}; border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 12px 8px; font-weight: 700; color: #047857;">
+                  <div style="font-size: 12px; font-weight: 800;">${day.dayName}</div>
+                  <div style="font-size: 10px; color: #059669; font-weight: 600; margin-top: 2px;">${day.date}</div>
+                </td>
+                <td style="padding: 12px 8px; text-align: center;">
+                  <div style="font-size: 15px; font-weight: 800; color: #dc2626;">${day.high}°</div>
+                  <div style="font-size: 11px; font-weight: 700; color: #3b82f6; margin-top: 2px;">${day.low}°</div>
+                </td>
+                <td style="padding: 12px 8px; text-align: center;">
+                  <div style="font-size: 13px; font-weight: 800; color: #1e40af;">${day.rain}mm</div>
+                  <div style="font-size: 10px; font-weight: 700; color: #3b82f6; margin-top: 2px;">${day.rainChance}%</div>
+                </td>
+                <td style="padding: 12px 8px; text-align: center;">
+                  <div style="font-size: 13px; font-weight: 800; color: #047857;">${day.wind} km/h</div>
+                  <div style="font-size: 10px; font-weight: 700; color: #059669; margin-top: 2px;">${day.windDir}</div>
+                </td>
+                <td style="padding: 12px 8px; text-align: center; font-size: 18px;">${day.sprayWindow}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top: 8px; font-size: 10px; color: #6b7280; text-align: center; font-weight: 600;">
+          Spray Window: ✅ Ideal · ✓ Good · ⚠️ Marginal · ❌ Poor
+        </div>
+      </div>
     </div>
 
     <div class="footer">
@@ -766,6 +838,28 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
     ? `Expected around: ${rainPeriods.slice(0, 3).join(', ')}`
     : 'No significant rain expected in next 24 hours';
 
+  const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
+    const date = new Date(day.date);
+    const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
+    const avgWind = day.day.maxwind_kph;
+    const avgTemp = (day.day.maxtemp_c + day.day.mintemp_c) / 2;
+    const avgHumidity = day.hour?.[12]?.humidity || 60;
+    const sprayDeltaT = calculateDeltaT(avgTemp, avgHumidity);
+    const sprayWindow = getSprayWindowForDay(avgWind, day.day.totalprecip_mm, sprayDeltaT);
+
+    return {
+      dayName,
+      date: date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
+      high: Math.round(day.day.maxtemp_c),
+      low: Math.round(day.day.mintemp_c),
+      rain: day.day.totalprecip_mm.toFixed(1),
+      rainChance: day.day.daily_chance_of_rain,
+      wind: Math.round(avgWind),
+      windDir: degreesToDirection(day.hour?.[12]?.wind_deg || 0),
+      sprayWindow
+    };
+  });
+
   return `
 FARMCAST DAILY FORECAST
 ${cityName}, ${country}
@@ -783,6 +877,13 @@ SPRAY WINDOW ANALYSIS:
 - Spray Conditions: ${sprayCond.rating}
 - Delta T: ${deltaT.toFixed(1)}°C - ${deltaTCond.rating}
 - Best Window Today: ${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor conditions'}
+
+5-DAY FORECAST:
+${fiveDayForecast.map((day: any) =>
+  `${day.dayName} ${day.date}: High ${day.high}°C / Low ${day.low}°C | Rain: ${day.rain}mm (${day.rainChance}%) | Wind: ${day.wind} km/h ${day.windDir} | Spray: ${day.sprayWindow}`
+).join('\n')}
+
+Spray Window Key: ✅ Ideal · ✓ Good · ⚠️ Marginal · ❌ Poor
 
 24-HOUR FORECAST:
 ${next24Hours.slice(0, 8).map((hour: any) => {
