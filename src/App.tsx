@@ -809,7 +809,7 @@ function App() {
         </div>
 
         <div className="mb-8">
-          <HourlyForecast forecastList={hourlyList} />
+          <HourlyForecast forecastList={hourlyList} currentWeather={current} />
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">

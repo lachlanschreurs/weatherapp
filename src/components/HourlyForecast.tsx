@@ -16,9 +16,15 @@ interface HourlyData {
 
 interface HourlyForecastProps {
   forecastList: any[];
+  currentWeather?: {
+    temp: number;
+    wind_speed: number;
+    wind_deg: number;
+    weather: Array<{ icon?: string }>;
+  };
 }
 
-export function HourlyForecast({ forecastList }: HourlyForecastProps) {
+export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastProps) {
   const hourlyData: HourlyData[] = [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -29,9 +35,40 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
 
   const now = Date.now();
 
-  for (let i = 0; i < 48 && i < forecastList.length; i++) {
+  if (currentWeather) {
+    const date = new Date(now);
+    const windSpeed = currentWeather.wind_speed * 3.6;
+    const windDirection = currentWeather.wind_deg || 0;
+    const weatherIcon = currentWeather.weather?.[0]?.icon || '01d';
+
+    hourlyData.push({
+      time: date.toLocaleString('en-AU', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        hour12: true
+      }),
+      displayTime: `${date.getHours() % 12 || 12}${date.getHours() >= 12 ? 'pm' : 'am'}`,
+      temp: Math.round(currentWeather.temp),
+      windSpeed: Math.round(windSpeed),
+      windDirection,
+      rainChance: 0,
+      weatherIcon,
+      hour: date.getHours(),
+      day: date.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase(),
+      timestamp: now,
+    });
+  }
+
+  for (let i = 0; i < 47 && i < forecastList.length; i++) {
     const item = forecastList[i];
-    const date = new Date(item.dt * 1000);
+    const itemTimestamp = item.dt * 1000;
+
+    if (currentWeather && itemTimestamp <= now) {
+      continue;
+    }
+
+    const date = new Date(itemTimestamp);
     const temp = item.temp;
     const windSpeed = item.wind_speed * 3.6;
     const windDirection = item.wind_deg || 0;
@@ -53,7 +90,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
       weatherIcon,
       hour: date.getHours(),
       day: date.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase(),
-      timestamp: item.dt * 1000,
+      timestamp: itemTimestamp,
     });
   }
 
@@ -195,7 +232,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
     return `${displayHours}:${displayMinutes}${period}`;
   };
 
-  const currentWeather = getCurrentWeatherAtNow();
+  const interpolatedWeather = getCurrentWeatherAtNow();
   const currentTimeLabel = getCurrentTimeLabel();
 
   return (
@@ -350,7 +387,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                 >
                   {currentTimeLabel}
                 </text>
-                {currentWeather && (
+                {interpolatedWeather && (
                   <>
                     <rect
                       x={nowPosition * 20 - 60}
@@ -372,7 +409,7 @@ export function HourlyForecast({ forecastList }: HourlyForecastProps) {
                       textAnchor="middle"
                       pointerEvents="none"
                     >
-                      {currentWeather.temp}°C | {currentWeather.windSpeed}km/h | {currentWeather.rainChance}%
+                      {interpolatedWeather.temp}°C | {interpolatedWeather.windSpeed}km/h | {interpolatedWeather.rainChance}%
                     </text>
                   </>
                 )}
