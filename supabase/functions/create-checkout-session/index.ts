@@ -53,7 +53,12 @@ Deno.serve(async (req: Request) => {
     console.log('Token first 20 chars:', token.substring(0, 20) + '...');
 
     console.log('Creating Supabase client with SERVICE_ROLE_KEY');
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     console.log('Calling supabase.auth.getUser(token)...');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
