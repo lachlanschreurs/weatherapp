@@ -307,40 +307,45 @@ function App() {
     setAppError(null);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      console.log('Weather API calls temporarily suspended');
+      setError('Weather data temporarily unavailable while authentication and subscription systems are being configured.');
+      setLoading(false);
+      return;
 
-      if (!supabaseUrl) {
-        throw new Error('Supabase URL is not configured. Please check your .env file.');
-      }
+      // const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
-      console.log('Fetching weather from:', weatherUrl);
+      // if (!supabaseUrl) {
+      //   throw new Error('Supabase URL is not configured. Please check your .env file.');
+      // }
 
-      const response = await fetch(weatherUrl);
+      // const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
+      // console.log('Fetching weather from:', weatherUrl);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Weather API error:', response.status, errorText);
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: `HTTP ${response.status}: ${errorText}` };
-        }
-        throw new Error(errorData.error || `Failed to fetch weather data (HTTP ${response.status})`);
-      }
+      // const response = await fetch(weatherUrl);
 
-      const weatherData = await response.json();
-      console.log('Weather data received:', weatherData);
+      // if (!response.ok) {
+      //   const errorText = await response.text();
+      //   console.error('Weather API error:', response.status, errorText);
+      //   let errorData;
+      //   try {
+      //     errorData = JSON.parse(errorText);
+      //   } catch {
+      //     errorData = { error: `HTTP ${response.status}: ${errorText}` };
+      //   }
+      //   throw new Error(errorData.error || `Failed to fetch weather data (HTTP ${response.status})`);
+      // }
 
-      setWeather(weatherData);
-      setLastUpdated(new Date());
+      // const weatherData = await response.json();
+      // console.log('Weather data received:', weatherData);
 
-      if (user) {
-        processWeatherNotifications(weatherData).catch(err => {
-          console.error('Notification error:', err);
-        });
-      }
+      // setWeather(weatherData);
+      // setLastUpdated(new Date());
+
+      // if (user) {
+      //   processWeatherNotifications(weatherData).catch(err => {
+      //     console.error('Notification error:', err);
+      //   });
+      // }
     } catch (err) {
       console.error('Weather fetch error:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
