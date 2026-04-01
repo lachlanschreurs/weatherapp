@@ -22,6 +22,11 @@ Deno.serve(async (req: Request) => {
     const squareSubscriptionPlanId = Deno.env.get("SQUARE_SUBSCRIPTION_PLAN_ID");
     const squareEnvironment = Deno.env.get("SQUARE_ENVIRONMENT") || "production";
 
+    console.log("Square environment:", squareEnvironment);
+    console.log("Location ID:", squareLocationId);
+    console.log("Has access token:", !!squareAccessToken);
+    console.log("Subscription plan ID:", squareSubscriptionPlanId);
+
     if (!squareAccessToken || !squareLocationId || !squareSubscriptionPlanId) {
       console.error('Square credentials not configured');
       throw new Error("Square not configured. Missing SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID, or SQUARE_SUBSCRIPTION_PLAN_ID");
@@ -108,9 +113,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('User verified successfully:', user.id, user.email);
 
-    const squareApiUrl = squareEnvironment === "sandbox"
-      ? "https://connect.squareupsandbox.com"
-      : "https://connect.squareup.com";
+    const squareApiUrl = "https://connect.squareup.com";
 
     const idempotencyKey = crypto.randomUUID();
 
@@ -157,11 +160,22 @@ Deno.serve(async (req: Request) => {
       try {
         errorData = JSON.parse(errorText);
       } catch {
-        throw new Error(`Square API error (${squareResponse.status}): ${errorText}`);
+        errorData = { rawError: errorText };
       }
 
-      const errorDetail = errorData.errors?.[0]?.detail || errorData.errors?.[0]?.message || 'Failed to create Square checkout';
-      throw new Error(errorDetail);
+      return new Response(
+        JSON.stringify({
+          error: "Square API error",
+          status: squareResponse.status,
+          statusText: squareResponse.statusText,
+          squareResponse: errorData,
+          fullResponse: errorText
+        }),
+        {
+          status: squareResponse.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const data = await squareResponse.json();
