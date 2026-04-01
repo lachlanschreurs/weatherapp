@@ -233,9 +233,9 @@ function App() {
 
   const checkAdminStatus = async (userId: string) => {
     const { data } = await supabase
-      .from('user_roles')
+      .from('profiles')
       .select('role')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .maybeSingle();
 
     setIsAdmin(data?.role === 'admin');

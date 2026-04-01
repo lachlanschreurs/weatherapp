@@ -35,22 +35,17 @@ export function AdminDashboard() {
     setLoading(true);
     try {
       const { data: usersData } = await supabase
-        .from('user_roles')
-        .select('user_id, role, created_at')
+        .from('profiles')
+        .select('id, email, role, created_at')
         .order('created_at', { ascending: false });
 
       if (usersData) {
-        const userEmails = await Promise.all(
-          usersData.map(async (user) => {
-            const { data } = await supabase.auth.admin.getUserById(user.user_id);
-            return {
-              id: user.user_id,
-              email: data.user?.email || 'Unknown',
-              role: user.role,
-              created_at: user.created_at,
-            };
-          })
-        );
+        const userEmails = usersData.map((user) => ({
+          id: user.id,
+          email: user.email || 'Unknown',
+          role: user.role || 'user',
+          created_at: user.created_at,
+        }));
         setUsers(userEmails);
 
         setStats({
@@ -89,9 +84,9 @@ export function AdminDashboard() {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
 
     const { error } = await supabase
-      .from('user_roles')
+      .from('profiles')
       .update({ role: newRole, updated_at: new Date().toISOString() })
-      .eq('user_id', userId);
+      .eq('id', userId);
 
     if (!error) {
       loadAdminData();
