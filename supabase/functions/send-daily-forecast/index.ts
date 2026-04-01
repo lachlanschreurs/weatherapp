@@ -165,7 +165,12 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const weatherData = transformWeatherDataFromOneCall(oneCallData, name, country);
 
-        const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly);
+        let probeReport = '';
+        if (subscriber.user_id) {
+          probeReport = await generateProbeReport(subscriber.user_id, supabaseAdmin);
+        }
+
+        const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly, probeReport);
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(subscriber.email)) {
@@ -304,7 +309,103 @@ function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: 
   return '✓';
 }
 
-function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): string {
+async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<string> {
+  try {
+    const { data: probeApis, error: apiError } = await supabaseAdmin
+      .from('probe_apis')
+      .select('*')
+      .eq('user_id', userId)
+      .limit(5);
+
+    if (apiError || !probeApis || probeApis.length === 0) {
+      return '';
+    }
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setHours(startDate.getHours() - 24);
+
+    const { data: probeData, error: dataError } = await supabaseAdmin
+      .from('probe_data')
+      .select('probe_id, depth, moisture, temperature, reading_time')
+      .eq('probe_api_id', probeApis[0].id)
+      .gte('reading_time', startDate.toISOString())
+      .lte('reading_time', endDate.toISOString())
+      .order('reading_time', { ascending: false })
+      .limit(50);
+
+    if (dataError || !probeData || probeData.length === 0) {
+      return '';
+    }
+
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiApiKey) {
+      return '';
+    }
+
+    const probeDataSummary = probeData.slice(0, 10).map((reading: any) => ({
+      time: new Date(reading.reading_time).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
+      depth: reading.depth,
+      moisture: reading.moisture,
+      temperature: reading.temperature
+    }));
+
+    const prompt = `You are an agricultural soil expert analyzing moisture probe data. Based on the following recent readings, provide a brief 2-3 sentence summary of soil conditions and one actionable recommendation for the farmer.
+
+Recent readings (last 24 hours):
+${JSON.stringify(probeDataSummary, null, 2)}
+
+Provide a concise, practical analysis focused on moisture levels, trends, and irrigation recommendations. Keep it under 100 words.`;
+
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a helpful agricultural advisor providing concise soil analysis.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 150,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      console.error('OpenAI API error:', await aiResponse.text());
+      return '';
+    }
+
+    const aiData = await aiResponse.json();
+    const analysis = aiData.choices[0]?.message?.content || '';
+
+    if (!analysis) {
+      return '';
+    }
+
+    return `
+      <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 10px; padding: 16px; margin-top: 20px;">
+        <div style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+          🌱 Soil Moisture Analysis
+        </div>
+        <div style="font-size: 13px; color: #78350f; line-height: 1.6; font-weight: 500;">
+          ${analysis}
+        </div>
+        <div style="font-size: 10px; color: #92400e; margin-top: 8px; font-weight: 600;">
+          Based on ${probeData.length} readings from the last 24 hours
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error generating probe report:', error);
+    return '';
+  }
+}
+
+function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeReport: string = ''): string {
   const location = weatherData.location.name;
   const country = weatherData.location.country;
   const current = weatherData.current;
@@ -679,6 +780,8 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[]): strin
           ⏰ ${rainTimingText}
         </div>
       </div>
+
+      ${probeReport}
 
       <div style="margin-top: 24px;">
         <div class="section-header">5-Day Forecast</div>

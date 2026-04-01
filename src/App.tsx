@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Sunrise, Sunset } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -768,43 +768,6 @@ function App() {
               </div>
             </div>
 
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Sunrise className="w-6 h-6" />
-                <span className="font-semibold">Sunrise</span>
-              </div>
-              <div className="text-3xl font-bold">
-                {current.sunrise
-                  ? new Date(current.sunrise * 1000).toLocaleTimeString('en-AU', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })
-                  : '--:--'}
-              </div>
-              <div className="text-sm opacity-80 mt-1">
-                Local time
-              </div>
-            </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Sunset className="w-6 h-6" />
-                <span className="font-semibold">Sunset</span>
-              </div>
-              <div className="text-3xl font-bold">
-                {current.sunset
-                  ? new Date(current.sunset * 1000).toLocaleTimeString('en-AU', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })
-                  : '--:--'}
-              </div>
-              <div className="text-sm opacity-80 mt-1">
-                Local time
-              </div>
-            </div>
           </div>
         </div>
 
