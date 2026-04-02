@@ -8,6 +8,7 @@ import {
   Droplets,
   AlertTriangle,
   CheckCircle,
+  AlertCircle,
   Bell,
   X,
 } from 'lucide-react';
@@ -35,6 +36,8 @@ function getAlertIcon(iconName: string) {
       return <Droplets className={iconClass} />;
     case 'alert-triangle':
       return <AlertTriangle className={iconClass} />;
+    case 'alert-circle':
+      return <AlertCircle className={iconClass} />;
     case 'check-circle':
       return <CheckCircle className={iconClass} />;
     default:
@@ -51,6 +54,14 @@ function getAlertStyles(severity: AlertSeverity) {
         titleClass: 'text-green-900',
         messageClass: 'text-green-800',
         iconColor: 'text-green-700',
+      };
+    case 'info':
+      return {
+        containerClass: 'bg-blue-100 border-blue-400',
+        borderClass: 'border-l-blue-700',
+        titleClass: 'text-blue-900',
+        messageClass: 'text-blue-800',
+        iconColor: 'text-blue-700',
       };
     case 'caution':
       return {
@@ -77,7 +88,7 @@ export function AlertBanner({ alerts }: AlertBannerProps) {
   if (alerts.length === 0) return null;
 
   const sortedAlerts = [...alerts].sort((a, b) => {
-    const severityOrder = { warning: 0, caution: 1, safe: 2 };
+    const severityOrder = { warning: 0, caution: 1, info: 2, safe: 3 };
     return severityOrder[a.severity] - severityOrder[b.severity];
   });
 
