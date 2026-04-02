@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const sessionConfig: any = {
-      payment_method_types: ['card', 'us_bank_account', 'link', 'cashapp', 'affirm', 'afterpay_clearpay'],
+      payment_method_types: ['card'],
       line_items: [
         {
           price: Deno.env.get('STRIPE_PRICE_ID'),
