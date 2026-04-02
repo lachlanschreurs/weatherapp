@@ -307,21 +307,11 @@ function App() {
     setAppError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.access_token) {
-        console.log('No active session - user needs to login');
-        setError('Please sign in to view weather data');
-        setLoading(false);
-        return;
-      }
-
-      console.log('Session token exists:', !!session?.access_token);
-
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      if (!supabaseUrl) {
-        throw new Error('Supabase URL is not configured. Please check your .env file.');
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration is missing. Please check your .env file.');
       }
 
       const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
@@ -330,7 +320,7 @@ function App() {
       const response = await fetch(weatherUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
           'Content-Type': 'application/json',
         }
       });
