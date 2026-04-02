@@ -133,30 +133,46 @@ function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('[App] === Initializing Auth ===');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error('[App] Session error:', sessionError);
+      }
 
       if (session?.user) {
-        setUser(session.user);
-        checkAdminStatus(session.user.id);
+        console.log('[App] ✓ Session found');
+        console.log('[App] User ID:', session.user.id);
+        console.log('[App] Email:', session.user.email);
 
-        // Load favorite location
+        setUser(session.user);
+        await checkAdminStatus(session.user.id);
+
         if (!hasLoadedInitialLocation) {
           await loadUserLocation(session.user.id);
         }
+
+        console.log('[App] ✓ App ready for authenticated user');
       } else {
+        console.log('[App] No session found - guest mode');
         setUser(null);
-        // Load geolocation for non-authenticated users
+
         if (!hasLoadedInitialLocation) {
           await loadGuestLocation();
         }
+
+        console.log('[App] ✓ App ready for guest user');
       }
+
+      console.log('[App] === Auth Initialization Complete ===');
     };
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
-        // Handle password recovery
+        console.log('[App] Auth state change:', event);
+
         if (event === 'PASSWORD_RECOVERY') {
           const newPassword = prompt('Enter your new password:');
           if (newPassword && newPassword.length >= 6) {
@@ -174,20 +190,24 @@ function App() {
         }
 
         if (session?.user) {
-          // Load favorite location on sign in
+          console.log('[App] User signed in:', session.user.id);
+
           if (event === 'SIGNED_IN') {
-            loadUserLocation(session.user.id);
+            console.log('[App] Loading user location...');
+            await loadUserLocation(session.user.id);
           }
 
           setUser(session.user);
-          checkAdminStatus(session.user.id);
+          await checkAdminStatus(session.user.id);
 
-          // Only send welcome notification on actual signup, not every login
           if (event === 'SIGNED_IN' && weather) {
             processWeatherNotifications(weather);
           }
+
+          console.log('[App] ✓ User session established');
         } else {
-          // Load geolocation for guest users on sign out
+          console.log('[App] User signed out');
+
           if (event === 'SIGNED_OUT') {
             loadGuestLocation();
           }
@@ -236,13 +256,26 @@ function App() {
   };
 
   const checkAdminStatus = async (userId: string) => {
-    const { data } = await supabase
+    console.log('[App] Checking admin status for user:', userId);
+    const { data, error } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', userId)
       .maybeSingle();
 
-    setIsAdmin(data?.role === 'admin');
+    if (error) {
+      console.error('[App] Error checking admin status:', error);
+      setIsAdmin(false);
+      return;
+    }
+
+    if (data) {
+      console.log('[App] Profile found, role:', data.role);
+      setIsAdmin(data.role === 'admin');
+    } else {
+      console.warn('[App] No profile found for user');
+      setIsAdmin(false);
+    }
   };
 
   const handleSignOut = async () => {

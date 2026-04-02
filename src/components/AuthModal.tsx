@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Phone, Check } from 'lucide-react';
+import { X, Mail, Lock, User, Phone, Check, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -12,7 +12,6 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [showPaymentStep, setShowPaymentStep] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -26,7 +25,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     if (isOpen) {
       setIsLogin(initialMode === 'login');
       setIsForgotPassword(false);
-      setShowPaymentStep(false);
       setError(null);
       setSuccessMessage(null);
       setEmail('');
@@ -38,6 +36,67 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
   if (!isOpen) return null;
 
+  const waitForProfile = async (userId: string, maxRetries = 10): Promise<boolean> => {
+    for (let i = 0; i < maxRetries; i++) {
+      console.log(`[Auth] Checking for profile... attempt ${i + 1}/${maxRetries}`);
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, farmer_joe_subscription_status, email_subscription_started_at')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (data && data.farmer_joe_subscription_status) {
+        console.log('[Auth] ✓ Profile found and ready:', data);
+        return true;
+      }
+
+      if (error) {
+        console.log('[Auth] Profile check error:', error);
+      }
+
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    console.log('[Auth] Profile not found after retries, will create manually');
+    return false;
+  };
+
+  const ensureProfileExists = async (userId: string, userEmail: string, fullName: string) => {
+    console.log('[Auth] Ensuring profile exists for user:', userId);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: userEmail,
+          full_name: fullName,
+          farmer_joe_subscription_status: 'active',
+          farmer_joe_subscription_started_at: new Date().toISOString(),
+          email_subscription_started_at: new Date().toISOString(),
+          probe_report_subscription_started_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        if (error.code === '23505') {
+          console.log('[Auth] ✓ Profile already exists (conflict)');
+          return true;
+        }
+        console.error('[Auth] Error creating profile:', error);
+        return false;
+      }
+
+      console.log('[Auth] ✓ Profile created successfully');
+      return true;
+    } catch (err) {
+      console.error('[Auth] Exception creating profile:', err);
+      return false;
+    }
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -45,7 +104,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     setLoading(true);
 
     try {
-      console.log('Starting signup process...');
+      console.log('[Auth] === Starting Signup Process ===');
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
@@ -58,7 +117,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
       const normalizedPhone = phoneNumber.replace(/\D/g, '');
 
-      // Check if phone number is already in use
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
@@ -69,19 +127,20 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('This phone number is already registered.');
       }
 
-      // Create the account
+      console.log('[Auth] Creating account...');
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
           data: {
             name,
+            full_name: name,
           },
         },
       });
 
       if (signUpError) {
-        console.error('Signup error:', signUpError);
+        console.error('[Auth] Signup error:', signUpError);
         throw signUpError;
       }
 
@@ -89,18 +148,29 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('Failed to create account');
       }
 
-      console.log('Account created successfully');
+      console.log('[Auth] ✓ Account created successfully');
+      console.log('[Auth] User ID:', authData.user.id);
 
-      // Wait for profile to be created by trigger, then update it
-      let retries = 0;
-      const maxRetries = 5;
-      let profileUpdated = false;
+      console.log('[Auth] Waiting for session...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      while (retries < maxRetries && !profileUpdated) {
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 200 * retries));
-        }
+      if (sessionError || !session) {
+        console.error('[Auth] Session error:', sessionError);
+        throw new Error('Session not available. Please try signing in.');
+      }
 
+      console.log('[Auth] ✓ Session obtained');
+
+      console.log('[Auth] Waiting for profile to be created by trigger...');
+      const profileExists = await waitForProfile(authData.user.id);
+
+      if (!profileExists) {
+        console.log('[Auth] Profile not found, creating manually...');
+        await ensureProfileExists(authData.user.id, email.trim(), name);
+      }
+
+      if (normalizedPhone) {
+        console.log('[Auth] Updating phone number...');
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -109,28 +179,24 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           })
           .eq('id', authData.user.id);
 
-        if (!updateError) {
-          profileUpdated = true;
-          console.log('Profile updated successfully');
-        } else if (retries === maxRetries - 1) {
-          console.error('Profile update error:', updateError);
-          throw new Error('Failed to save user profile. Please try again.');
+        if (updateError) {
+          console.error('[Auth] Phone update error:', updateError);
+        } else {
+          console.log('[Auth] ✓ Phone number updated');
         }
-
-        retries++;
       }
 
-      // Account created successfully
-      console.log('Account created successfully, redirecting to payment setup...');
+      console.log('[Auth] ✓ Signup complete - user is ready');
+      console.log('[Auth] === Signup Process Complete ===');
 
-      // The auth state change listener will set the session
-      // Wait a bit longer to ensure the session is fully propagated
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setSuccessMessage('Account created successfully! Welcome to FarmCast.');
 
-      // Now redirect to payment setup
-      await handlePaymentSetupDirect();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      onSuccess();
+      onClose();
     } catch (err: any) {
-      console.error('Signup error:', err);
+      console.error('[Auth] Signup error:', err);
 
       let errorMessage = 'An error occurred. Please try again.';
 
@@ -140,107 +206,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         errorMessage = err;
       } else if (err?.error_description) {
         errorMessage = err.error_description;
-      } else if (err?.msg) {
-        errorMessage = err.msg;
       }
 
       setError(errorMessage);
       setLoading(false);
     }
-  };
-
-  const handlePaymentSetupDirect = async () => {
-    try {
-      console.log('Initializing payment setup...');
-
-      // Get the current session with retry logic
-      let session = null;
-      let retries = 0;
-      const maxRetries = 3;
-
-      while (retries < maxRetries && !session) {
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-
-        if (currentSession) {
-          session = currentSession;
-          console.log('Session obtained successfully');
-          break;
-        }
-
-        if (retries < maxRetries - 1) {
-          console.log(`Session not ready, retrying... (${retries + 1}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
-        retries++;
-      }
-
-      if (!session) {
-        throw new Error('Session not available. Please sign in again.');
-      }
-
-      console.log('Calling Stripe checkout with session token...');
-      console.log('Access token length:', session.access_token.length);
-      console.log('Access token first 20 chars:', session.access_token.slice(0, 20));
-      console.log('Access token last 20 chars:', session.access_token.slice(-20));
-
-      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
-
-      const response = await fetch(checkoutUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        }
-      });
-
-      console.log('Stripe checkout response:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const text = await response.text();
-        console.error('Stripe checkout error response:', text);
-        let errorData;
-        try {
-          errorData = JSON.parse(text);
-        } catch {
-          throw new Error(`Server error: ${response.status}. Please try again.`);
-        }
-        const errorMessage = errorData?.error || errorData?.details || errorData?.message || 'Failed to initialize checkout';
-        const hint = errorData?.hint || '';
-        throw new Error(`${errorMessage}${hint ? ' ' + hint : ''}`);
-      }
-
-      const data = await response.json();
-
-      if (data?.url) {
-        console.log('Redirecting to Stripe checkout...');
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned from server');
-      }
-    } catch (err: any) {
-      console.error('Payment setup error:', err);
-
-      let errorMessage = 'Failed to set up payment. Please try again.';
-
-      if (err?.message) {
-        errorMessage = err.message;
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      } else if (err?.error_description) {
-        errorMessage = err.error_description;
-      }
-
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
-
-  const handlePaymentSetup = async () => {
-    setError(null);
-    setLoading(true);
-    await handlePaymentSetupDirect();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -250,19 +220,53 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     setLoading(true);
 
     try {
+      console.log('[Auth] === Starting Login Process ===');
+      console.log('[Auth] Email:', email);
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         throw new Error('Please enter a valid email address');
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
-      if (error) throw error;
+
+      if (error) {
+        console.error('[Auth] Login error:', error);
+        throw error;
+      }
+
+      console.log('[Auth] ✓ Login successful');
+      console.log('[Auth] User ID:', data.user?.id);
+
+      if (data.user) {
+        console.log('[Auth] Verifying profile exists...');
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (!profile) {
+          console.log('[Auth] Profile missing, creating...');
+          await ensureProfileExists(
+            data.user.id,
+            data.user.email || email.trim(),
+            data.user.user_metadata?.name || data.user.user_metadata?.full_name || 'User'
+          );
+        } else {
+          console.log('[Auth] ✓ Profile verified');
+        }
+      }
+
+      console.log('[Auth] === Login Process Complete ===');
+
       onSuccess();
       onClose();
     } catch (err: any) {
+      console.error('[Auth] Login error:', err);
       const errorMessage = err?.message || err?.error_description || 'Invalid email or password. Please try again.';
       setError(errorMessage);
     } finally {
@@ -286,7 +290,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         redirectTo: `${window.location.origin}`,
       });
       if (error) throw error;
-      setSuccessMessage('Password reset link sent! Check your email inbox. Click the link to set a new password.');
+      setSuccessMessage('Password reset link sent! Check your email inbox.');
       setEmail('');
     } catch (err: any) {
       const errorMessage = err?.message || err?.error_description || 'Failed to send reset link. Please try again.';
@@ -295,7 +299,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       setLoading(false);
     }
   };
-
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -309,34 +312,30 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         <div className="p-8">
           <h2 className="text-3xl font-bold text-green-900 mb-2">
-            {showPaymentStep
-              ? 'Set Up Payment Method'
-              : isForgotPassword
-                ? 'Reset Password'
-                : isLogin
-                  ? 'Welcome Back'
-                  : 'Get Started with FarmCast'}
+            {isForgotPassword
+              ? 'Reset Password'
+              : isLogin
+                ? 'Welcome Back'
+                : 'Get Started with FarmCast'}
           </h2>
           <p className="text-gray-600 mb-6">
-            {showPaymentStep
-              ? 'Add your payment method to activate your 1-month free trial'
-              : isForgotPassword
-                ? 'Enter your email to receive a password reset link'
-                : isLogin
-                  ? 'Sign in to access your farm data'
-                  : 'Start your 1-month free trial today'}
+            {isForgotPassword
+              ? 'Enter your email to receive a password reset link'
+              : isLogin
+                ? 'Sign in to access your farm data'
+                : 'Create your free account today'}
           </p>
 
-          {!isLogin && !isForgotPassword && !showPaymentStep && (
+          {!isLogin && !isForgotPassword && (
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
                   <Check className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-1">1 Month Free Trial</h3>
+                  <h3 className="font-semibold text-green-900 mb-1">Free Access</h3>
                   <p className="text-sm text-gray-700 mb-2">
-                    No charge today. Your card won't be charged until your trial ends.
+                    Get full access to all features at no cost
                   </p>
                   <ul className="text-xs text-gray-600 space-y-1">
                     <li className="flex items-center gap-1.5">
@@ -353,7 +352,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                     </li>
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
-                      <span>Cancel anytime before trial ends</span>
+                      <span>All premium features included</span>
                     </li>
                   </ul>
                 </div>
@@ -361,72 +360,18 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
-          {showPaymentStep && (
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
-                  <Check className="w-4 h-4" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-2">Account Created Successfully!</h3>
-                  <p className="text-sm text-gray-700 mb-3">
-                    Complete your setup by adding a payment method. You won't be charged for 1 month.
-                  </p>
-                  <ul className="text-xs text-gray-600 space-y-1.5">
-                    <li className="flex items-center gap-1.5">
-                      <Check className="w-3 h-3 text-green-600" />
-                      <span>Free for the first month</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check className="w-3 h-3 text-green-600" />
-                      <span>Cancel anytime before trial ends</span>
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <Check className="w-3 h-3 text-green-600" />
-                      <span>Secure payment with Stripe</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {error && typeof error === 'string' && (
+          {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {error}
             </div>
           )}
 
-          {successMessage && !showPaymentStep && (
+          {successMessage && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {successMessage}
             </div>
           )}
 
-          {showPaymentStep ? (
-            <div className="space-y-4">
-              <button
-                onClick={handlePaymentSetup}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading && (
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                {loading ? 'Redirecting to payment...' : 'Continue to Payment Setup'}
-              </button>
-
-              <button
-                onClick={onClose}
-                className="w-full text-gray-600 py-2 rounded-lg font-medium hover:text-gray-800 transition-colors"
-              >
-                I'll do this later
-              </button>
-            </div>
-          ) : (
           <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleSignup} className="space-y-4">
             {!isLogin && !isForgotPassword && (
               <>
@@ -464,7 +409,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                     />
                   </div>
                   <p className="mt-1 text-xs text-gray-500">
-                    One trial per phone number
+                    For account verification
                   </p>
                 </div>
               </>
@@ -542,44 +487,42 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               disabled={loading}
               className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading && (
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {isLogin || isForgotPassword ? 'Please wait...' : 'Creating account...'}
+                </>
+              ) : (
+                isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Create Free Account'
               )}
-              {loading ? (isLogin || isForgotPassword ? 'Please wait...' : 'Redirecting to payment...') : isForgotPassword ? 'Send Reset Link' : isLogin ? 'Sign In' : 'Start Free Trial'}
             </button>
           </form>
-          )}
 
-          {!showPaymentStep && (
-            <div className="mt-6 text-center space-y-2">
-              {isForgotPassword ? (
-                <button
-                  onClick={() => {
-                    setIsForgotPassword(false);
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="text-green-700 hover:text-green-800 font-semibold text-sm"
-                >
-                  Back to sign in
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsLogin(!isLogin);
-                    setError(null);
-                    setSuccessMessage(null);
-                  }}
-                  className="text-green-700 hover:text-green-800 font-semibold text-sm"
-                >
-                  {isLogin ? "Don't have an account? Start free trial" : 'Already have an account? Sign in'}
-                </button>
-              )}
-            </div>
-          )}
+          <div className="mt-6 text-center space-y-2">
+            {isForgotPassword ? (
+              <button
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-green-700 hover:text-green-800 font-semibold text-sm"
+              >
+                Back to sign in
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className="text-green-700 hover:text-green-800 font-semibold text-sm"
+              >
+                {isLogin ? "Don't have an account? Sign up free" : 'Already have an account? Sign in'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
