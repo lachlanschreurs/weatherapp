@@ -105,7 +105,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('farmer_joe_chat_messages')
+        .from('chat_messages')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
@@ -272,7 +272,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       if (!user) return;
 
       const { error } = await supabase
-        .from('farmer_joe_chat_messages')
+        .from('chat_messages')
         .delete()
         .eq('user_id', user.id);
 

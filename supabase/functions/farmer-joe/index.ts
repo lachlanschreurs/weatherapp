@@ -8,12 +8,14 @@ const corsHeaders = {
 
 interface ChatRequest {
   message: string;
-  imageBase64?: string;
+  image?: string;
+  imageData?: string;
   weatherContext?: {
     location?: string;
     currentWeather?: any;
     forecast?: any;
   };
+  chatHistory?: any[];
 }
 
 Deno.serve(async (req: Request) => {
@@ -54,14 +56,19 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { message, imageBase64, weatherContext }: ChatRequest = await req.json();
+    const { message, image, imageData, weatherContext, chatHistory }: ChatRequest = await req.json();
+
+    // Support both 'image' and 'imageData' parameter names
+    const imageData = image || imageData;
 
     if (!message || message.trim().length === 0) {
       throw new Error('Message is required');
     }
 
     // Build the system prompt for Farmer Joe
-    const systemPrompt = `You are Farmer Joe, a friendly and knowledgeable AI farming assistant with years of experience in agriculture. You provide helpful advice about:
+    const systemPrompt = `You are Farmer Joe, a friendly and knowledgeable AI assistant with a warm, folksy personality. While you have extensive expertise in agriculture and farming, you can help with absolutely anything the user asks about.
+
+Your farming expertise includes:
 - Weather conditions and their impact on farming
 - Best times for planting, spraying, and harvesting
 - Farm event planning based on weather forecasts
@@ -69,14 +76,21 @@ Deno.serve(async (req: Request) => {
 - Chemical and treatment recommendations for pests and diseases
 - General farming tips and best practices
 
-When identifying pests or diseases from images:
-- Provide a clear identification of what you see
-- Explain the potential damage or concerns
-- Suggest specific chemical treatments or organic alternatives
-- Include application timing and weather considerations
-- Mention any safety precautions
+But you're not limited to farming! You can also help with:
+- General knowledge questions on any topic
+- Image analysis and identification of anything in photos
+- Advice on technology, science, business, cooking, and more
+- Problem-solving and creative thinking
+- Writing, coding, math, and educational topics
+- Casual conversation and friendly chat
 
-You have access to real-time weather data and forecasts. Be conversational, helpful, and use your farming expertise to give practical advice. Keep responses concise but informative. Use a warm, folksy tone but remain professional.`;
+When analyzing images:
+- Provide detailed descriptions of what you see
+- Answer specific questions about the image
+- Identify objects, animals, plants, problems, or anything else visible
+- Offer relevant advice or information based on the image content
+
+You have access to real-time weather data and forecasts when available. Be conversational, helpful, and friendly. Use a warm, approachable tone while remaining knowledgeable and professional. Don't limit yourself - help with whatever the user needs!`;
 
     // Build context from weather data if available
     let contextInfo = '';
@@ -99,7 +113,7 @@ You have access to real-time weather data and forecasts. Be conversational, help
       // Fallback response if no API key
       const fallbackResponse = `Howdy! I'm Farmer Joe, your AI farming assistant. I'd love to help you with weather insights, pest identification, and farm planning, but it looks like I need an OpenAI API key to be configured first.
 
-In the meantime, here's some general advice: ${message.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : message.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : imageBase64 ? 'For pest and disease identification, I need to analyze your photo. Please configure the OpenAI API key to enable this feature.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
+In the meantime, here's some general advice: ${message.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : message.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : imageData ? 'For pest and disease identification, I need to analyze your photo. Please configure the OpenAI API key to enable this feature.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
 
       // Save to database (only for authenticated users)
       if (user) {
@@ -108,7 +122,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
             user_id: user.id,
             role: 'user',
             content: message,
-            image_url: imageBase64 ? 'data:image/jpeg;base64,...' : null,
+            image_url: imageData ? 'data:image/jpeg;base64,...' : null,
           },
           {
             user_id: user.id,
@@ -129,18 +143,20 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
       );
     }
 
-    // Load conversation history (only for authenticated users)
-    let conversationHistory: any[] = [];
-    if (user) {
-      const { data: chatHistory, error: historyError } = await supabaseClient
+    // Use provided chat history or load from database
+    let conversationHistory: any[] = chatHistory || [];
+
+    // If no history provided and user is authenticated, load from database
+    if (conversationHistory.length === 0 && user) {
+      const { data: dbChatHistory, error: historyError } = await supabaseClient
         .from('chat_messages')
         .select('role, content, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
         .limit(20);
 
-      if (!historyError && chatHistory) {
-        conversationHistory = chatHistory;
+      if (!historyError && dbChatHistory) {
+        conversationHistory = dbChatHistory;
       }
     }
 
@@ -161,7 +177,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
     }
 
     // If image is provided, use vision model with image
-    if (imageBase64) {
+    if (imageData) {
       messages.push({
         role: 'user',
         content: [
@@ -172,7 +188,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
           {
             type: 'image_url',
             image_url: {
-              url: `data:image/jpeg;base64,${imageBase64}`,
+              url: `data:image/jpeg;base64,${imageData}`,
             },
           },
         ],
@@ -192,10 +208,10 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: imageBase64 ? 'gpt-4o' : 'gpt-3.5-turbo',
+        model: imageData ? 'gpt-4o' : 'gpt-3.5-turbo',
         messages: messages,
         temperature: 0.7,
-        max_tokens: imageBase64 ? 1000 : 500,
+        max_tokens: imageData ? 1000 : 500,
       }),
     });
 
@@ -231,7 +247,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
           user_id: user.id,
           role: 'user',
           content: message,
-          image_url: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 50)}...` : null,
+          image_url: imageData ? `data:image/jpeg;base64,${imageData.substring(0, 50)}...` : null,
         },
         {
           user_id: user.id,
