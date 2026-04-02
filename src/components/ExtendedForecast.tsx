@@ -165,41 +165,26 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
         </button>
       </div>
 
-      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-amber-50 rounded-lg border border-blue-200">
+      <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
         <div className="flex items-start gap-3">
-          <Calendar className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0" />
+          <Droplet className="w-5 h-5 text-green-700 mt-0.5 flex-shrink-0" />
           <div className="flex-1">
-            <h4 className="font-semibold text-blue-900 mb-2">Forecast Confidence</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm mb-4">
+            <h4 className="font-semibold text-green-900 mb-3">Spray Conditions Key</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-600 flex-shrink-0"></div>
-                <span className="text-gray-700"><strong>Days 1-8:</strong> Real forecast data (High confidence)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-yellow-600 flex-shrink-0"></div>
-                <span className="text-gray-700"><strong>Days 9-14:</strong> Statistical prediction (Medium confidence)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-500 flex-shrink-0"></div>
-                <span className="text-gray-700"><strong>Days 15-30:</strong> Long-range estimate (Low confidence)</span>
-              </div>
-            </div>
-            <h4 className="font-semibold text-green-900 mb-2">Spray Conditions</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-green-600 flex-shrink-0"></div>
+                <div className="w-4 h-4 rounded bg-green-600 flex-shrink-0"></div>
                 <span className="text-gray-700"><strong>Good:</strong> Wind &lt;15 km/h, no rain</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-yellow-600 flex-shrink-0"></div>
+                <div className="w-4 h-4 rounded bg-yellow-600 flex-shrink-0"></div>
                 <span className="text-gray-700"><strong>Moderate:</strong> Wind 15-25 km/h</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-red-600 flex-shrink-0"></div>
+                <div className="w-4 h-4 rounded bg-red-600 flex-shrink-0"></div>
                 <span className="text-gray-700"><strong>Poor:</strong> Wind &gt;25 km/h or rain</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-gray-500 flex-shrink-0"></div>
+                <div className="w-4 h-4 rounded bg-gray-500 flex-shrink-0"></div>
                 <span className="text-gray-700"><strong>Monitor:</strong> Check closer to date</span>
               </div>
             </div>
