@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, X, Trash2, Loader2, Camera, XCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import SubscriptionManager from './SubscriptionManager';
 
 interface Message {
   id: string;
@@ -18,13 +17,6 @@ interface FarmerJoeProps {
     forecast?: any;
   };
   isAuthenticated?: boolean;
-}
-
-interface SubscriptionStatus {
-  hasActiveSubscription: boolean;
-  subscriptionEndsAt: string | null;
-  needsSubscription: boolean;
-  messagesCount: number;
 }
 
 const FarmerJoeAvatar = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
@@ -61,19 +53,13 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [guestQuestionCount, setGuestQuestionCount] = useState(0);
-  const [imageUploadCount, setImageUploadCount] = useState(0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
-  const [showSubscriptionPrompt, setShowSubscriptionPrompt] = useState(false);
-  const [showSubscriptionManager, setShowSubscriptionManager] = useState(false);
   const [showBubble, setShowBubble] = useState(true);
   const [hasEngaged, setHasEngaged] = useState(false);
   const [bubbleText, setBubbleText] = useState("Hey! Got a farming question?");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const MAX_FREE_MESSAGES = 10;
-  const MAX_FREE_UPLOADS = 2;
   const MAX_GUEST_QUESTIONS = 3;
 
   const scrollToBottom = () => {
@@ -89,113 +75,50 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     setHasEngaged(hasEngagedBefore);
 
     if (!hasEngagedBefore) {
-      // Show bubble after animation completes (75% of 2.5s = 1.875s + 0.5s delay + 0.3s buffer = 2.675s)
       const showBubbleTimeout = setTimeout(() => {
         setShowBubble(true);
         setBubbleText("Hey! Got a farming question?");
       }, 2700);
 
-      // Hide bubble after display time
       const hideTimeout = setTimeout(() => {
         setShowBubble(false);
-      }, 10700);
+      }, 10000);
 
       return () => {
         clearTimeout(showBubbleTimeout);
         clearTimeout(hideTimeout);
       };
-    } else {
-      setShowBubble(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isAuthenticated) {
       loadChatHistory();
-      if (!isAuthenticated) {
-        const savedCount = localStorage.getItem('farmerJoeGuestQuestions');
-        setGuestQuestionCount(savedCount ? parseInt(savedCount) : 0);
-      } else {
-        checkSubscriptionStatus();
-        sendGreeting();
-      }
     }
   }, [isOpen, isAuthenticated]);
-
-  const checkSubscriptionStatus = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setSubscriptionStatus(null);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('farmer_joe_subscription_status, farmer_joe_subscription_ends_at, farmer_joe_messages_count')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        const hasActiveSubscription = data.farmer_joe_subscription_status === 'active' &&
-          (!data.farmer_joe_subscription_ends_at || new Date(data.farmer_joe_subscription_ends_at) > new Date());
-
-        const messagesCount = data.farmer_joe_messages_count || 0;
-
-        setSubscriptionStatus({
-          hasActiveSubscription,
-          subscriptionEndsAt: data.farmer_joe_subscription_ends_at,
-          needsSubscription: !hasActiveSubscription && messagesCount >= MAX_FREE_MESSAGES,
-          messagesCount
-        });
-      } else {
-        setSubscriptionStatus({
-          hasActiveSubscription: false,
-          subscriptionEndsAt: null,
-          needsSubscription: false,
-          messagesCount: 0
-        });
-      }
-
-      // Get image upload count
-      const { count } = await supabase
-        .from('farmer_joe_chats')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', session.user.id)
-        .not('image_url', 'is', null);
-
-      setImageUploadCount(count || 0);
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-    }
-  };
-
-  const sendGreeting = async () => {
-    // Greeting removed - users start the conversation
-  };
 
   const loadChatHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setMessages([]);
-        setIsLoadingHistory(false);
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('farmer_joe_chat_messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(50);
+
+      if (error) {
+        console.error('Error loading chat history:', error);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: true })
-        .limit(100);
-
-      if (error) throw error;
-
-      setMessages(data || []);
+      if (data && data.length > 0) {
+        setMessages(data);
+      }
     } catch (error) {
       console.error('Error loading chat history:', error);
     } finally {
@@ -203,57 +126,33 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     }
   };
 
-  const clearChatHistory = async () => {
-    if (!confirm('Are you sure you want to clear your chat history with Farmer Joe?')) {
-      return;
+  const handleOpen = () => {
+    setIsOpen(true);
+    setShowBubble(false);
+
+    if (!hasEngaged) {
+      localStorage.setItem('farmerJoeEngaged', 'true');
+      setHasEngaged(true);
     }
+  };
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const { error } = await supabase
-        .from('chat_messages')
-        .delete()
-        .eq('user_id', session.user.id);
-
-      if (error) throw error;
-
-      setMessages([]);
-    } catch (error) {
-      console.error('Error clearing chat history:', error);
-      alert('Failed to clear chat history');
-    }
+  const handleClose = () => {
+    setIsOpen(false);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
-
     if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
-      return;
-    }
-
-    // Check upload limit for non-subscribers
-    if (subscriptionStatus && !subscriptionStatus.hasActiveSubscription && imageUploadCount >= MAX_FREE_UPLOADS) {
-      setShowSubscriptionPrompt(true);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      alert('Image size must be less than 5MB');
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      const base64Data = base64String.split(',')[1];
-      setSelectedImage(base64Data);
+      setSelectedImage(base64String);
       setImagePreview(base64String);
     };
     reader.readAsDataURL(file);
@@ -267,459 +166,368 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     }
   };
 
-  const sendMessage = async () => {
-    if ((!input.trim() && !selectedImage) || isLoading) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    const userMessage = input.trim() || 'Please analyze this image';
-    const imageData = selectedImage;
+    if (!input.trim() && !selectedImage) return;
+
+    if (!isAuthenticated) {
+      if (guestQuestionCount >= MAX_GUEST_QUESTIONS) {
+        alert('You have reached the maximum number of guest questions. Please sign up to continue.');
+        return;
+      }
+      setGuestQuestionCount(prev => prev + 1);
+    }
+
+    const userMessage: Message = {
+      id: `temp-${Date.now()}`,
+      role: 'user',
+      content: input,
+      created_at: new Date().toISOString(),
+      image_url: selectedImage,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
+
+    const imageToSend = selectedImage;
     setSelectedImage(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    setIsLoading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-
-      // For guest users, check free message limit
-      if (!session) {
-        if (guestQuestionCount >= MAX_FREE_MESSAGES) {
-          const userMsgId = `temp-user-${Date.now()}`;
-          const assistantMsgId = `temp-assistant-${Date.now()}`;
-          setMessages(prev => [...prev,
-            {
-              id: userMsgId,
-              role: 'user',
-              content: userMessage,
-              created_at: new Date().toISOString(),
-              image_url: imageData ? 'attached' : null,
-            },
-            {
-              id: assistantMsgId,
-              role: 'assistant',
-              content: "You've reached your 10 free messages! Sign in to subscribe and get unlimited access to Farmer Joe for just $5.99/month. Get personalized farming advice, weather insights, and save your conversation history. Click the sign-in button at the top right to get started!",
-              created_at: new Date().toISOString(),
-            }
-          ]);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Check if authenticated user has active subscription
-      if (subscriptionStatus?.needsSubscription) {
-        setShowSubscriptionPrompt(true);
-        const userMsgId = `temp-user-${Date.now()}`;
-        const assistantMsgId = `temp-assistant-${Date.now()}`;
-        setMessages(prev => [...prev,
-          {
-            id: userMsgId,
-            role: 'user',
-            content: userMessage,
-            created_at: new Date().toISOString(),
-            image_url: imageData ? 'attached' : null,
-          },
-          {
-            id: assistantMsgId,
-            role: 'assistant',
-            content: "To continue chatting with Farmer Joe, you'll need to subscribe for just $5.99/month. This gives you unlimited access to personalized farming advice, weather insights, and your conversation history is always saved. Click the 'Subscribe Now' button below to get started!",
-            created_at: new Date().toISOString(),
-          }
-        ]);
-        setIsLoading(false);
-        return;
-      }
-
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/farmer-joe`;
 
-      console.log('Session token exists:', !!session?.access_token);
+      const requestBody = {
+        message: input,
+        weatherContext: weatherContext,
+        chatHistory: messages.map(m => ({
+          role: m.role,
+          content: m.content,
+          image_url: m.image_url
+        })),
+        image: imageToSend,
+      };
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       };
 
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else {
+        headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
       }
 
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          message: userMessage,
-          imageBase64: imageData,
-          weatherContext,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Farmer Joe API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          hasAuth: !!session?.access_token
-        });
-        throw new Error(errorData.error || `Failed to connect to Farmer Joe (${response.status})`);
+        const errorText = await response.text();
+        console.error('API error:', response.status, errorText);
+        throw new Error(`API returned ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Received response from Farmer Joe:', data);
 
-      // For guest users, append promotional message
-      if (!session) {
-        const newCount = guestQuestionCount + 1;
-        setGuestQuestionCount(newCount);
-        localStorage.setItem('farmerJoeGuestQuestions', newCount.toString());
+      const assistantMessage: Message = {
+        id: data.messageId || `temp-assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.response,
+        created_at: new Date().toISOString(),
+      };
 
-        const remainingQuestions = MAX_FREE_MESSAGES - newCount;
-        const userMsgId = `temp-user-${Date.now()}`;
-        const assistantMsgId = `temp-assistant-${Date.now()}`;
-        const promoMsgId = `temp-promo-${Date.now()}`;
+      setMessages(prev => {
+        const withoutTempUser = prev.filter(m => m.id !== userMessage.id);
+        return [
+          ...withoutTempUser,
+          { ...userMessage, id: data.userMessageId || userMessage.id },
+          assistantMessage
+        ];
+      });
 
-        setMessages(prev => [...prev,
-          {
-            id: userMsgId,
-            role: 'user',
-            content: userMessage,
-            created_at: new Date().toISOString(),
-            image_url: imageData ? 'attached' : null,
-          },
-          {
-            id: assistantMsgId,
-            role: 'assistant',
-            content: data.response,
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: promoMsgId,
-            role: 'assistant',
-            content: `${remainingQuestions > 0 ? `You have ${remainingQuestions} free message${remainingQuestions !== 1 ? 's' : ''} remaining.` : 'This was your last free message!'} Sign in and subscribe for just $5.99/month to get unlimited access, personalized advice based on your location and weather, and save your chat history.`,
-            created_at: new Date().toISOString(),
-          }
-        ]);
-      } else {
-        await loadChatHistory();
-        await checkSubscriptionStatus(); // Refresh counts after message
-      }
     } catch (error) {
       console.error('Error sending message:', error);
-
-      const userMsgId = `error-user-${Date.now()}`;
-      const assistantMsgId = `error-assistant-${Date.now()}`;
-      setMessages(prev => [...prev,
-        {
-          id: userMsgId,
-          role: 'user',
-          content: userMessage,
-          created_at: new Date().toISOString(),
-          image_url: imageData ? 'attached' : null,
-        },
-        {
-          id: assistantMsgId,
-          role: 'assistant',
-          content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again or check your connection.`,
-          created_at: new Date().toISOString(),
-        }
-      ]);
+      alert('Failed to send message. Please try again.');
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+  const handleClearHistory = async () => {
+    if (!confirm('Are you sure you want to clear all chat history? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('farmer_joe_chat_messages')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setMessages([]);
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      alert('Failed to clear history');
     }
   };
 
-  return (
-    <>
-      {/* Floating Button */}
-      {!isOpen && (
-        <div className="fixed right-6 bottom-6 z-50">
-          {showBubble && !hasEngaged && (
-            <div className="absolute bottom-full right-0 mb-4 animate-bounce-gentle">
-              <div className="relative bg-white rounded-2xl shadow-2xl px-6 py-4 max-w-[220px] border-2 border-green-400">
-                <button
-                  onClick={() => setShowBubble(false)}
-                  className="absolute -top-2 -right-2 bg-gray-600 text-white rounded-full p-1 hover:bg-gray-700 transition-colors shadow-md"
-                  aria-label="Dismiss bubble"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-                <p className="text-sm font-bold text-green-700 text-center leading-relaxed">
-                  {bubbleText}
-                </p>
-                <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r-2 border-b-2 border-green-400 transform rotate-45"></div>
-              </div>
-            </div>
-          )}
+  if (!isOpen && showBubble && !hasEngaged) {
+    return (
+      <>
+        <button
+          onClick={handleOpen}
+          className="fixed bottom-6 right-6 bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl transition-all z-50 animate-bounce-gentle flex items-center justify-center"
+          style={{
+            width: '70px',
+            height: '70px',
+            animation: 'gentle-bounce 2.5s ease-in-out infinite'
+          }}
+        >
+          <FarmerJoeAvatar size="md" />
+        </button>
 
-          <button
-            onClick={() => {
-              setIsOpen(true);
-              setShowBubble(false);
-              if (!hasEngaged) {
-                localStorage.setItem('farmerJoeEngaged', 'true');
-                setHasEngaged(true);
-              }
-            }}
-            className={`bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 group p-1 ${!hasEngaged ? 'animate-drop-bounce' : ''}`}
-          >
-            <div className="relative">
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-              <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-full p-3 flex items-center gap-3">
-                <FarmerJoeAvatar size="md" />
-                <div className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 pr-0 group-hover:pr-3">
-                  <span className="font-semibold text-sm whitespace-nowrap">Chat with Farmer Joe</span>
-                </div>
-              </div>
+        <div className="fixed bottom-28 right-6 bg-white rounded-2xl shadow-2xl p-4 z-50 max-w-xs border-2 border-green-600 animate-fade-in">
+          <div className="flex items-start gap-3">
+            <FarmerJoeAvatar size="sm" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-900 mb-1">Farmer Joe</p>
+              <p className="text-sm text-gray-700">{bubbleText}</p>
             </div>
+            <button
+              onClick={() => setShowBubble(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes gentle-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+          }
+          @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-bounce-gentle {
+            animation: gentle-bounce 2.5s ease-in-out infinite;
+          }
+          .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+          }
+        `}</style>
+      </>
+    );
+  }
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={handleOpen}
+        className="fixed bottom-6 right-6 bg-gradient-to-br from-green-600 to-green-700 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transition-all z-50 flex items-center justify-center"
+        style={{
+          width: '70px',
+          height: '70px',
+        }}
+      >
+        <FarmerJoeAvatar size="md" />
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col z-50 border-2 border-green-600">
+      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 rounded-t-2xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FarmerJoeAvatar size="sm" />
+          <div>
+            <h3 className="font-bold text-lg">Farmer Joe</h3>
+            <p className="text-xs text-green-100">Your farming assistant</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && messages.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              className="text-white hover:bg-green-800 p-2 rounded transition-colors"
+              title="Clear chat history"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={handleClose}
+            className="text-white hover:bg-green-800 p-2 rounded transition-colors"
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
-      )}
+      </div>
 
-      {/* Chat Window */}
-      {isOpen && (
-        <div className="fixed right-0 top-0 w-full sm:w-[450px] h-full bg-white shadow-2xl flex flex-col z-50 border-l-2 border-green-200">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FarmerJoeAvatar size="md" />
-              <div>
-                <h3 className="font-semibold text-lg">Farmer Joe</h3>
-                <p className="text-xs text-green-100">
-                  {subscriptionStatus?.hasActiveSubscription ? (
-                    'Premium Subscriber'
-                  ) : isAuthenticated && subscriptionStatus ? (
-                    `${Math.max(0, MAX_FREE_MESSAGES - subscriptionStatus.messagesCount)} free messages left`
-                  ) : !isAuthenticated ? (
-                    `${MAX_FREE_MESSAGES - guestQuestionCount} free messages left`
-                  ) : (
-                    'Your AI Farming Assistant'
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-green-50 to-white">
+        {isLoadingHistory ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <FarmerJoeAvatar size="lg" />
+            <h4 className="text-lg font-bold text-green-900 mt-4 mb-2">
+              Welcome to Farmer Joe!
+            </h4>
+            <p className="text-sm text-gray-600 mb-4">
+              I'm here to help with farming advice, pest identification, and weather-based recommendations.
+            </p>
+            <div className="text-left w-full space-y-2">
+              <p className="text-xs text-gray-500 font-semibold mb-2">Try asking:</p>
               <button
-                onClick={clearChatHistory}
-                className="hover:bg-green-800 p-2 rounded transition-colors"
-                title="Clear chat history"
+                onClick={() => setInput("What are the best spray conditions today?")}
+                className="w-full text-left text-xs bg-white hover:bg-green-50 border border-green-200 rounded-lg p-2 transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
+                "What are the best spray conditions today?"
               </button>
               <button
-                onClick={() => setIsOpen(false)}
-                className="hover:bg-green-800 p-2 rounded transition-colors"
+                onClick={() => setInput("When should I plant my crops?")}
+                className="w-full text-left text-xs bg-white hover:bg-green-50 border border-green-200 rounded-lg p-2 transition-colors"
               >
-                <X className="w-5 h-5" />
+                "When should I plant my crops?"
+              </button>
+              <button
+                onClick={() => setInput("Help me identify this pest (upload image)")}
+                className="w-full text-left text-xs bg-white hover:bg-green-50 border border-green-200 rounded-lg p-2 transition-colors"
+              >
+                "Help me identify this pest (upload image)"
               </button>
             </div>
           </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            {isLoadingHistory ? (
-              <div className="flex items-center justify-center h-full">
-                <Loader2 className="w-6 h-6 animate-spin text-green-600" />
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500 text-center px-4">
-                <FarmerJoeAvatar size="lg" />
-                <p className="text-lg font-semibold mb-2 mt-4 text-gray-700">Howdy! I'm Farmer Joe</p>
-                <p className="text-sm text-gray-600 mb-4">
-                  Your AI farming assistant here to help with weather conditions, farm planning, and agricultural advice.
-                </p>
-                {!isAuthenticated && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 mt-2">
-                    <p className="font-medium mb-2">Free Trial: {MAX_FREE_MESSAGES - guestQuestionCount} messages remaining</p>
-                    <p className="font-medium mb-1">Subscribe for $5.99/month:</p>
-                    <ul className="text-left space-y-1">
-                      <li>• Unlimited messages</li>
-                      <li>• Unlimited image uploads</li>
-                      <li>• Save conversation history</li>
-                      <li>• Get personalized advice</li>
-                    </ul>
-                  </div>
-                )}
-                {isAuthenticated && subscriptionStatus && !subscriptionStatus.hasActiveSubscription && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 mt-2">
-                    <p className="font-medium mb-2">Free Trial</p>
-                    <p className="text-xs mb-2">• {Math.max(0, MAX_FREE_MESSAGES - subscriptionStatus.messagesCount)} messages remaining</p>
-                    <p className="text-xs mb-3">• {Math.max(0, MAX_FREE_UPLOADS - imageUploadCount)} image uploads remaining</p>
-                    <button
-                      onClick={() => setShowSubscriptionManager(true)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors text-xs"
-                    >
-                      Subscribe Now - $5.99/month
-                    </button>
-                  </div>
-                )}
-                {isAuthenticated && subscriptionStatus?.needsSubscription && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mt-2">
-                    <p className="font-semibold mb-2">Subscription Required</p>
-                    <p className="mb-2">Subscribe to Farmer Joe for just $5.99/month to get:</p>
-                    <ul className="text-left space-y-1 mb-3">
-                      <li>• Unlimited AI chat access</li>
-                      <li>• Personalized farm advice</li>
-                      <li>• Weather-based insights</li>
-                      <li>• Conversation history</li>
-                    </ul>
-                    <button
-                      onClick={() => setShowSubscriptionManager(true)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded transition-colors"
-                    >
-                      Subscribe Now - $5.99/month
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              messages.map((msg) => (
-                <div key={msg.id}>
-                  {msg.role === 'user' ? (
-                    <div className="flex justify-end items-end gap-2 mb-3">
-                      <div className="bg-blue-600 text-white rounded-2xl rounded-br-none px-4 py-3 max-w-[80%] shadow-md">
-                        {msg.image_url && (
-                          <div className="mb-2">
-                            <div className="bg-white rounded p-1">
-                              <Camera className="w-8 h-8 text-blue-600 mx-auto" />
-                              <p className="text-xs text-blue-600 text-center mt-1">Image attached</p>
-                            </div>
-                          </div>
-                        )}
-                        <p className="text-sm leading-relaxed">{msg.content}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex justify-start items-start gap-2 mb-3">
-                      <div className="flex-shrink-0 mt-1">
-                        <FarmerJoeAvatar size="sm" />
-                      </div>
-                      <div className="bg-green-50 border-2 border-green-200 rounded-2xl rounded-tl-none px-4 py-3 max-w-[75%] shadow-sm">
-                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                      </div>
-                    </div>
-                  )}
+        ) : (
+          messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {message.role === 'assistant' && (
+                <div className="flex-shrink-0">
+                  <FarmerJoeAvatar size="sm" />
                 </div>
-              ))
-            )}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-sm">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Farmer Joe is typing...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
-            {!isAuthenticated && guestQuestionCount >= MAX_FREE_MESSAGES ? (
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 text-center">
-                <p className="font-semibold mb-2">Free Trial Expired</p>
-                <p className="text-sm mb-3">You've used all 10 free messages! Sign in and subscribe for $5.99/month to unlock unlimited access to Farmer Joe!</p>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-                >
-                  Sign In Now
-                </button>
-              </div>
-            ) : subscriptionStatus?.needsSubscription && showSubscriptionPrompt ? (
-              <div className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg p-4 text-center">
-                <p className="font-semibold mb-2">Free Trial Complete</p>
-                <p className="text-sm mb-3">You've used all 10 free messages. Subscribe for $5.99/month to continue chatting with Farmer Joe!</p>
-                <button
-                  onClick={() => setShowSubscriptionManager(true)}
-                  className="bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-green-50 transition-colors w-full"
-                >
-                  Subscribe Now - $5.99/month
-                </button>
-              </div>
-            ) : (
-              <>
-                {imagePreview && (
-                  <div className="mb-3 relative inline-block">
-                    <img
-                      src={imagePreview}
-                      alt="Selected"
-                      className="max-w-[200px] max-h-[200px] rounded-lg border-2 border-green-300 object-cover"
-                    />
-                    <button
-                      onClick={removeImage}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                    >
-                      <XCircle className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={imagePreview ? "Describe what you want to know about this image..." : "Type your message or upload a photo..."}
-                    disabled={isLoading}
-                    className="w-full px-4 py-3 focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed text-sm rounded-t-lg"
+              )}
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  message.role === 'user'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white border border-green-200 text-gray-800'
+                }`}
+              >
+                {message.image_url && (
+                  <img
+                    src={message.image_url}
+                    alt="Uploaded"
+                    className="rounded-lg mb-2 max-w-full h-auto"
                   />
-                  <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageSelect}
-                        accept="image/*"
-                        className="hidden"
-                        disabled={isLoading}
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isLoading}
-                        className="text-green-600 hover:bg-green-50 p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Upload photo of pest or disease"
-                      >
-                        <Camera className="w-5 h-5" />
-                      </button>
-                      <p className="text-xs text-gray-500">
-                        {!isAuthenticated && guestQuestionCount > 0
-                          ? `${MAX_GUEST_QUESTIONS - guestQuestionCount} free questions left`
-                          : imagePreview ? 'Photo ready to analyze' : 'Ask about pests, diseases, weather'
-                        }
-                      </p>
-                    </div>
-                    <button
-                      onClick={sendMessage}
-                      disabled={(!input.trim() && !selectedImage) || isLoading}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                    >
-                      <span className="text-sm font-medium">Send</span>
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+                )}
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              </div>
+            </div>
+          ))
+        )}
+        {isLoading && (
+          <div className="flex gap-3 justify-start">
+            <div className="flex-shrink-0">
+              <FarmerJoeAvatar size="sm" />
+            </div>
+            <div className="bg-white border border-green-200 rounded-2xl px-4 py-3">
+              <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-      {showSubscriptionManager && (
-        <SubscriptionManager onClose={() => setShowSubscriptionManager(false)} />
+      {!isAuthenticated && guestQuestionCount >= MAX_GUEST_QUESTIONS ? (
+        <div className="p-4 bg-yellow-50 border-t border-yellow-200">
+          <p className="text-sm text-gray-700 mb-3 text-center">
+            You've reached the maximum number of guest questions.
+          </p>
+          <button
+            onClick={() => window.location.href = '/?signup=true'}
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            Sign Up to Continue
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="p-4 border-t border-green-200">
+          {imagePreview && (
+            <div className="mb-2 relative inline-block">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-20 h-20 object-cover rounded-lg border-2 border-green-600"
+              />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+              title="Upload image"
+            >
+              <Camera className="w-5 h-5" />
+            </button>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask Farmer Joe..."
+              className="flex-1 px-4 py-2 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || (!input.trim() && !selectedImage)}
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+          {!isAuthenticated && (
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              {MAX_GUEST_QUESTIONS - guestQuestionCount} guest questions remaining
+            </p>
+          )}
+        </form>
       )}
-    </>
+    </div>
   );
 }
