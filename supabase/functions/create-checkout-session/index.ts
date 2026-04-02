@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'us_bank_account', 'link', 'cashapp', 'affirm', 'afterpay_clearpay'],
       line_items: [
         {
           price: Deno.env.get('STRIPE_PRICE_ID'),
@@ -103,6 +103,7 @@ Deno.serve(async (req: Request) => {
         },
       ],
       mode: 'subscription',
+      allow_promotion_codes: true,
       success_url: `${req.headers.get('origin') || Deno.env.get('SUPABASE_URL')}?subscription=success`,
       cancel_url: `${req.headers.get('origin') || Deno.env.get('SUPABASE_URL')}?subscription=cancelled`,
       subscription_data: {
