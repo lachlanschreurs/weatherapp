@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Check, X, Loader2, Calendar, AlertCircle, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { loadStripe } from '@stripe/stripe-js';
 
 interface SubscriptionManagerProps {
   onClose?: () => void;
@@ -191,10 +192,15 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         return;
       }
 
-      console.log('Session token exists:', !!session?.access_token);
-      console.log('Access token length:', session.access_token.length);
-      console.log('Access token first 20 chars:', session.access_token.slice(0, 20));
-      console.log('Access token last 20 chars:', session.access_token.slice(-20));
+      const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+      if (!stripePublishableKey) {
+        throw new Error('Stripe configuration missing. Please contact support.');
+      }
+
+      const stripe = await loadStripe(stripePublishableKey);
+      if (!stripe) {
+        throw new Error('Failed to load Stripe. Please refresh and try again.');
+      }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
       const headers = {
@@ -202,8 +208,6 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
         'Content-Type': 'application/json',
         'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
       };
-
-      console.log('Sending request with Authorization header:', headers.Authorization.substring(0, 30) + '...');
 
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -224,10 +228,16 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       const data = await response.json();
 
-      if (data?.url) {
-        window.location.href = data.url;
+      if (data?.sessionId) {
+        const { error } = await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
+
+        if (error) {
+          throw new Error(error.message || 'Failed to redirect to checkout');
+        }
       } else {
-        throw new Error('No checkout URL returned');
+        throw new Error('No checkout session ID returned');
       }
     } catch (error) {
       console.error('Error creating checkout:', error);

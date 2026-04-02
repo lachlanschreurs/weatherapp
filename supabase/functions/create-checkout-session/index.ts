@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
     const session = await sessionResponse.json();
 
     return new Response(
-      JSON.stringify({ url: session.url }),
+      JSON.stringify({ sessionId: session.id }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
