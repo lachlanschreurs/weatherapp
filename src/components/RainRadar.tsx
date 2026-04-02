@@ -114,16 +114,17 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         doubleClickZoom: true,
         touchZoom: true,
         boxZoom: true,
-        maxZoom: 18,
-        minZoom: 4
+        dragging: true,
+        maxZoom: 15,
+        minZoom: 5
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap',
-        maxZoom: 19,
-        updateWhenIdle: true,
-        updateWhenZooming: false,
-        keepBuffer: 2
+        maxZoom: 15,
+        updateWhenIdle: false,
+        updateWhenZooming: true,
+        keepBuffer: 4
       }).addTo(map);
 
       L.marker([lat, lon], {
@@ -152,12 +153,12 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         opacity: opacity,
         tileSize: 256,
         zIndex: 1000,
-        maxZoom: 18,
+        maxZoom: 15,
         attribution: 'RainViewer',
         updateWhenIdle: false,
         updateWhenZooming: true,
-        keepBuffer: 2,
-        maxNativeZoom: 14
+        keepBuffer: 4,
+        maxNativeZoom: 11
       }).addTo(map);
     };
 
