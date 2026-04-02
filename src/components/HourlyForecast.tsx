@@ -60,7 +60,10 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
     });
   }
 
-  for (let i = 0; i < 24 && i < forecastList.length; i++) {
+  let hoursAdded = currentWeather ? 1 : 0;
+  const targetHours = 24;
+
+  for (let i = 0; i < forecastList.length && hoursAdded < targetHours; i++) {
     const item = forecastList[i];
     const itemTimestamp = item.dt * 1000;
 
@@ -92,6 +95,8 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
       day: date.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase(),
       timestamp: itemTimestamp,
     });
+
+    hoursAdded++;
   }
 
   useEffect(() => {
