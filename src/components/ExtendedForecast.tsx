@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown, Minus, CloudRain, Wind, Droplet } from 'lucide-react';
 import { getSprayCondition } from '../utils/deltaT';
 
@@ -13,59 +13,96 @@ interface ExtendedForecastProps {
 export function ExtendedForecast({ location }: ExtendedForecastProps) {
   const [loading, setLoading] = useState(false);
   const [forecastData, setForecastData] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  const generate30DayForecast = () => {
+  const generate30DayForecast = async () => {
     setLoading(true);
+    setError(null);
 
-    const forecast = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-      const baseTemp = 18 + Math.sin((i / 30) * Math.PI) * 8;
-      const variation = Math.random() * 6 - 3;
-      const rainChance = Math.round(20 + Math.random() * 60);
-      const windSpeed = Math.round(10 + Math.random() * 20);
-      const rainfall = rainChance > 50 ? (rainChance / 100) * 5 : 0;
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration is missing');
+      }
 
-      const sprayCondition = getSprayCondition(windSpeed, rainfall);
+      const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
 
-      const isLowConfidence = i >= 14;
+      const response = await fetch(weatherUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Content-Type': 'application/json',
+        }
+      });
 
-      return {
-        date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', weekday: 'short' }),
-        tempHigh: Math.round(baseTemp + variation + 5),
-        tempLow: Math.round(baseTemp + variation - 3),
-        rainChance,
-        windSpeed,
-        confidence: i < 7 ? 'High' : i < 14 ? 'Medium' : 'Low',
-        sprayRating: isLowConfidence ? 'Monitor' : sprayCondition.rating,
-        sprayColor: isLowConfidence ? 'text-gray-700' : sprayCondition.color,
-        sprayBg: isLowConfidence ? 'bg-gray-100' : sprayCondition.bgColor,
-      };
-    });
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
+      }
 
-    setForecastData(forecast);
-    setLoading(false);
+      const weatherData = await response.json();
+      const dailyForecasts = weatherData.daily || [];
+
+      const forecast = dailyForecasts.map((day: any, i: number) => {
+        const date = new Date(day.dt * 1000);
+        const windSpeedKmh = Math.round((day.wind_speed || 0) * 3.6);
+        const rainfall = day.rain || 0;
+        const rainChance = Math.round((day.pop || 0) * 100);
+
+        const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
+
+        const isLowConfidence = i >= 7;
+
+        return {
+          date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', weekday: 'short' }),
+          tempHigh: Math.round(day.temp.max),
+          tempLow: Math.round(day.temp.min),
+          rainChance,
+          windSpeed: windSpeedKmh,
+          confidence: i < 7 ? 'High' : 'Medium',
+          sprayRating: isLowConfidence ? 'Monitor' : sprayCondition.rating,
+          sprayColor: isLowConfidence ? 'text-gray-700' : sprayCondition.color,
+          sprayBg: isLowConfidence ? 'bg-gray-100' : sprayCondition.bgColor,
+        };
+      });
+
+      setForecastData(forecast);
+    } catch (err) {
+      console.error('Error fetching forecast:', err);
+      setError('Failed to load forecast data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (location.lat && location.lon) {
+      setForecastData([]);
+    }
+  }, [location.lat, location.lon]);
 
   if (forecastData.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-green-200">
         <div className="text-center">
           <Calendar className="w-16 h-16 text-green-700 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-green-900 mb-3">30-Day Extended Forecast</h3>
+          <h3 className="text-2xl font-bold text-green-900 mb-3">Extended Forecast</h3>
           <p className="text-gray-600 mb-6">
-            View long-range weather predictions for {location.name}
+            View detailed weather predictions for {location.name}
           </p>
+          {error && (
+            <p className="text-red-600 mb-4">{error}</p>
+          )}
           <button
             onClick={generate30DayForecast}
             disabled={loading}
             className="bg-green-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-800 transition-colors disabled:opacity-50"
           >
-            {loading ? 'Loading...' : 'Generate 30-Day Forecast'}
+            {loading ? 'Loading...' : 'Load Extended Forecast'}
           </button>
           <p className="text-xs text-gray-500 mt-3">
-            Extended forecasts are estimates based on historical patterns
+            Displays available forecast data from OpenWeatherMap
           </p>
         </div>
       </div>
@@ -83,13 +120,14 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Calendar className="w-8 h-8 text-green-700" />
-          <h3 className="text-2xl font-bold text-green-900">30-Day Extended Forecast</h3>
+          <h3 className="text-2xl font-bold text-green-900">Extended Forecast ({forecastData.length} Days)</h3>
         </div>
         <button
           onClick={generate30DayForecast}
-          className="text-sm bg-green-100 text-green-800 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors"
+          disabled={loading}
+          className="text-sm bg-green-100 text-green-800 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50"
         >
-          Refresh
+          {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
@@ -121,7 +159,7 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
-        {forecastData.slice(0, 10).map((day, index) => (
+        {forecastData.map((day, index) => (
           <div
             key={index}
             className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-4 border border-green-200 hover:shadow-md transition-shadow"
@@ -149,30 +187,6 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
           </div>
         ))}
       </div>
-
-      <details className="mt-4">
-        <summary className="cursor-pointer text-green-700 font-semibold hover:text-green-800 flex items-center gap-2">
-          <span>View Days 11-30</span>
-        </summary>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4">
-          {forecastData.slice(10).map((day, index) => (
-            <div
-              key={index + 10}
-              className="bg-gray-50 rounded-lg p-3 border border-gray-200"
-            >
-              <div className="text-center">
-                <div className="text-xs font-semibold text-gray-700 mb-1">{day.date}</div>
-                <div className="text-lg font-bold text-gray-800">{day.tempHigh}° / {day.tempLow}°</div>
-                <div className="text-xs text-gray-600 mt-1">Rain: {day.rainChance}%</div>
-                <div className={`mt-2 text-xs px-2 py-0.5 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
-                  <Droplet className="w-3 h-3" />
-                  <span>{day.sprayRating}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </details>
 
     </div>
   );
