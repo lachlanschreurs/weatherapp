@@ -381,12 +381,12 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           </h2>
           <p className="text-gray-600 mb-6">
             {showPaymentStep
-              ? 'Add your payment method to start your 30-day free trial'
+              ? 'Start your free 1-month trial today'
               : isForgotPassword
                 ? 'Enter your email to receive a password reset link'
                 : isLogin
                   ? 'Sign in to access your farm data'
-                  : 'Create your free account today'}
+                  : 'Start your free 1-month trial'}
           </p>
 
           {showPaymentStep && (
@@ -398,16 +398,27 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 <div className="flex-1">
                   <h3 className="font-semibold text-green-900 mb-2">Account Created Successfully</h3>
                   <p className="text-sm text-gray-700 mb-3">
-                    Complete setup by adding a payment method. You won't be charged for 30 days.
+                    Add payment details to start your free 1-month trial
                   </p>
+                  <div className="bg-white border border-green-100 rounded-md p-3 mb-3">
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="text-2xl font-bold text-green-900">$2.99</span>
+                      <span className="text-sm text-gray-600">per month</span>
+                    </div>
+                    <p className="text-xs text-gray-500">After 1-month free trial</p>
+                  </div>
                   <ul className="text-xs text-gray-600 space-y-1.5">
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
-                      <span>30-day free trial starts today</span>
+                      <span>Free for 1 month starting today</span>
                     </li>
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
-                      <span>Cancel anytime before trial ends</span>
+                      <span>Then $2.99/month, cancel anytime</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>No charges during trial period</span>
                     </li>
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
@@ -426,10 +437,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                   <Check className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-1">30-Day Free Trial</h3>
-                  <p className="text-sm text-gray-700 mb-2">
-                    Full access for 30 days. No charge until trial ends.
-                  </p>
+                  <h3 className="font-semibold text-green-900 mb-1">1-Month Free Trial</h3>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <span className="text-lg font-bold text-green-900">$2.99/month</span>
+                    <span className="text-xs text-gray-600">after trial</span>
+                  </div>
                   <ul className="text-xs text-gray-600 space-y-1">
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
@@ -475,10 +487,10 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Redirecting to payment...
+                    Redirecting to Stripe...
                   </>
                 ) : (
-                  'Continue to Payment Setup'
+                  'Continue to Free 1 Month Trial'
                 )}
               </button>
 
