@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
         wind_gust: currentData.wind.gust,
         weather: currentData.weather,
       },
-      hourly: forecastData.list.slice(0, 48).map((item: any) => ({
+      hourly: forecastData.list.map((item: any) => ({
         dt: item.dt,
         temp: item.main.temp,
         feels_like: item.main.feels_like,
