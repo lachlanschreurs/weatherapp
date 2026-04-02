@@ -135,6 +135,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       }).addTo(map);
 
       mapInstanceRef.current = map;
+
+      const radarTileUrl = `${radarHost}${radarFrame.path}/512/{z}/{x}/{y}/4/1_1.png`;
+
+      tileLayerRef.current = L.tileLayer(radarTileUrl, {
+        opacity: opacity,
+        tileSize: 512,
+        zIndex: 1000,
+        maxZoom: 11,
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: 1,
+        maxNativeZoom: 10
+      }).addTo(map);
     };
 
     initMap();
@@ -146,41 +159,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         tileLayerRef.current = null;
       }
     };
-  }, [showRadar, lat, lon, isExpanded]);
+  }, [showRadar, lat, lon, isExpanded, radarFrame, radarHost, opacity]);
 
-  const tileUrl = useMemo(() => {
-    if (!radarHost || !radarFrame) return null;
-    return `${radarHost}${radarFrame.path}/512/{z}/{x}/{y}/4/1_1.png`;
-  }, [radarHost, radarFrame]);
-
-  useEffect(() => {
-    if (!mapInstanceRef.current || !tileUrl || !showRadar) return;
-
-    const L = (window as any).L;
-
-    if (tileLayerRef.current) {
-      mapInstanceRef.current.removeLayer(tileLayerRef.current);
-      tileLayerRef.current = null;
-    }
-
-    tileLayerRef.current = L.tileLayer(tileUrl, {
-      opacity: opacity,
-      tileSize: 512,
-      zIndex: 1000,
-      maxZoom: 11,
-      updateWhenIdle: true,
-      updateWhenZooming: false,
-      keepBuffer: 1,
-      maxNativeZoom: 10
-    }).addTo(mapInstanceRef.current);
-
-    return () => {
-      if (tileLayerRef.current && mapInstanceRef.current) {
-        mapInstanceRef.current.removeLayer(tileLayerRef.current);
-        tileLayerRef.current = null;
-      }
-    };
-  }, [tileUrl, showRadar, opacity]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp * 1000);
