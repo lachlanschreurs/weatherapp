@@ -145,13 +145,6 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
                 <Droplet className="w-3 h-3" />
                 <span>{day.sprayRating}</span>
               </div>
-              <div className={`mt-1 text-xs px-2 py-0.5 rounded ${
-                day.confidence === 'High' ? 'bg-green-200 text-green-800' :
-                day.confidence === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
-                'bg-gray-200 text-gray-600'
-              }`}>
-                {day.confidence}
-              </div>
             </div>
           </div>
         ))}
@@ -174,12 +167,6 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
                 <div className={`mt-2 text-xs px-2 py-0.5 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
                   <Droplet className="w-3 h-3" />
                   <span>{day.sprayRating}</span>
-                </div>
-                <div className={`mt-1 text-xs px-2 py-0.5 rounded ${
-                  day.confidence === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  {day.confidence}
                 </div>
               </div>
             </div>

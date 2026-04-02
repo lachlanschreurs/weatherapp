@@ -905,28 +905,33 @@ function App() {
           </div>
         )}
 
-        <div className="mt-8 bg-white rounded-xl shadow-md p-6 border-2 border-green-200">
-          <h3 className="text-lg font-bold text-green-900 mb-3">Spray Conditions Guide</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-              <div>
-                <span className="font-semibold text-green-800">Good:</span>
-                <span className="text-gray-700"> Wind &lt;15 km/h, no rain</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
-              <div>
-                <span className="font-semibold text-yellow-800">Moderate:</span>
-                <span className="text-gray-700"> Wind 15-25 km/h</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-              <div>
-                <span className="font-semibold text-red-800">Poor:</span>
-                <span className="text-gray-700"> Wind &gt;25 km/h or rain</span>
+        <div className="mt-8 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl shadow-md p-6 border-2 border-green-200">
+          <div className="flex items-start gap-3">
+            <Droplets className="w-6 h-6 text-green-700 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-green-900 mb-4">Spray Conditions Key</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-green-600 rounded flex-shrink-0"></div>
+                  <div>
+                    <span className="font-semibold text-green-800">Good:</span>
+                    <span className="text-gray-700"> Wind &lt;15 km/h, no rain</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-yellow-600 rounded flex-shrink-0"></div>
+                  <div>
+                    <span className="font-semibold text-yellow-800">Moderate:</span>
+                    <span className="text-gray-700"> Wind 15-25 km/h</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 bg-red-600 rounded flex-shrink-0"></div>
+                  <div>
+                    <span className="font-semibold text-red-800">Poor:</span>
+                    <span className="text-gray-700"> Wind &gt;25 km/h or rain</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
