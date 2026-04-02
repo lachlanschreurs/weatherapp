@@ -107,17 +107,23 @@ function buildWelcomeEmail(location: string): string {
       <p>Thank you for joining FarmCast. We're here to help you make better farming decisions with accurate weather forecasts and intelligent insights.</p>
 
       <div class="feature-box">
-        <h3 style="margin-top: 0;">What You'll Receive</h3>
+        <h3 style="margin-top: 0;">Welcome to FarmCast Premium</h3>
+        <p style="margin-bottom: 15px;">You now have access to all premium features including:</p>
         <ul style="margin: 10px 0; padding-left: 20px;">
-          <li>Daily Weather Forecasts - Delivered at 7:00 AM with spray conditions and farming recommendations</li>
-          <li>Weekly Soil Health Reports - Comprehensive analysis of your moisture probe data</li>
-          <li>Real-time Weather Alerts - Important weather warnings and optimal spray windows</li>
+          <li><strong>Daily Weather Forecasts</strong> - Delivered at 7:00 AM with spray conditions and farming recommendations</li>
+          <li><strong>30-Day Extended Forecast</strong> - Long-range planning for your farm operations</li>
+          <li><strong>Weather Alerts & Notifications</strong> - Real-time warnings for critical conditions</li>
+          <li><strong>Farmer Joe AI Assistant</strong> - Chat with our agricultural AI for personalized advice</li>
+          <li><strong>Best Planting Days</strong> - Optimized schedules based on weather patterns</li>
+          <li><strong>Irrigation Schedule</strong> - Smart watering recommendations</li>
+          <li><strong>Probe Monitoring</strong> - Track and analyze soil moisture data</li>
         </ul>
       </div>
 
       <div class="feature-box">
-        <h3 style="margin-top: 0;">1-Month Free Trial</h3>
-        <p>Enjoy 1 month of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month, charged monthly until you cancel.</p>
+        <h3 style="margin-top: 0;">Your Subscription</h3>
+        <p><strong>$2.99/month</strong> - Billed monthly until you cancel</p>
+        <p style="margin-top: 10px; font-size: 14px; color: #059669;">You'll receive daily forecast emails at 7:00 AM based on your location preferences.</p>
       </div>
 
       <div class="feature-box">
@@ -159,20 +165,36 @@ Welcome to FarmCast - Agricultural Weather Intelligence
 
 Thank you for joining FarmCast. We're here to help you make better farming decisions with accurate weather forecasts and intelligent insights.
 
-WHAT YOU'LL RECEIVE:
+WELCOME TO FARMCAST PREMIUM
+
+You now have access to all premium features including:
 
 - Daily Weather Forecasts
   Delivered at 7:00 AM with spray conditions and farming recommendations
 
-- Weekly Soil Health Reports
-  Comprehensive analysis of your moisture probe data
+- 30-Day Extended Forecast
+  Long-range planning for your farm operations
 
-- Real-time Weather Alerts
-  Important weather warnings and optimal spray windows
+- Weather Alerts & Notifications
+  Real-time warnings for critical conditions
 
-1-MONTH FREE TRIAL:
+- Farmer Joe AI Assistant
+  Chat with our agricultural AI for personalized advice
 
-Enjoy 1 month of email reports at no cost. After your trial, email reports continue with a Farmer Joe subscription at $5.99/month, charged monthly until you cancel.
+- Best Planting Days
+  Optimized schedules based on weather patterns
+
+- Irrigation Schedule
+  Smart watering recommendations
+
+- Probe Monitoring
+  Track and analyze soil moisture data
+
+YOUR SUBSCRIPTION:
+
+$2.99/month - Billed monthly until you cancel
+
+You'll receive daily forecast emails at 7:00 AM based on your location preferences.
 
 YOUR LOCATION:
 

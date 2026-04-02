@@ -327,11 +327,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
-  const handleSkipPayment = () => {
-    console.log('[Auth] User skipped payment setup');
-    onSuccess();
-    onClose();
-  };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -492,14 +487,6 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 ) : (
                   'Add Payment Details via Stripe'
                 )}
-              </button>
-
-              <button
-                onClick={handleSkipPayment}
-                disabled={loading}
-                className="w-full text-gray-600 py-2 rounded-lg font-medium hover:text-gray-800 transition-colors disabled:opacity-50"
-              >
-                Skip for now
               </button>
             </div>
           ) : (

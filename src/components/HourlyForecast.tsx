@@ -60,7 +60,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
     });
   }
 
-  for (let i = 0; i < 47 && i < forecastList.length; i++) {
+  for (let i = 0; i < 23 && i < forecastList.length; i++) {
     const item = forecastList[i];
     const itemTimestamp = item.dt * 1000;
 

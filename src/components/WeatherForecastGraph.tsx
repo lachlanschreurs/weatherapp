@@ -84,7 +84,7 @@ export function WeatherForecastGraph({ rainData, isPremium, dailyForecast = [] }
         <div className="flex items-center gap-2">
           <CloudRain className="w-5 h-5 text-blue-600" />
           <h2 className="text-xl font-semibold text-gray-800">
-            48-Hour Weather & Wind Forecast
+            24-Hour Weather & Wind Forecast
           </h2>
         </div>
       </div>
