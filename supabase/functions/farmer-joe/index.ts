@@ -56,10 +56,18 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { message, image, imageData, weatherContext, chatHistory }: ChatRequest = await req.json();
+    const { message, image, imageData: imageDataParam, weatherContext, chatHistory }: ChatRequest = await req.json();
 
     // Support both 'image' and 'imageData' parameter names
-    const imageData = image || imageData;
+    let imageData = image || imageDataParam;
+
+    // Strip data URL prefix if present (e.g., "data:image/jpeg;base64,")
+    if (imageData && imageData.startsWith('data:')) {
+      const base64Index = imageData.indexOf('base64,');
+      if (base64Index !== -1) {
+        imageData = imageData.substring(base64Index + 7);
+      }
+    }
 
     if (!message || message.trim().length === 0) {
       throw new Error('Message is required');

@@ -213,6 +213,13 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
         image: imageToSend,
       };
 
+      console.log('Sending request to Farmer Joe:', {
+        url: apiUrl,
+        messageLength: input.length,
+        hasImage: !!imageToSend,
+        historyCount: messages.length
+      });
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
@@ -231,11 +238,17 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API error:', response.status, errorText);
-        throw new Error(`API returned ${response.status}`);
+        console.error('API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: apiUrl,
+          errorText: errorText
+        });
+        throw new Error(`API returned ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('API response:', data);
 
       const assistantMessage: Message = {
         id: data.messageId || `temp-assistant-${Date.now()}`,
