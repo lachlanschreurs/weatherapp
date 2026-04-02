@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Calendar, TrendingUp, TrendingDown, Minus, CloudRain, Wind } from 'lucide-react';
+import { Calendar, TrendingUp, TrendingDown, Minus, CloudRain, Wind, Droplet } from 'lucide-react';
+import { getSprayCondition } from '../utils/deltaT';
 
 interface ExtendedForecastProps {
   location: {
@@ -22,14 +23,22 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
 
       const baseTemp = 18 + Math.sin((i / 30) * Math.PI) * 8;
       const variation = Math.random() * 6 - 3;
+      const rainChance = Math.round(20 + Math.random() * 60);
+      const windSpeed = Math.round(10 + Math.random() * 20);
+      const rainfall = rainChance > 50 ? (rainChance / 100) * 5 : 0;
+
+      const sprayCondition = getSprayCondition(windSpeed, rainfall);
 
       return {
         date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', weekday: 'short' }),
         tempHigh: Math.round(baseTemp + variation + 5),
         tempLow: Math.round(baseTemp + variation - 3),
-        rainChance: Math.round(20 + Math.random() * 60),
-        windSpeed: Math.round(10 + Math.random() * 20),
+        rainChance,
+        windSpeed,
         confidence: i < 7 ? 'High' : i < 14 ? 'Medium' : 'Low',
+        sprayRating: sprayCondition.rating,
+        sprayColor: sprayCondition.color,
+        sprayBg: sprayCondition.bgColor,
       };
     });
 
@@ -103,7 +112,11 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
                 <Wind className="w-3 h-3 text-gray-600" />
                 <span className="text-gray-700">{day.windSpeed}km/h</span>
               </div>
-              <div className={`mt-2 text-xs font-semibold px-2 py-1 rounded ${
+              <div className={`mt-2 text-xs font-semibold px-2 py-1 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
+                <Droplet className="w-3 h-3" />
+                <span>{day.sprayRating}</span>
+              </div>
+              <div className={`mt-1 text-xs px-2 py-0.5 rounded ${
                 day.confidence === 'High' ? 'bg-green-200 text-green-800' :
                 day.confidence === 'Medium' ? 'bg-yellow-200 text-yellow-800' :
                 'bg-gray-200 text-gray-600'
@@ -129,7 +142,11 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
                 <div className="text-xs font-semibold text-gray-700 mb-1">{day.date}</div>
                 <div className="text-lg font-bold text-gray-800">{day.tempHigh}° / {day.tempLow}°</div>
                 <div className="text-xs text-gray-600 mt-1">Rain: {day.rainChance}%</div>
-                <div className={`mt-2 text-xs px-2 py-0.5 rounded ${
+                <div className={`mt-2 text-xs px-2 py-0.5 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
+                  <Droplet className="w-3 h-3" />
+                  <span>{day.sprayRating}</span>
+                </div>
+                <div className={`mt-1 text-xs px-2 py-0.5 rounded ${
                   day.confidence === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-gray-100 text-gray-600'
                 }`}>
@@ -141,10 +158,27 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
         </div>
       </details>
 
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <p className="text-sm text-gray-700">
-          <strong>Note:</strong> Extended forecasts beyond 7 days are statistical estimates based on historical patterns and should be used for general planning only. Accuracy decreases with time.
-        </p>
+      <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+        <div className="flex items-start gap-3">
+          <Droplet className="w-5 h-5 text-green-700 mt-0.5" />
+          <div>
+            <h4 className="font-semibold text-green-900 mb-2">Spray Conditions Guide</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-green-100 border-2 border-green-700"></div>
+                <span className="text-gray-700"><strong>Good:</strong> Wind &lt;15 km/h, no rain</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-yellow-100 border-2 border-yellow-700"></div>
+                <span className="text-gray-700"><strong>Moderate:</strong> Wind 15-25 km/h</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-red-100 border-2 border-red-700"></div>
+                <span className="text-gray-700"><strong>Poor:</strong> Wind &gt;25 km/h or rain</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
