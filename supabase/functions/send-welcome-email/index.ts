@@ -252,7 +252,7 @@ function buildWelcomeEmail(location: string, probeReport: string = ''): string {
       </div>
 
       <div style="text-align: center; margin: 40px 0;">
-        <a href="https://farmcast.app" class="cta-button">Open Your Dashboard →</a>
+        <a href="https://farmcast.app" class="cta-button">Visit FarmCast →</a>
       </div>
 
       <div class="divider"></div>
