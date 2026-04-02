@@ -252,7 +252,7 @@ function buildWelcomeEmail(location: string, probeReport: string = ''): string {
       </div>
 
       <div style="text-align: center; margin: 40px 0;">
-        <a href="https://farmcast.app" class="cta-button">Visit FarmCast →</a>
+        <a href="https://farmcastweather.com" class="cta-button">Visit FarmCast →</a>
       </div>
 
       <div class="divider"></div>
@@ -266,8 +266,8 @@ function buildWelcomeEmail(location: string, probeReport: string = ''): string {
       <p style="font-weight: 700; color: #374151; font-size: 15px; margin-bottom: 15px;">FarmCast Weather</p>
       <p style="margin: 10px 0;">You're receiving this as a new FarmCast member.</p>
       <p style="margin: 15px 0;">
-        <a href="https://farmcast.app/preferences">Email Preferences</a> |
-        <a href="https://farmcast.app/unsubscribe">Unsubscribe</a>
+        <a href="https://farmcastweather.com/preferences">Email Preferences</a> |
+        <a href="https://farmcastweather.com/unsubscribe">Unsubscribe</a>
       </p>
       <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 12px;">
         FarmCast Weather Services<br>
@@ -319,7 +319,7 @@ YOUR LOCATION:
 Default location: ${location}
 You can update this anytime in your dashboard settings.
 
-Visit your dashboard: https://farmcast.app
+Visit your dashboard: https://farmcastweather.com
 
 Pro Tip: Start a conversation with Farmer Joe, our AI assistant, to get personalized farming advice based on your current weather conditions and soil data. He's available 24/7 in your dashboard!
 
@@ -328,8 +328,8 @@ Pro Tip: Start a conversation with Farmer Joe, our AI assistant, to get personal
 FarmCast Weather
 You're receiving this as a new FarmCast member.
 
-Manage preferences: https://farmcast.app/preferences
-Unsubscribe: https://farmcast.app/unsubscribe
+Manage preferences: https://farmcastweather.com/preferences
+Unsubscribe: https://farmcastweather.com/unsubscribe
 
 FarmCast Weather Services
 This email was sent to an active FarmCast account.
