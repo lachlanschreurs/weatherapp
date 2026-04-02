@@ -103,6 +103,7 @@ function App() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [appError, setAppError] = useState<string | null>(null);
   const [hasLoadedInitialLocation, setHasLoadedInitialLocation] = useState(false);
+  const [isUsingCurrentLocation, setIsUsingCurrentLocation] = useState(false);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -242,6 +243,7 @@ function App() {
       const favoriteLocation = await getFavoriteLocation(userId);
       if (favoriteLocation) {
         setLocation(favoriteLocation);
+        setIsUsingCurrentLocation(false);
         setHasLoadedInitialLocation(true);
       }
     } catch (error) {
@@ -252,6 +254,7 @@ function App() {
   const loadGuestLocation = async () => {
     const userLocation = await getUserLocation();
     setLocation(userLocation);
+    setIsUsingCurrentLocation(true);
     setHasLoadedInitialLocation(true);
   };
 
@@ -497,8 +500,9 @@ function App() {
   };
   const windDirection = getWindDirection(windDegrees);
 
-  const handleLocationSelect = (newLocation: Location) => {
+  const handleLocationSelect = async (newLocation: Location, fromCurrentLocation = false) => {
     setLocation(newLocation);
+    setIsUsingCurrentLocation(fromCurrentLocation);
     localStorage.setItem('farmcast-location', JSON.stringify(newLocation));
   };
 
@@ -687,6 +691,7 @@ function App() {
             onLocationSelect={handleLocationSelect}
             currentLocation={location.name}
             userId={user?.id}
+            isUsingCurrentLocation={isUsingCurrentLocation}
           />
         </div>
 

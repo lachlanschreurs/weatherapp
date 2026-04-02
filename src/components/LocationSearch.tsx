@@ -12,12 +12,13 @@ export interface Location {
 }
 
 interface LocationSearchProps {
-  onLocationSelect: (location: Location) => void;
+  onLocationSelect: (location: Location, fromCurrentLocation?: boolean) => void;
   currentLocation: string;
   userId?: string;
+  isUsingCurrentLocation?: boolean;
 }
 
-export function LocationSearch({ onLocationSelect, currentLocation, userId }: LocationSearchProps) {
+export function LocationSearch({ onLocationSelect, currentLocation, userId, isUsingCurrentLocation = false }: LocationSearchProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Location[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -26,6 +27,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId }: Lo
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const favoriteLocation = savedLocations.find(loc => loc.is_favorite);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -95,7 +97,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId }: Lo
   };
 
   const handleSelectLocation = async (location: Location) => {
-    onLocationSelect(location);
+    onLocationSelect(location, false);
     setQuery('');
     setResults([]);
     setShowResults(false);
@@ -116,7 +118,11 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId }: Lo
     setIsLoadingLocation(true);
     try {
       const location = await getUserLocation();
-      handleSelectLocation(location);
+      onLocationSelect(location, true);
+      setQuery('');
+      setResults([]);
+      setShowResults(false);
+      setIsExpanded(false);
     } catch (error) {
       console.error('Error getting current location:', error);
       alert('Could not get your current location. Please check your browser permissions.');
@@ -149,7 +155,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId }: Lo
       country: saved.country,
       state: saved.state || undefined,
     };
-    onLocationSelect(location);
+    onLocationSelect(location, false);
     setIsExpanded(false);
   };
 
@@ -160,8 +166,20 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId }: Lo
           onClick={() => setIsExpanded(true)}
           className="w-full px-4 py-3 border-2 border-green-300 rounded-lg bg-white shadow-sm hover:border-green-500 transition-colors flex items-center gap-3 text-left"
         >
+          {isUsingCurrentLocation ? (
+            <Navigation className="w-5 h-5 text-blue-600" />
+          ) : favoriteLocation ? (
+            <Star className="w-5 h-5 text-yellow-500 fill-current" />
+          ) : (
+            <MapPin className="w-5 h-5 text-green-600" />
+          )}
+          <div className="flex-1">
+            <div className="text-sm text-gray-500 mb-0.5">
+              {isUsingCurrentLocation ? 'Current Location' : favoriteLocation ? 'Favorite Location' : 'Selected Location'}
+            </div>
+            <div className="font-semibold text-gray-800">{currentLocation}</div>
+          </div>
           <Search className="w-5 h-5 text-gray-400" />
-          <span className="text-gray-600">Search for a location...</span>
         </button>
       ) : (
         <>
