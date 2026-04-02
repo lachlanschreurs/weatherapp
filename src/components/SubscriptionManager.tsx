@@ -17,30 +17,27 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session) {
-        setError('Please sign in to subscribe');
-        setIsLoading(false);
-        return;
+      console.log('[Checkout] session exists:', !!session);
+      console.log('[Checkout] access token exists:', !!session?.access_token);
+      console.log('[Checkout] token preview:', session?.access_token?.slice(0, 20));
+      console.log('[Checkout] calling create-checkout-session');
+
+      if (!session?.access_token) {
+        throw new Error('No active session found');
       }
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
+      if (error) {
+        console.error('[Checkout] function invoke error:', error);
+        throw error;
       }
 
-      if (data.url) {
+      if (data?.url) {
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL returned');
