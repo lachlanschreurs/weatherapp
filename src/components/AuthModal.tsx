@@ -12,6 +12,7 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [showPaymentStep, setShowPaymentStep] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -25,6 +26,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     if (isOpen) {
       setIsLogin(initialMode === 'login');
       setIsForgotPassword(false);
+      setShowPaymentStep(false);
       setError(null);
       setSuccessMessage(null);
       setEmail('');
@@ -189,12 +191,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       console.log('[Auth] ✓ Signup complete - user is ready');
       console.log('[Auth] === Signup Process Complete ===');
 
-      setSuccessMessage('Account created successfully! Welcome to FarmCast.');
+      setSuccessMessage('Account created successfully! Setting up payment...');
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      onSuccess();
-      onClose();
+      setShowPaymentStep(true);
+      setLoading(false);
     } catch (err: any) {
       console.error('[Auth] Signup error:', err);
 
@@ -274,6 +275,64 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
+  const handleStripeCheckout = async () => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      console.log('[Auth] Initializing Stripe checkout...');
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        throw new Error('Session not available. Please sign in again.');
+      }
+
+      console.log('[Auth] Calling Stripe checkout session...');
+      const checkoutUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+
+      const response = await fetch(checkoutUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('[Auth] Stripe checkout error:', text);
+        let errorData;
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          throw new Error(`Server error: ${response.status}`);
+        }
+        throw new Error(errorData?.error || 'Failed to initialize checkout');
+      }
+
+      const data = await response.json();
+
+      if (data?.url) {
+        console.log('[Auth] Redirecting to Stripe...');
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err: any) {
+      console.error('[Auth] Payment setup error:', err);
+      setError(err?.message || 'Failed to set up payment. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleSkipPayment = () => {
+    console.log('[Auth] User skipped payment setup');
+    onSuccess();
+    onClose();
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -312,30 +371,64 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
 
         <div className="p-8">
           <h2 className="text-3xl font-bold text-green-900 mb-2">
-            {isForgotPassword
-              ? 'Reset Password'
-              : isLogin
-                ? 'Welcome Back'
-                : 'Get Started with FarmCast'}
+            {showPaymentStep
+              ? 'Complete Your Setup'
+              : isForgotPassword
+                ? 'Reset Password'
+                : isLogin
+                  ? 'Welcome Back'
+                  : 'Get Started with FarmCast'}
           </h2>
           <p className="text-gray-600 mb-6">
-            {isForgotPassword
-              ? 'Enter your email to receive a password reset link'
-              : isLogin
-                ? 'Sign in to access your farm data'
-                : 'Create your free account today'}
+            {showPaymentStep
+              ? 'Add your payment method to start your 30-day free trial'
+              : isForgotPassword
+                ? 'Enter your email to receive a password reset link'
+                : isLogin
+                  ? 'Sign in to access your farm data'
+                  : 'Create your free account today'}
           </p>
 
-          {!isLogin && !isForgotPassword && (
+          {showPaymentStep && (
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
                   <Check className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-green-900 mb-1">Free Access</h3>
+                  <h3 className="font-semibold text-green-900 mb-2">Account Created Successfully</h3>
+                  <p className="text-sm text-gray-700 mb-3">
+                    Complete setup by adding a payment method. You won't be charged for 30 days.
+                  </p>
+                  <ul className="text-xs text-gray-600 space-y-1.5">
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>30-day free trial starts today</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>Cancel anytime before trial ends</span>
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <Check className="w-3 h-3 text-green-600" />
+                      <span>Secure payment with Stripe</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isLogin && !isForgotPassword && !showPaymentStep && (
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
+                  <Check className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-900 mb-1">30-Day Free Trial</h3>
                   <p className="text-sm text-gray-700 mb-2">
-                    Get full access to all features at no cost
+                    Full access for 30 days. No charge until trial ends.
                   </p>
                   <ul className="text-xs text-gray-600 space-y-1">
                     <li className="flex items-center gap-1.5">
@@ -352,7 +445,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                     </li>
                     <li className="flex items-center gap-1.5">
                       <Check className="w-3 h-3 text-green-600" />
-                      <span>All premium features included</span>
+                      <span>Cancel anytime</span>
                     </li>
                   </ul>
                 </div>
@@ -366,12 +459,38 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
-          {successMessage && (
+          {successMessage && !showPaymentStep && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {successMessage}
             </div>
           )}
 
+          {showPaymentStep ? (
+            <div className="space-y-4">
+              <button
+                onClick={handleStripeCheckout}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Redirecting to payment...
+                  </>
+                ) : (
+                  'Continue to Payment Setup'
+                )}
+              </button>
+
+              <button
+                onClick={handleSkipPayment}
+                disabled={loading}
+                className="w-full text-gray-600 py-2 rounded-lg font-medium hover:text-gray-800 transition-colors disabled:opacity-50"
+              >
+                Skip for now
+              </button>
+            </div>
+          ) : (
           <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleSignup} className="space-y-4">
             {!isLogin && !isForgotPassword && (
               <>
@@ -497,7 +616,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               )}
             </button>
           </form>
+          )}
 
+          {!showPaymentStep && (
           <div className="mt-6 text-center space-y-2">
             {isForgotPassword ? (
               <button
@@ -523,6 +644,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>
