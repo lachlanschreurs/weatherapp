@@ -837,6 +837,9 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
         FarmCast Weather Services<br>
         Sent to subscribers of daily weather forecasts
       </p>
+      <p style="margin-top: 12px; font-size: 9px; color: #6b7280; line-height: 1.3; opacity: 0.6;">
+        Your subscription: $2.99/month, billed monthly. Cancel anytime in settings.
+      </p>
     </div>
   </div>
 </body>
@@ -1011,5 +1014,7 @@ Unsubscribe: https://farmcastweather.com/unsubscribe
 
 FarmCast Weather Services
 Sent to subscribers of daily weather forecasts
+
+Your subscription: $2.99/month, billed monthly. Cancel anytime in settings.
   `.trim();
 }

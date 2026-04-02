@@ -245,13 +245,6 @@ function buildWelcomeEmail(location: string, probeReport: string = ''): string {
 
       ${probeReport}
 
-      <div class="subscription-box">
-        <h3>💳 Your Subscription</h3>
-        <div class="price">$2.99/month</div>
-        <p style="margin: 5px 0; color: #1e40af; font-weight: 600;">Billed monthly until you cancel</p>
-        <p style="margin-top: 15px; font-size: 14px; color: #1f2937;">You'll receive comprehensive daily forecast emails at 7:00 AM, 7 days a week, including weather data, spray windows, and soil moisture analysis.</p>
-      </div>
-
       <div class="location-box">
         <h3>📍 Your Location</h3>
         <p style="font-size: 18px; margin: 10px 0;">Default location: <strong>${location}</strong></p>
@@ -279,6 +272,9 @@ function buildWelcomeEmail(location: string, probeReport: string = ''): string {
       <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 12px;">
         FarmCast Weather Services<br>
         This email was sent to an active FarmCast account.
+      </p>
+      <p style="margin: 15px 0 0 0; color: #6b7280; font-size: 9px; line-height: 1.3; opacity: 0.7;">
+        Your subscription: $2.99/month, billed monthly. You'll receive daily forecast emails at 7:00 AM, 7 days a week. Cancel anytime.
       </p>
     </div>
   </div>
@@ -318,12 +314,6 @@ You now have access to all premium features:
 - Soil Moisture Monitoring
   Track and analyze probe data with AI-powered insights
 
-YOUR SUBSCRIPTION:
-
-$2.99/month - Billed monthly until you cancel
-
-You'll receive comprehensive daily forecast emails at 7:00 AM, 7 days a week, including weather data, spray windows, and soil moisture analysis.
-
 YOUR LOCATION:
 
 Default location: ${location}
@@ -343,5 +333,7 @@ Unsubscribe: https://farmcast.app/unsubscribe
 
 FarmCast Weather Services
 This email was sent to an active FarmCast account.
+
+Your subscription: $2.99/month, billed monthly. You'll receive daily forecast emails at 7:00 AM, 7 days a week. Cancel anytime.
   `.trim();
 }
