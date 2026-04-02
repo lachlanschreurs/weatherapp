@@ -19,17 +19,19 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
 
       console.log('[Checkout] session exists:', !!session);
       console.log('[Checkout] access token exists:', !!session?.access_token);
-      console.log('[Checkout] token preview:', session?.access_token?.slice(0, 20));
       console.log('[Checkout] calling create-checkout-session');
 
-      if (!session?.access_token) {
-        throw new Error('No active session found');
+      const headers: Record<string, string> = {};
+
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
+        console.log('[Checkout] including auth header');
+      } else {
+        console.log('[Checkout] no auth token, calling without authentication (JWT disabled)');
       }
 
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers,
       });
 
       if (error) {
