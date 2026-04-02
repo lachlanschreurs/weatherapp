@@ -490,7 +490,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                     Redirecting to Stripe...
                   </>
                 ) : (
-                  'Continue to Free 1 Month Trial'
+                  'Add Payment Details via Stripe'
                 )}
               </button>
 
