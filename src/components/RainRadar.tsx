@@ -18,7 +18,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [radarFrame, setRadarFrame] = useState<RadarFrame | null>(null);
   const [radarHost, setRadarHost] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  const [opacity, setOpacity] = useState(0.6);
+  const [opacity, setOpacity] = useState(0.8);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
@@ -29,6 +29,12 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       fetchRadarData();
       hasLoadedRef.current = true;
     }
+
+    const refreshInterval = setInterval(() => {
+      fetchRadarData();
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   async function fetchRadarData() {
@@ -136,17 +142,18 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
       mapInstanceRef.current = map;
 
-      const radarTileUrl = `${radarHost}${radarFrame.path}/512/{z}/{x}/{y}/4/1_1.png`;
+      const radarTileUrl = `${radarHost}${radarFrame.path}/256/{z}/{x}/{y}/2/1_1.png`;
 
       tileLayerRef.current = L.tileLayer(radarTileUrl, {
         opacity: opacity,
-        tileSize: 512,
+        tileSize: 256,
         zIndex: 1000,
-        maxZoom: 11,
-        updateWhenIdle: true,
-        updateWhenZooming: false,
-        keepBuffer: 1,
-        maxNativeZoom: 10
+        maxZoom: 12,
+        attribution: 'RainViewer',
+        updateWhenIdle: false,
+        updateWhenZooming: true,
+        keepBuffer: 2,
+        maxNativeZoom: 11
       }).addTo(map);
     };
 
@@ -310,7 +317,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </button>
               </div>
               <div className="mt-2 text-xs text-gray-500 text-center">
-                Latest radar snapshot - Click refresh to update
+                Live radar data - Auto-refreshes every 5 minutes
               </div>
             </div>
           )}

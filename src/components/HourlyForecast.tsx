@@ -60,7 +60,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
     });
   }
 
-  for (let i = 0; i < 23 && i < forecastList.length; i++) {
+  for (let i = 0; i < 24 && i < forecastList.length; i++) {
     const item = forecastList[i];
     const itemTimestamp = item.dt * 1000;
 
@@ -238,7 +238,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
   return (
     <div className="bg-slate-800 rounded-2xl shadow-2xl p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-white">48-Hour Forecast</h2>
+        <h2 className="text-2xl font-bold text-white">24-Hour Forecast</h2>
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-1 bg-orange-500 rounded"></div>
