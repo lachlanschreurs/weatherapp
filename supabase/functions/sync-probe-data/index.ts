@@ -43,16 +43,17 @@ class ProbeProviderAdapter {
     const stationId = connection.station_id;
 
     const method = 'GET';
-    const route = `/data/${stationId}/last`;
+    const route = `/v2/data/${stationId}/last`;
     const timestamp = new Date().toUTCString();
 
-    const stringToSign = `${method}${route}${timestamp}${publicKey}`;
+    const stringToSign = `${method}${route}${timestamp}`;
 
     console.log('HMAC Signing Details:', {
       method,
       route,
       timestamp,
-      publicKey,
+      publicKey: publicKey.substring(0, 8) + '...',
+      privateKey: privateKey.substring(0, 8) + '...',
       stringToSign,
     });
 
@@ -73,9 +74,9 @@ class ProbeProviderAdapter {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    console.log('Generated HMAC signature:', hmacHex);
+    console.log('Generated HMAC signature:', hmacHex.substring(0, 16) + '...');
 
-    const url = `https://api.fieldclimate.com/v2${route}`;
+    const url = `https://api.fieldclimate.com${route}`;
 
     console.log(`Fetching FieldClimate data from: ${url}`);
 
@@ -89,6 +90,7 @@ class ProbeProviderAdapter {
     });
 
     console.log('FieldClimate API Response Status:', response.status);
+    console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -99,6 +101,8 @@ class ProbeProviderAdapter {
         const errorJson = JSON.parse(errorText);
         if (errorJson.message) {
           errorMessage += `: ${errorJson.message}`;
+        } else if (errorJson.error) {
+          errorMessage += `: ${errorJson.error}`;
         } else {
           errorMessage += `: ${errorText}`;
         }
@@ -111,6 +115,7 @@ class ProbeProviderAdapter {
 
     const data = await response.json();
     console.log('FieldClimate API Response received successfully');
+    console.log('Response data keys:', Object.keys(data));
 
     return data;
   }
