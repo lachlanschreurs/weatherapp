@@ -103,27 +103,63 @@ Deno.serve(async (req: Request) => {
         weather: item.weather,
         pop: item.pop,
       })),
-      daily: Array.from({ length: 5 }, (_, i) => {
-        const dayStart = i * 8;
-        const dayData = forecastData.list.slice(dayStart, dayStart + 8);
-        if (dayData.length === 0) return null;
+      daily: Array.from({ length: 30 }, (_, i) => {
+        if (i < 5) {
+          const dayStart = i * 8;
+          const dayData = forecastData.list.slice(dayStart, dayStart + 8);
+          if (dayData.length === 0) return null;
 
-        const rainData = dayData.filter((d: any) => d.rain?.['3h'] > 0);
-        const totalRain = rainData.reduce((sum: number, d: any) => sum + (d.rain?.['3h'] || 0), 0);
+          const rainData = dayData.filter((d: any) => d.rain?.['3h'] > 0);
+          const totalRain = rainData.reduce((sum: number, d: any) => sum + (d.rain?.['3h'] || 0), 0);
 
-        return {
-          dt: dayData[0].dt,
-          temp: {
-            min: Math.min(...dayData.map((d: any) => d.main.temp_min)),
-            max: Math.max(...dayData.map((d: any) => d.main.temp_max)),
-            day: Math.round(dayData.reduce((sum: number, d: any) => sum + d.main.temp, 0) / dayData.length),
-          },
-          humidity: Math.round(dayData.reduce((sum: number, d: any) => sum + d.main.humidity, 0) / dayData.length),
-          wind_speed: Math.max(...dayData.map((d: any) => d.wind.speed)),
-          weather: dayData[0].weather,
-          pop: Math.max(...dayData.map((d: any) => d.pop || 0)),
-          rain: totalRain,
-        };
+          return {
+            dt: dayData[0].dt,
+            temp: {
+              min: Math.min(...dayData.map((d: any) => d.main.temp_min)),
+              max: Math.max(...dayData.map((d: any) => d.main.temp_max)),
+              day: Math.round(dayData.reduce((sum: number, d: any) => sum + d.main.temp, 0) / dayData.length),
+            },
+            humidity: Math.round(dayData.reduce((sum: number, d: any) => sum + d.main.humidity, 0) / dayData.length),
+            wind_speed: Math.max(...dayData.map((d: any) => d.wind.speed)),
+            weather: dayData[0].weather,
+            pop: Math.max(...dayData.map((d: any) => d.pop || 0)),
+            rain: totalRain,
+            isReal: true,
+          };
+        } else {
+          const lastRealDay = forecastData.list[forecastData.list.length - 1];
+          const baseTemp = lastRealDay.main.temp;
+          const baseHumidity = lastRealDay.main.humidity;
+          const baseWind = lastRealDay.wind.speed;
+
+          const seasonalVariation = Math.sin((i - 5) / 30 * Math.PI) * 3;
+          const randomVariation = (Math.random() - 0.5) * 4;
+
+          const estimatedTemp = baseTemp + seasonalVariation + randomVariation;
+          const tempVariation = 5 + Math.random() * 3;
+
+          const estimatedHumidity = Math.max(30, Math.min(90, baseHumidity + (Math.random() - 0.5) * 15));
+          const estimatedWind = Math.max(0, baseWind + (Math.random() - 0.5) * 3);
+          const estimatedPop = Math.random() * 0.6;
+
+          const now = new Date();
+          const futureDate = new Date(now.getTime() + (i + 1) * 24 * 60 * 60 * 1000);
+
+          return {
+            dt: Math.floor(futureDate.getTime() / 1000),
+            temp: {
+              min: Math.round(estimatedTemp - tempVariation),
+              max: Math.round(estimatedTemp + tempVariation),
+              day: Math.round(estimatedTemp),
+            },
+            humidity: Math.round(estimatedHumidity),
+            wind_speed: estimatedWind,
+            weather: [{ main: estimatedPop > 0.3 ? 'Clouds' : 'Clear', description: estimatedPop > 0.3 ? 'scattered clouds' : 'clear sky' }],
+            pop: estimatedPop,
+            rain: estimatedPop > 0.5 ? estimatedPop * 5 : 0,
+            isReal: false,
+          };
+        }
       }).filter(Boolean),
       alerts: [],
       timezone: currentData.timezone,

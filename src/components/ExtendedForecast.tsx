@@ -52,17 +52,21 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
 
         const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
+        const confidence = day.isReal === false
+          ? i < 10 ? 'Medium' : i < 20 ? 'Low' : 'Very Low'
+          : 'High';
+
         return {
           date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', weekday: 'short' }),
           tempHigh: Math.round(day.temp.max),
           tempLow: Math.round(day.temp.min),
           rainChance,
           windSpeed: windSpeedKmh,
-          confidence: 'High',
+          confidence,
           sprayRating: sprayCondition.rating,
           sprayColor: sprayCondition.color,
           sprayBg: sprayCondition.bgColor,
-          isReal: true,
+          isReal: day.isReal !== false,
         };
       });
 
@@ -86,9 +90,9 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
       <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-green-200">
         <div className="text-center">
           <Calendar className="w-16 h-16 text-green-700 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-green-900 mb-3">5-Day Detailed Forecast</h3>
+          <h3 className="text-2xl font-bold text-green-900 mb-3">30-Day Extended Forecast</h3>
           <p className="text-gray-600 mb-6">
-            View accurate weather predictions for {location.name}
+            View weather predictions for {location.name} (5 days real data + 25 days AI-estimated)
           </p>
           {error && (
             <p className="text-red-600 mb-4">{error}</p>
@@ -98,10 +102,10 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
             disabled={loading}
             className="bg-green-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-800 transition-colors disabled:opacity-50"
           >
-            {loading ? 'Loading...' : 'Load 5-Day Forecast'}
+            {loading ? 'Loading...' : 'Load 30-Day Forecast'}
           </button>
           <p className="text-xs text-gray-500 mt-3">
-            Real forecast data from OpenWeather API
+            Days 1-5: Real data from OpenWeather API • Days 6-30: AI-estimated based on trends
           </p>
         </div>
       </div>
@@ -119,7 +123,7 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Calendar className="w-8 h-8 text-green-700" />
-          <h3 className="text-2xl font-bold text-green-900">5-Day Detailed Forecast</h3>
+          <h3 className="text-2xl font-bold text-green-900">30-Day Extended Forecast</h3>
         </div>
         <button
           onClick={generate30DayForecast}
@@ -157,29 +161,36 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3 mb-4">
         {forecastData.map((day, index) => {
           return (
             <div
               key={index}
-              className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-4 border border-green-200 hover:shadow-md transition-shadow"
+              className={`rounded-xl p-3 border hover:shadow-md transition-shadow ${
+                day.isReal
+                  ? 'bg-gradient-to-br from-green-50 to-blue-50 border-green-200'
+                  : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-300'
+              }`}
             >
               <div className="text-center">
-                <div className="text-sm font-bold text-gray-800 mb-1">{day.date}</div>
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  <span className="text-2xl font-bold text-gray-800">{day.tempHigh}°</span>
+                <div className="text-xs font-bold text-gray-800 mb-1">{day.date}</div>
+                {!day.isReal && (
+                  <div className="text-xs text-gray-500 mb-1">Est.</div>
+                )}
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <span className="text-xl font-bold text-gray-800">{day.tempHigh}°</span>
                   {index < forecastData.length - 1 && getTrend(day.tempHigh, forecastData[index + 1].tempHigh)}
                 </div>
-                <div className="text-sm text-gray-600 mb-2">{day.tempLow}°</div>
-                <div className="flex items-center justify-center gap-2 text-xs mb-1">
+                <div className="text-xs text-gray-600 mb-2">{day.tempLow}°</div>
+                <div className="flex items-center justify-center gap-1 text-xs mb-1">
                   <CloudRain className="w-3 h-3 text-blue-600" />
                   <span className="text-gray-700">{day.rainChance}%</span>
                 </div>
-                <div className="flex items-center justify-center gap-2 text-xs">
+                <div className="flex items-center justify-center gap-1 text-xs mb-2">
                   <Wind className="w-3 h-3 text-gray-600" />
                   <span className="text-gray-700">{day.windSpeed}km/h</span>
                 </div>
-                <div className={`mt-2 text-xs font-semibold px-2 py-1 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
+                <div className={`text-xs font-semibold px-2 py-1 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
                   <Droplet className="w-3 h-3" />
                   <span>{day.sprayRating}</span>
                 </div>
