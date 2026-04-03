@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Gauge, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle, Settings, Eye, EyeOff } from 'lucide-react';
+import { Gauge, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle, Settings, Eye, EyeOff, Upload, Mail, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { CSVUploadModal } from './CSVUploadModal';
+import { EmailImportInstructions } from './EmailImportInstructions';
 
 interface ProbeConnection {
   id: string;
@@ -11,6 +13,9 @@ interface ProbeConnection {
   last_sync_at: string | null;
   last_error: string | null;
   sensor_mapping: Record<string, string>;
+  connection_method: string;
+  auth_config: Record<string, any>;
+  friendly_name: string | null;
 }
 
 interface ProbeReading {
@@ -25,19 +30,43 @@ interface ProbeReading {
   raw_payload: any;
 }
 
+const PROVIDERS = [
+  { id: 'fieldclimate', name: 'FieldClimate', authMethods: ['api_key'] },
+  { id: 'john_deere', name: 'John Deere', authMethods: ['oauth', 'api_key'] },
+  { id: 'cropx', name: 'CropX', authMethods: ['api_key'] },
+  { id: 'sentek', name: 'Sentek', authMethods: ['api_key', 'username_password'] },
+  { id: 'aquacheck', name: 'AquaCheck', authMethods: ['api_key', 'username_password'] },
+  { id: 'wildeye', name: 'Wildeye', authMethods: ['api_key'] },
+  { id: 'other', name: 'Other', authMethods: ['api_key', 'username_password'] },
+];
+
+const CONNECTION_METHODS = [
+  { id: 'api', name: 'Connect Provider', icon: Zap, description: 'Live sync with your probe API' },
+  { id: 'csv', name: 'Upload CSV', icon: Upload, description: 'Import historical data from file' },
+  { id: 'email', name: 'Email Import', icon: Mail, description: 'Forward reports to Farmcast' },
+];
+
 export function ProbeConnectionManager() {
   const [connections, setConnections] = useState<ProbeConnection[]>([]);
   const [readings, setReadings] = useState<Map<string, ProbeReading>>(new Map());
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showAPIForm, setShowAPIForm] = useState(false);
+  const [showCSVModal, setShowCSVModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [selectedProvider, setSelectedProvider] = useState(PROVIDERS[0]);
   const [formData, setFormData] = useState({
+    friendly_name: '',
     provider: 'fieldclimate',
+    connection_method: 'api_key',
     api_key: '',
     api_secret: '',
+    username: '',
+    password: '',
     station_id: '',
     device_id: '',
     sensor_mapping: '',
@@ -85,7 +114,18 @@ export function ProbeConnectionManager() {
     }
   }
 
-  async function handleAddConnection(e: React.FormEvent) {
+  function handleSelectConnectionMethod(methodId: string) {
+    setShowAddMenu(false);
+    if (methodId === 'api') {
+      setShowAPIForm(true);
+    } else if (methodId === 'csv') {
+      setShowCSVModal(true);
+    } else if (methodId === 'email') {
+      setShowEmailModal(true);
+    }
+  }
+
+  async function handleAddAPIConnection(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccessMessage(null);
@@ -104,13 +144,25 @@ export function ProbeConnectionManager() {
         }
       }
 
+      const authConfig: Record<string, any> = {};
+      if (formData.connection_method === 'api_key') {
+        authConfig.api_key = formData.api_key.trim();
+        authConfig.api_secret = formData.api_secret.trim();
+      } else if (formData.connection_method === 'username_password') {
+        authConfig.username = formData.username.trim();
+        authConfig.password = formData.password.trim();
+      }
+
       const { data: connection, error: insertError } = await supabase
         .from('probe_connections')
         .insert({
           user_id: user.id,
           provider: formData.provider,
-          api_key: formData.api_key.trim(),
-          api_secret: formData.api_secret.trim(),
+          friendly_name: formData.friendly_name.trim() || null,
+          connection_method: formData.connection_method,
+          auth_config: authConfig,
+          api_key: formData.api_key.trim() || null,
+          api_secret: formData.api_secret.trim() || null,
           station_id: formData.station_id.trim(),
           device_id: formData.device_id.trim() || null,
           sensor_mapping: sensorMapping,
@@ -121,42 +173,36 @@ export function ProbeConnectionManager() {
 
       if (insertError) throw insertError;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No session');
+      if (formData.provider === 'fieldclimate') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('No session');
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/sync-probe-data?connection_id=${connection.id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/sync-probe-data?connection_id=${connection.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const result = await response.json();
+
+        if (!result.success) {
+          await supabase
+            .from('probe_connections')
+            .delete()
+            .eq('id', connection.id);
+
+          throw new Error(result.error || 'Failed to connect to probe. Please check your credentials and station ID.');
         }
-      );
-
-      const result = await response.json();
-
-      if (!result.success) {
-        await supabase
-          .from('probe_connections')
-          .delete()
-          .eq('id', connection.id);
-
-        throw new Error(result.error || 'Failed to connect to probe. Please check your credentials and station ID.');
       }
 
       setSuccessMessage('Probe connected successfully!');
-      setShowAddForm(false);
-      setFormData({
-        provider: 'fieldclimate',
-        api_key: '',
-        api_secret: '',
-        station_id: '',
-        device_id: '',
-        sensor_mapping: '',
-      });
-
+      setShowAPIForm(false);
+      resetForm();
       await loadConnections();
 
     } catch (err: any) {
@@ -165,6 +211,22 @@ export function ProbeConnectionManager() {
     } finally {
       setTestingConnection(false);
     }
+  }
+
+  function resetForm() {
+    setFormData({
+      friendly_name: '',
+      provider: 'fieldclimate',
+      connection_method: 'api_key',
+      api_key: '',
+      api_secret: '',
+      username: '',
+      password: '',
+      station_id: '',
+      device_id: '',
+      sensor_mapping: '',
+    });
+    setSelectedProvider(PROVIDERS[0]);
   }
 
   async function handleDeleteConnection(connectionId: string) {
@@ -277,6 +339,11 @@ export function ProbeConnectionManager() {
     return date.toLocaleDateString();
   }
 
+  function getProviderDisplayName(providerId: string): string {
+    const provider = PROVIDERS.find(p => p.id === providerId);
+    return provider?.name || providerId;
+  }
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-lg p-8">
@@ -298,8 +365,8 @@ export function ProbeConnectionManager() {
                 <Gauge className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Moisture Probe Connections</h2>
-                <p className="text-sm text-green-100">Manage your soil moisture probe integrations</p>
+                <h2 className="text-xl font-bold text-white">Moisture Probe Sources</h2>
+                <p className="text-sm text-green-100">Connect any probe provider or import data</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -313,13 +380,38 @@ export function ProbeConnectionManager() {
                   Sync All
                 </button>
               )}
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium"
-              >
-                <Plus className="w-4 h-4" />
-                Add Probe
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowAddMenu(!showAddMenu)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Source
+                </button>
+
+                {showAddMenu && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                    {CONNECTION_METHODS.map((method) => {
+                      const Icon = method.icon;
+                      return (
+                        <button
+                          key={method.id}
+                          onClick={() => handleSelectConnectionMethod(method.id)}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-start gap-3 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="mt-0.5">
+                            <Icon className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{method.name}</div>
+                            <div className="text-sm text-gray-600">{method.description}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -343,26 +435,146 @@ export function ProbeConnectionManager() {
           </div>
         )}
 
-        {showAddForm && (
+        {showAPIForm && (
           <div className="p-6 bg-gray-50 border-t border-gray-200">
-            <form onSubmit={handleAddConnection} className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Connect Provider API</h3>
+            <form onSubmit={handleAddAPIConnection} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Provider
+                    Connection Name (optional)
                   </label>
-                  <select
-                    value={formData.provider}
-                    onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                  <input
+                    type="text"
+                    value={formData.friendly_name}
+                    onChange={(e) => setFormData({ ...formData, friendly_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="fieldclimate">FieldClimate</option>
-                  </select>
+                    placeholder="e.g., North Field Probe"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Station ID *
+                    Provider *
+                  </label>
+                  <select
+                    value={formData.provider}
+                    onChange={(e) => {
+                      const provider = PROVIDERS.find(p => p.id === e.target.value) || PROVIDERS[0];
+                      setSelectedProvider(provider);
+                      setFormData({
+                        ...formData,
+                        provider: e.target.value,
+                        connection_method: provider.authMethods[0] || 'api_key'
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    {PROVIDERS.map(provider => (
+                      <option key={provider.id} value={provider.id}>{provider.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedProvider.authMethods.length > 1 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Authentication Method *
+                    </label>
+                    <select
+                      value={formData.connection_method}
+                      onChange={(e) => setFormData({ ...formData, connection_method: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      {selectedProvider.authMethods.includes('api_key') && (
+                        <option value="api_key">API Key</option>
+                      )}
+                      {selectedProvider.authMethods.includes('oauth') && (
+                        <option value="oauth">OAuth</option>
+                      )}
+                      {selectedProvider.authMethods.includes('username_password') && (
+                        <option value="username_password">Username & Password</option>
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {formData.connection_method === 'api_key' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        API Key / Public Key *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showSecrets ? 'text' : 'password'}
+                          required
+                          value={formData.api_key}
+                          onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          placeholder="Your API key"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSecrets(!showSecrets)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showSecrets ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        API Secret / Private Key {formData.provider === 'fieldclimate' ? '*' : '(if required)'}
+                      </label>
+                      <input
+                        type={showSecrets ? 'text' : 'password'}
+                        required={formData.provider === 'fieldclimate'}
+                        value={formData.api_secret}
+                        onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Your API secret"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {formData.connection_method === 'username_password' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Username *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Your username"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Password *
+                      </label>
+                      <input
+                        type={showSecrets ? 'text' : 'password'}
+                        required
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        placeholder="Your password"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Station ID / Device ID *
                   </label>
                   <input
                     type="text"
@@ -376,44 +588,7 @@ export function ProbeConnectionManager() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    API Key *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showSecrets ? 'text' : 'password'}
-                      required
-                      value={formData.api_key}
-                      onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="Your API key"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSecrets(!showSecrets)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showSecrets ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    API Secret *
-                  </label>
-                  <input
-                    type={showSecrets ? 'text' : 'password'}
-                    required
-                    value={formData.api_secret}
-                    onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Your API secret"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Device ID (optional)
+                    Sub-Device ID (optional)
                   </label>
                   <input
                     type="text"
@@ -424,7 +599,7 @@ export function ProbeConnectionManager() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Sensor Mapping (optional JSON)
                   </label>
@@ -441,7 +616,10 @@ export function ProbeConnectionManager() {
               <div className="flex gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowAddForm(false)}
+                  onClick={() => {
+                    setShowAPIForm(false);
+                    resetForm();
+                  }}
                   className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancel
@@ -454,12 +632,12 @@ export function ProbeConnectionManager() {
                   {testingConnection ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      Testing Connection...
+                      {formData.provider === 'fieldclimate' ? 'Testing Connection...' : 'Saving...'}
                     </>
                   ) : (
                     <>
                       <Plus className="w-4 h-4" />
-                      Add Probe
+                      Connect Provider
                     </>
                   )}
                 </button>
@@ -473,13 +651,13 @@ export function ProbeConnectionManager() {
             <div className="text-center py-12">
               <Gauge className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No probe connections</h3>
-              <p className="text-gray-600 mb-4">Connect your moisture probe to see live soil data</p>
+              <p className="text-gray-600 mb-4">Connect any moisture probe provider or import your data</p>
               <button
-                onClick={() => setShowAddForm(true)}
+                onClick={() => setShowAddMenu(true)}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus className="w-5 h-5" />
-                Add Your First Probe
+                Add Your First Source
               </button>
             </div>
           ) : (
@@ -493,29 +671,36 @@ export function ProbeConnectionManager() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold text-gray-900">
-                            {connection.provider === 'fieldclimate' ? 'FieldClimate' : connection.provider}
+                            {connection.friendly_name || getProviderDisplayName(connection.provider)}
                           </h4>
-                          <span className="text-sm text-gray-500">Station: {connection.station_id}</span>
+                          {connection.friendly_name && (
+                            <span className="text-sm text-gray-500">
+                              ({getProviderDisplayName(connection.provider)})
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span>Station: {connection.station_id}</span>
                           <span>Last sync: {formatTimestamp(connection.last_sync_at)}</span>
                           {connection.last_error && (
                             <span className="text-red-600 flex items-center gap-1">
                               <AlertCircle className="w-4 h-4" />
-                              {connection.last_error}
+                              {connection.last_error.substring(0, 50)}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSyncConnection(connection.id)}
-                          disabled={isSyncing}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                          title="Sync now"
-                        >
-                          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                        </button>
+                        {connection.connection_method === 'api_key' && connection.provider === 'fieldclimate' && (
+                          <button
+                            onClick={() => handleSyncConnection(connection.id)}
+                            disabled={isSyncing}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Sync now"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                          </button>
+                        )}
                         <button
                           onClick={() => setShowRawData(showRawData === connection.id ? null : connection.id)}
                           className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -581,6 +766,22 @@ export function ProbeConnectionManager() {
           )}
         </div>
       </div>
+
+      {showCSVModal && (
+        <CSVUploadModal
+          onClose={() => setShowCSVModal(false)}
+          onSuccess={async () => {
+            setShowCSVModal(false);
+            await loadConnections();
+          }}
+        />
+      )}
+
+      {showEmailModal && (
+        <EmailImportInstructions
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
     </div>
   );
 }
