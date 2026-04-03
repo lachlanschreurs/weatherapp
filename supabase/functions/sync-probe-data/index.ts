@@ -88,66 +88,77 @@ class ProbeProviderAdapter {
       raw_payload: rawData,
     };
 
-    if (!rawData || !rawData.data) {
-      console.warn('No data field in FieldClimate response');
+    if (!rawData) {
+      console.warn('No data in FieldClimate response');
       return result;
     }
 
-    const sensors = rawData.data;
+    result.measured_at = rawData.date_time || rawData.dateTime || rawData.timestamp || new Date().toISOString();
 
-    result.measured_at = rawData.date_time || new Date().toISOString();
+    const sensors = rawData.data || rawData.sensors || rawData;
 
-    for (const [sensorCode, sensorData] of Object.entries(sensors)) {
-      if (!sensorData || typeof sensorData !== 'object') continue;
+    if (sensorMapping.moisture) {
+      result.moisture_percent = this.findSensorValue(sensors, sensorMapping.moisture);
+    }
+    if (sensorMapping.soil_temp) {
+      result.soil_temp_c = this.findSensorValue(sensors, sensorMapping.soil_temp);
+    }
+    if (sensorMapping.rainfall) {
+      result.rainfall_mm = this.findSensorValue(sensors, sensorMapping.rainfall);
+    }
+    if (sensorMapping.battery) {
+      result.battery_level = this.findSensorValue(sensors, sensorMapping.battery);
+    }
 
-      const data = sensorData as any;
+    if (!result.moisture_percent) {
+      result.moisture_percent = this.findValueByAliases(sensors, [
+        'moisture',
+        'soil_moisture',
+        'soilmoisture',
+        'vwc',
+        'volumetric_water_content',
+        'water_content',
+        'watercontent',
+        'sm',
+        'soil_water',
+      ]);
+    }
 
-      if (sensorMapping.moisture && sensorCode === sensorMapping.moisture) {
-        result.moisture_percent = this.extractNumericValue(data);
-      } else if (sensorMapping.soil_temp && sensorCode === sensorMapping.soil_temp) {
-        result.soil_temp_c = this.extractNumericValue(data);
-      } else if (sensorMapping.rainfall && sensorCode === sensorMapping.rainfall) {
-        result.rainfall_mm = this.extractNumericValue(data);
-      } else if (sensorMapping.battery && sensorCode === sensorMapping.battery) {
-        result.battery_level = this.extractNumericValue(data);
-      } else {
-        const sensorName = (data.name || '').toLowerCase();
-        const sensorCodeLower = sensorCode.toLowerCase();
+    if (!result.soil_temp_c) {
+      result.soil_temp_c = this.findValueByAliases(sensors, [
+        'soil_temp',
+        'soil_temperature',
+        'soiltemp',
+        'soiltemperature',
+        'temp_soil',
+        'temperature_soil',
+        'st',
+        'ground_temp',
+        'ground_temperature',
+      ]);
+    }
 
-        if (!result.moisture_percent && (
-          sensorName.includes('moisture') ||
-          sensorName.includes('water content') ||
-          sensorCodeLower.includes('sm') ||
-          sensorCodeLower.includes('vwc')
-        )) {
-          result.moisture_percent = this.extractNumericValue(data);
-        }
+    if (!result.rainfall_mm) {
+      result.rainfall_mm = this.findValueByAliases(sensors, [
+        'rain',
+        'rainfall',
+        'precipitation',
+        'precip',
+        'rain_1h',
+        'rain_24h',
+        'rain_total',
+      ]);
+    }
 
-        else if (!result.soil_temp_c && (
-          sensorName.includes('soil') && sensorName.includes('temp') ||
-          sensorCodeLower.includes('st') ||
-          sensorCodeLower.includes('soil_temp')
-        )) {
-          result.soil_temp_c = this.extractNumericValue(data);
-        }
-
-        else if (!result.rainfall_mm && (
-          sensorName.includes('rain') ||
-          sensorName.includes('precipitation') ||
-          sensorCodeLower.includes('rain') ||
-          sensorCodeLower.includes('precip')
-        )) {
-          result.rainfall_mm = this.extractNumericValue(data);
-        }
-
-        else if (!result.battery_level && (
-          sensorName.includes('battery') ||
-          sensorCodeLower.includes('bat') ||
-          sensorCodeLower.includes('battery')
-        )) {
-          result.battery_level = this.extractNumericValue(data);
-        }
-      }
+    if (!result.battery_level) {
+      result.battery_level = this.findValueByAliases(sensors, [
+        'battery',
+        'battery_level',
+        'batterylevel',
+        'bat',
+        'voltage',
+        'battery_voltage',
+      ]);
     }
 
     console.log('Normalized data:', {
@@ -160,23 +171,167 @@ class ProbeProviderAdapter {
     return result;
   }
 
-  static extractNumericValue(sensorData: any): number | null {
-    if (sensorData.values && Array.isArray(sensorData.values) && sensorData.values.length > 0) {
-      const lastValue = sensorData.values[sensorData.values.length - 1];
-      if (lastValue && typeof lastValue.value === 'number') {
-        return lastValue.value;
+  static findSensorValue(data: any, sensorCode: string): number | null {
+    try {
+      if (!data || typeof data !== 'object') return null;
+
+      if (data[sensorCode]) {
+        return this.extractNumericValue(data[sensorCode]);
       }
-    }
 
-    if (typeof sensorData.value === 'number') {
-      return sensorData.value;
-    }
+      for (const [key, value] of Object.entries(data)) {
+        if (key.toLowerCase() === sensorCode.toLowerCase()) {
+          return this.extractNumericValue(value);
+        }
+      }
 
-    if (sensorData.val !== undefined && typeof sensorData.val === 'number') {
-      return sensorData.val;
+      return null;
+    } catch (error) {
+      console.error(`Error finding sensor value for ${sensorCode}:`, error);
+      return null;
     }
+  }
 
-    return null;
+  static findValueByAliases(data: any, aliases: string[]): number | null {
+    try {
+      if (!data || typeof data !== 'object') return null;
+
+      const candidates: Array<{ key: string; value: number; score: number }> = [];
+
+      const scanObject = (obj: any, path: string = '') => {
+        if (!obj || typeof obj !== 'object') return;
+
+        for (const [key, value] of Object.entries(obj)) {
+          const fullPath = path ? `${path}.${key}` : key;
+          const keyLower = key.toLowerCase();
+
+          for (let i = 0; i < aliases.length; i++) {
+            const alias = aliases[i].toLowerCase();
+
+            if (keyLower === alias) {
+              const numValue = this.extractNumericValue(value);
+              if (numValue !== null) {
+                candidates.push({
+                  key: fullPath,
+                  value: numValue,
+                  score: 100 - i,
+                });
+              }
+            } else if (keyLower.includes(alias)) {
+              const numValue = this.extractNumericValue(value);
+              if (numValue !== null) {
+                candidates.push({
+                  key: fullPath,
+                  value: numValue,
+                  score: 50 - i,
+                });
+              }
+            } else if (alias.includes(keyLower)) {
+              const numValue = this.extractNumericValue(value);
+              if (numValue !== null) {
+                candidates.push({
+                  key: fullPath,
+                  value: numValue,
+                  score: 25 - i,
+                });
+              }
+            }
+          }
+
+          if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            const nameField = (value as any).name;
+            if (nameField && typeof nameField === 'string') {
+              const nameLower = nameField.toLowerCase();
+              for (let i = 0; i < aliases.length; i++) {
+                const alias = aliases[i].toLowerCase();
+                if (nameLower.includes(alias) || alias.includes(nameLower)) {
+                  const numValue = this.extractNumericValue(value);
+                  if (numValue !== null) {
+                    candidates.push({
+                      key: fullPath,
+                      value: numValue,
+                      score: 75 - i,
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          if (typeof value === 'object' && value !== null && Object.keys(value).length < 10) {
+            scanObject(value, fullPath);
+          }
+        }
+      };
+
+      scanObject(data);
+
+      if (candidates.length === 0) return null;
+
+      candidates.sort((a, b) => b.score - a.score);
+
+      console.log(`Found ${candidates.length} candidates, best match: ${candidates[0].key} = ${candidates[0].value} (score: ${candidates[0].score})`);
+
+      return candidates[0].value;
+    } catch (error) {
+      console.error('Error finding value by aliases:', error);
+      return null;
+    }
+  }
+
+  static extractNumericValue(sensorData: any): number | null {
+    try {
+      if (sensorData === null || sensorData === undefined) return null;
+
+      if (typeof sensorData === 'number') {
+        return sensorData;
+      }
+
+      if (typeof sensorData !== 'object') return null;
+
+      if (sensorData.values && Array.isArray(sensorData.values) && sensorData.values.length > 0) {
+        const lastValue = sensorData.values[sensorData.values.length - 1];
+        if (lastValue !== null && lastValue !== undefined) {
+          if (typeof lastValue === 'number') return lastValue;
+          if (typeof lastValue === 'object' && typeof lastValue.value === 'number') {
+            return lastValue.value;
+          }
+          if (typeof lastValue === 'object' && typeof lastValue.val === 'number') {
+            return lastValue.val;
+          }
+        }
+      }
+
+      if (typeof sensorData.value === 'number') {
+        return sensorData.value;
+      }
+
+      if (typeof sensorData.val === 'number') {
+        return sensorData.val;
+      }
+
+      if (typeof sensorData.data === 'number') {
+        return sensorData.data;
+      }
+
+      if (typeof sensorData.reading === 'number') {
+        return sensorData.reading;
+      }
+
+      if (typeof sensorData.measurement === 'number') {
+        return sensorData.measurement;
+      }
+
+      if (Array.isArray(sensorData) && sensorData.length > 0) {
+        const lastItem = sensorData[sensorData.length - 1];
+        return this.extractNumericValue(lastItem);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error extracting numeric value:', error);
+      return null;
+    }
   }
 }
 
