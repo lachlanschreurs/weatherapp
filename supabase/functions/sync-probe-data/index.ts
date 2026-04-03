@@ -80,12 +80,13 @@ class ProbeProviderAdapter {
 
         const dateHeader = now.toUTCString();
 
-        const stringToSign = `${method}${endpoint.route}${dateHeader}`;
+        const stringToSign = `${method}${endpoint.route}${dateHeader}${publicKey}`;
 
         console.log('Authentication Details:');
         console.log('  Method:', method);
         console.log('  Route:', endpoint.route);
         console.log('  Date Header:', dateHeader);
+        console.log('  Public Key:', publicKey);
         console.log('  String to sign:', `"${stringToSign}"`);
         console.log('  String length:', stringToSign.length);
         console.log('  String bytes:', new TextEncoder().encode(stringToSign).length);
