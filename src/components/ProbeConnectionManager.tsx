@@ -1,0 +1,586 @@
+import { useState, useEffect } from 'react';
+import { Gauge, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle, Settings, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+interface ProbeConnection {
+  id: string;
+  provider: string;
+  station_id: string;
+  device_id: string | null;
+  is_active: boolean;
+  last_sync_at: string | null;
+  last_error: string | null;
+  sensor_mapping: Record<string, string>;
+}
+
+interface ProbeReading {
+  id: string;
+  connection_id: string;
+  moisture_percent: number | null;
+  soil_temp_c: number | null;
+  rainfall_mm: number | null;
+  battery_level: number | null;
+  measured_at: string;
+  synced_at: string;
+  raw_payload: any;
+}
+
+export function ProbeConnectionManager() {
+  const [connections, setConnections] = useState<ProbeConnection[]>([]);
+  const [readings, setReadings] = useState<Map<string, ProbeReading>>(new Map());
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    provider: 'fieldclimate',
+    api_key: '',
+    api_secret: '',
+    station_id: '',
+    device_id: '',
+    sensor_mapping: '',
+  });
+
+  const [showSecrets, setShowSecrets] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [showRawData, setShowRawData] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadConnections();
+  }, []);
+
+  async function loadConnections() {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { data: connectionsData, error: connError } = await supabase
+        .from('probe_connections')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (connError) throw connError;
+
+      setConnections(connectionsData || []);
+
+      const { data: readingsData, error: readError } = await supabase
+        .from('probe_readings_latest')
+        .select('*');
+
+      if (readError) throw readError;
+
+      const readingsMap = new Map();
+      (readingsData || []).forEach((reading: ProbeReading) => {
+        readingsMap.set(reading.connection_id, reading);
+      });
+      setReadings(readingsMap);
+
+    } catch (err: any) {
+      console.error('Error loading probe connections:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleAddConnection(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    setTestingConnection(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      let sensorMapping = {};
+      if (formData.sensor_mapping.trim()) {
+        try {
+          sensorMapping = JSON.parse(formData.sensor_mapping);
+        } catch {
+          throw new Error('Invalid sensor mapping JSON');
+        }
+      }
+
+      const { data: connection, error: insertError } = await supabase
+        .from('probe_connections')
+        .insert({
+          user_id: user.id,
+          provider: formData.provider,
+          api_key: formData.api_key.trim(),
+          api_secret: formData.api_secret.trim(),
+          station_id: formData.station_id.trim(),
+          device_id: formData.device_id.trim() || null,
+          sensor_mapping: sensorMapping,
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('No session');
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/sync-probe-data?connection_id=${connection.id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!result.success) {
+        await supabase
+          .from('probe_connections')
+          .delete()
+          .eq('id', connection.id);
+
+        throw new Error(result.error || 'Failed to connect to probe. Please check your credentials and station ID.');
+      }
+
+      setSuccessMessage('Probe connected successfully!');
+      setShowAddForm(false);
+      setFormData({
+        provider: 'fieldclimate',
+        api_key: '',
+        api_secret: '',
+        station_id: '',
+        device_id: '',
+        sensor_mapping: '',
+      });
+
+      await loadConnections();
+
+    } catch (err: any) {
+      console.error('Error adding probe connection:', err);
+      setError(err.message);
+    } finally {
+      setTestingConnection(false);
+    }
+  }
+
+  async function handleDeleteConnection(connectionId: string) {
+    if (!confirm('Are you sure you want to remove this probe connection?')) {
+      return;
+    }
+
+    try {
+      setError(null);
+      const { error: deleteError } = await supabase
+        .from('probe_connections')
+        .delete()
+        .eq('id', connectionId);
+
+      if (deleteError) throw deleteError;
+
+      setSuccessMessage('Probe connection removed');
+      await loadConnections();
+
+    } catch (err: any) {
+      console.error('Error deleting probe connection:', err);
+      setError(err.message);
+    }
+  }
+
+  async function handleSyncConnection(connectionId: string) {
+    try {
+      setIsSyncing(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/sync-probe-data?connection_id=${connectionId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to sync probe data');
+      }
+
+      setSuccessMessage('Probe data synced successfully!');
+      await loadConnections();
+
+    } catch (err: any) {
+      console.error('Error syncing probe data:', err);
+      setError(err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  async function handleSyncAll() {
+    try {
+      setIsSyncing(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/sync-probe-data`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error('Failed to sync probe data');
+      }
+
+      setSuccessMessage('All probe data synced successfully!');
+      await loadConnections();
+
+    } catch (err: any) {
+      console.error('Error syncing all probe data:', err);
+      setError(err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  }
+
+  function formatTimestamp(timestamp: string | null) {
+    if (!timestamp) return 'Never';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    return date.toLocaleDateString();
+  }
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading probe connections...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
+                <Gauge className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Moisture Probe Connections</h2>
+                <p className="text-sm text-green-100">Manage your soil moisture probe integrations</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {connections.length > 0 && (
+                <button
+                  onClick={handleSyncAll}
+                  disabled={isSyncing}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                  Sync All
+                </button>
+              )}
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium"
+              >
+                <Plus className="w-4 h-4" />
+                Add Probe
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">Error</p>
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mx-6 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-green-800">{successMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {showAddForm && (
+          <div className="p-6 bg-gray-50 border-t border-gray-200">
+            <form onSubmit={handleAddConnection} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Provider
+                  </label>
+                  <select
+                    value={formData.provider}
+                    onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="fieldclimate">FieldClimate</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Station ID *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.station_id}
+                    onChange={(e) => setFormData({ ...formData, station_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="e.g., 12345678"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Key *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showSecrets ? 'text' : 'password'}
+                      required
+                      value={formData.api_key}
+                      onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Your API key"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecrets(!showSecrets)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showSecrets ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    API Secret *
+                  </label>
+                  <input
+                    type={showSecrets ? 'text' : 'password'}
+                    required
+                    value={formData.api_secret}
+                    onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Your API secret"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Device ID (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.device_id}
+                    onChange={(e) => setFormData({ ...formData, device_id: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Leave empty if not required"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sensor Mapping (optional JSON)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.sensor_mapping}
+                    onChange={(e) => setFormData({ ...formData, sensor_mapping: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+                    placeholder='{"moisture": "sm1", "soil_temp": "st1"}'
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={testingConnection}
+                  className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
+                >
+                  {testingConnection ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Testing Connection...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Probe
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="p-6">
+          {connections.length === 0 ? (
+            <div className="text-center py-12">
+              <Gauge className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No probe connections</h3>
+              <p className="text-gray-600 mb-4">Connect your moisture probe to see live soil data</p>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                Add Your First Probe
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {connections.map((connection) => {
+                const reading = readings.get(connection.id);
+
+                return (
+                  <div key={connection.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-900">
+                            {connection.provider === 'fieldclimate' ? 'FieldClimate' : connection.provider}
+                          </h4>
+                          <span className="text-sm text-gray-500">Station: {connection.station_id}</span>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span>Last sync: {formatTimestamp(connection.last_sync_at)}</span>
+                          {connection.last_error && (
+                            <span className="text-red-600 flex items-center gap-1">
+                              <AlertCircle className="w-4 h-4" />
+                              {connection.last_error}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSyncConnection(connection.id)}
+                          disabled={isSyncing}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Sync now"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => setShowRawData(showRawData === connection.id ? null : connection.id)}
+                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="View raw data"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteConnection(connection.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Remove connection"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {reading ? (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-blue-50 rounded-lg p-3">
+                          <div className="text-xs text-blue-600 font-medium mb-1">Soil Moisture</div>
+                          <div className="text-2xl font-bold text-blue-900">
+                            {reading.moisture_percent !== null ? `${reading.moisture_percent.toFixed(1)}%` : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="bg-orange-50 rounded-lg p-3">
+                          <div className="text-xs text-orange-600 font-medium mb-1">Soil Temp</div>
+                          <div className="text-2xl font-bold text-orange-900">
+                            {reading.soil_temp_c !== null ? `${reading.soil_temp_c.toFixed(1)}°C` : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="bg-cyan-50 rounded-lg p-3">
+                          <div className="text-xs text-cyan-600 font-medium mb-1">Rainfall</div>
+                          <div className="text-2xl font-bold text-cyan-900">
+                            {reading.rainfall_mm !== null ? `${reading.rainfall_mm.toFixed(1)}mm` : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-3">
+                          <div className="text-xs text-green-600 font-medium mb-1">Battery</div>
+                          <div className="text-2xl font-bold text-green-900">
+                            {reading.battery_level !== null ? `${reading.battery_level.toFixed(0)}%` : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        No data available. Click sync to fetch latest readings.
+                      </div>
+                    )}
+
+                    {showRawData === connection.id && reading?.raw_payload && (
+                      <div className="mt-4 p-4 bg-gray-900 rounded-lg overflow-auto max-h-96">
+                        <div className="text-xs text-gray-400 mb-2">Raw API Response (for debugging)</div>
+                        <pre className="text-xs text-green-400 font-mono">
+                          {JSON.stringify(reading.raw_payload, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
