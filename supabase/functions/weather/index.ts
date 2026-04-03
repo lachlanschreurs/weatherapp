@@ -103,21 +103,26 @@ Deno.serve(async (req: Request) => {
         weather: item.weather,
         pop: item.pop,
       })),
-      daily: Array.from({ length: 8 }, (_, i) => {
+      daily: Array.from({ length: 5 }, (_, i) => {
         const dayStart = i * 8;
         const dayData = forecastData.list.slice(dayStart, dayStart + 8);
         if (dayData.length === 0) return null;
+
+        const rainData = dayData.filter((d: any) => d.rain?.['3h'] > 0);
+        const totalRain = rainData.reduce((sum: number, d: any) => sum + (d.rain?.['3h'] || 0), 0);
 
         return {
           dt: dayData[0].dt,
           temp: {
             min: Math.min(...dayData.map((d: any) => d.main.temp_min)),
             max: Math.max(...dayData.map((d: any) => d.main.temp_max)),
+            day: Math.round(dayData.reduce((sum: number, d: any) => sum + d.main.temp, 0) / dayData.length),
           },
           humidity: Math.round(dayData.reduce((sum: number, d: any) => sum + d.main.humidity, 0) / dayData.length),
           wind_speed: Math.max(...dayData.map((d: any) => d.wind.speed)),
           weather: dayData[0].weather,
           pop: Math.max(...dayData.map((d: any) => d.pop || 0)),
+          rain: totalRain,
         };
       }).filter(Boolean),
       alerts: [],

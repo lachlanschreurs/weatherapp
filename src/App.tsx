@@ -548,20 +548,25 @@ function App() {
     ? Math.min(...todayHours.map((f: any) => f.temp))
     : tempC;
 
-  const dailyForecasts = dailyList.slice(0, 5).map((day: any) => ({
-    date: new Date(day.dt * 1000).toLocaleDateString('en-AU'),
-    dt: day.dt,
-    temps: [day.temp.min, day.temp.max],
-    tempMin: day.temp.min,
-    tempMax: day.temp.max,
-    humidity: day.humidity,
-    weather: day.weather[0]?.main || 'clear',
-    windSpeed: day.wind_speed * 3.6,
-    rain: day.pop ? day.pop * 10 : 0,
-    rainCount: day.pop > 0.3 ? 1 : 0,
-    totalForecasts: 1,
-    forecastItems: hourlyList.slice(0, 8),
-  }));
+  const dailyForecasts = dailyList.slice(0, 5).map((day: any) => {
+    const dayStartIndex = dailyList.indexOf(day) * 8;
+    const dayHourlyData = hourlyList.slice(dayStartIndex, dayStartIndex + 8);
+
+    return {
+      date: new Date(day.dt * 1000).toLocaleDateString('en-AU'),
+      dt: day.dt,
+      temps: [day.temp.min, day.temp.max],
+      tempMin: day.temp.min,
+      tempMax: day.temp.max,
+      humidity: day.humidity,
+      weather: day.weather[0]?.main || 'clear',
+      windSpeed: day.wind_speed * 3.6,
+      rain: day.rain || 0,
+      rainCount: day.pop > 0.3 ? 1 : 0,
+      totalForecasts: 1,
+      forecastItems: dayHourlyData.length > 0 ? dayHourlyData : hourlyList.slice(0, 8),
+    };
+  });
 
   const todayForecast = dailyForecasts[0];
   const todayRainChance = todayForecast ? Math.round((todayForecast.rainCount / todayForecast.totalForecasts) * 100) : 0;

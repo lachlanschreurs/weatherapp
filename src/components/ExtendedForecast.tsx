@@ -66,42 +66,7 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
         };
       });
 
-      const avgTempHigh = realForecast.reduce((sum, day) => sum + day.tempHigh, 0) / realForecast.length;
-      const avgTempLow = realForecast.reduce((sum, day) => sum + day.tempLow, 0) / realForecast.length;
-      const avgRainChance = realForecast.reduce((sum, day) => sum + day.rainChance, 0) / realForecast.length;
-      const avgWindSpeed = realForecast.reduce((sum, day) => sum + day.windSpeed, 0) / realForecast.length;
-
-      const extendedForecast = [];
-      for (let i = realForecast.length; i < 30; i++) {
-        const date = new Date(dailyForecasts[dailyForecasts.length - 1].dt * 1000);
-        date.setDate(date.getDate() + (i - realForecast.length + 1));
-
-        const seasonalVariation = Math.sin((i / 30) * Math.PI * 2) * 3;
-        const randomVariation = (Math.random() - 0.5) * 4;
-
-        const tempHigh = Math.round(avgTempHigh + seasonalVariation + randomVariation);
-        const tempLow = Math.round(avgTempLow + seasonalVariation + randomVariation - 2);
-        const rainChance = Math.max(0, Math.min(100, Math.round(avgRainChance + (Math.random() - 0.5) * 30)));
-        const windSpeed = Math.max(5, Math.round(avgWindSpeed + (Math.random() - 0.5) * 10));
-        const rainfall = rainChance > 50 ? (rainChance / 100) * 3 : 0;
-
-        const sprayCondition = getSprayCondition(windSpeed, rainfall);
-
-        extendedForecast.push({
-          date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', weekday: 'short' }),
-          tempHigh,
-          tempLow,
-          rainChance,
-          windSpeed,
-          confidence: i < 14 ? 'Medium' : 'Low',
-          sprayRating: 'Monitor',
-          sprayColor: 'text-gray-700',
-          sprayBg: 'bg-gray-100',
-          isReal: false,
-        });
-      }
-
-      setForecastData([...realForecast, ...extendedForecast]);
+      setForecastData(realForecast);
     } catch (err) {
       console.error('Error fetching forecast:', err);
       setError('Failed to load forecast data. Please try again.');
@@ -121,9 +86,9 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
       <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-green-200">
         <div className="text-center">
           <Calendar className="w-16 h-16 text-green-700 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-green-900 mb-3">Extended Forecast</h3>
+          <h3 className="text-2xl font-bold text-green-900 mb-3">5-Day Detailed Forecast</h3>
           <p className="text-gray-600 mb-6">
-            View detailed weather predictions for {location.name}
+            View accurate weather predictions for {location.name}
           </p>
           {error && (
             <p className="text-red-600 mb-4">{error}</p>
@@ -133,10 +98,10 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
             disabled={loading}
             className="bg-green-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-800 transition-colors disabled:opacity-50"
           >
-            {loading ? 'Loading...' : 'Load 30-Day Forecast'}
+            {loading ? 'Loading...' : 'Load 5-Day Forecast'}
           </button>
           <p className="text-xs text-gray-500 mt-3">
-            Days 1-8: Real forecast data | Days 9-30: Statistical predictions
+            Real forecast data from OpenWeather API
           </p>
         </div>
       </div>
@@ -154,7 +119,7 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <Calendar className="w-8 h-8 text-green-700" />
-          <h3 className="text-2xl font-bold text-green-900">Extended Forecast ({forecastData.length} Days)</h3>
+          <h3 className="text-2xl font-bold text-green-900">5-Day Detailed Forecast</h3>
         </div>
         <button
           onClick={generate30DayForecast}
@@ -192,32 +157,13 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
         {forecastData.map((day, index) => {
-          const confidenceColor = index < 8
-            ? 'border-green-200'
-            : index < 14
-            ? 'border-yellow-200'
-            : 'border-gray-300';
-
-          const confidenceBg = index < 8
-            ? 'from-green-50 to-blue-50'
-            : index < 14
-            ? 'from-yellow-50 to-amber-50'
-            : 'from-gray-50 to-gray-100';
-
           return (
             <div
               key={index}
-              className={`bg-gradient-to-br ${confidenceBg} rounded-xl p-4 border ${confidenceColor} hover:shadow-md transition-shadow relative`}
+              className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-4 border border-green-200 hover:shadow-md transition-shadow"
             >
-              {!day.isReal && (
-                <div className="absolute top-1 right-1">
-                  <div className="text-xs bg-gray-700 text-white px-1.5 py-0.5 rounded" title="Statistical prediction">
-                    Est.
-                  </div>
-                </div>
-              )}
               <div className="text-center">
                 <div className="text-sm font-bold text-gray-800 mb-1">{day.date}</div>
                 <div className="flex items-center justify-center gap-1 mb-2">
