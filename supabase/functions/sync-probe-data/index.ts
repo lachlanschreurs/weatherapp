@@ -47,31 +47,55 @@ class ProbeProviderAdapter {
     console.log('Public Key (first 12 chars):', publicKey.substring(0, 12) + '...');
     console.log('Private Key (first 12 chars):', privateKey.substring(0, 12) + '...');
 
+    const now = new Date();
+    const timestampUnix = Math.floor(now.getTime() / 1000);
+
     const endpoints = [
-      `/v2/data/${stationId}/last`,
-      `/v2/data/${stationId}/raw/last`,
+      {
+        route: `/v2/data/${stationId}/raw/last/${timestampUnix}`,
+        name: 'raw/last with timestamp'
+      },
+      {
+        route: `/v2/data/${stationId}/last/${timestampUnix}`,
+        name: 'last with timestamp'
+      },
+      {
+        route: `/v2/data/${stationId}/raw/last`,
+        name: 'raw/last without timestamp'
+      },
+      {
+        route: `/v2/data/${stationId}/last`,
+        name: 'last without timestamp'
+      },
     ];
 
     let lastError = null;
 
-    for (const route of endpoints) {
+    for (const endpoint of endpoints) {
       try {
-        console.log(`\n--- Testing endpoint: ${route} ---`);
+        console.log(`\n--- Testing endpoint: ${endpoint.name} ---`);
+        console.log('Route:', endpoint.route);
 
         const method = 'GET';
-        const timestamp = new Date().toUTCString();
-        const stringToSign = `${method}${route}${timestamp}`;
 
-        console.log('Request Details:');
+        const dateHeader = now.toUTCString();
+
+        const stringToSign = `${method}${endpoint.route}${dateHeader}`;
+
+        console.log('Authentication Details:');
         console.log('  Method:', method);
-        console.log('  Route:', route);
-        console.log('  Timestamp:', timestamp);
-        console.log('  String to sign:', stringToSign);
-        console.log('  String to sign length:', stringToSign.length);
+        console.log('  Route:', endpoint.route);
+        console.log('  Date Header:', dateHeader);
+        console.log('  String to sign:', `"${stringToSign}"`);
+        console.log('  String length:', stringToSign.length);
+        console.log('  String bytes:', new TextEncoder().encode(stringToSign).length);
 
         const encoder = new TextEncoder();
         const keyData = encoder.encode(privateKey);
         const messageData = encoder.encode(stringToSign);
+
+        console.log('  Private key length:', privateKey.length);
+        console.log('  Private key bytes:', keyData.length);
 
         const cryptoKey = await crypto.subtle.importKey(
           'raw',
@@ -86,41 +110,47 @@ class ProbeProviderAdapter {
           .map(b => b.toString(16).padStart(2, '0'))
           .join('');
 
-        console.log('  HMAC Signature (first 16 chars):', hmacHex.substring(0, 16) + '...');
-        console.log('  Full HMAC Signature:', hmacHex);
+        console.log('  HMAC Signature:', hmacHex);
 
-        const url = `https://api.fieldclimate.com${route}`;
+        const authHeader = `hmac ${publicKey}:${hmacHex}`;
+        console.log('  Authorization Header:', authHeader);
+
+        const url = `https://api.fieldclimate.com${endpoint.route}`;
         console.log('  Full URL:', url);
 
         const headers = {
           'Accept': 'application/json',
-          'Authorization': `hmac ${publicKey}:${hmacHex}`,
-          'Date': timestamp,
+          'Authorization': authHeader,
+          'Date': dateHeader,
         };
 
-        console.log('  Request Headers:', JSON.stringify(headers, null, 2));
+        console.log('\nSending Request...');
 
         const response = await fetch(url, {
           method: method,
           headers: headers,
         });
 
-        console.log('\nResponse:');
-        console.log('  Status:', response.status);
-        console.log('  Status Text:', response.statusText);
-        console.log('  Headers:', JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2));
+        console.log('\nResponse Received:');
+        console.log('  Status:', response.status, response.statusText);
+
+        const responseHeaders = Object.fromEntries(response.headers.entries());
+        console.log('  Response Headers:', JSON.stringify(responseHeaders, null, 2));
 
         const responseText = await response.text();
         console.log('  Body Length:', responseText.length);
-        console.log('  Body (first 500 chars):', responseText.substring(0, 500));
+
+        if (responseText.length > 0) {
+          console.log('  Body (first 1000 chars):', responseText.substring(0, 1000));
+        }
 
         if (!response.ok) {
-          console.error('  ERROR: Request failed');
+          console.error('  ❌ REQUEST FAILED');
 
-          let errorDetail = `Status ${response.status}: ${response.statusText}`;
+          let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
           try {
             const errorJson = JSON.parse(responseText);
-            console.log('  Parsed Error JSON:', JSON.stringify(errorJson, null, 2));
+            console.log('  Error JSON:', JSON.stringify(errorJson, null, 2));
 
             if (errorJson.message) {
               errorDetail = errorJson.message;
@@ -128,32 +158,50 @@ class ProbeProviderAdapter {
               errorDetail = errorJson.error;
             } else if (errorJson.errors) {
               errorDetail = JSON.stringify(errorJson.errors);
+            } else {
+              errorDetail = JSON.stringify(errorJson);
             }
           } catch (e) {
-            console.log('  Error response is not JSON');
-            errorDetail = responseText.substring(0, 200);
+            console.log('  Error body is not JSON');
+            if (responseText.length > 0) {
+              errorDetail = responseText.substring(0, 300);
+            }
           }
 
           lastError = {
-            endpoint: route,
+            endpoint: endpoint.name,
+            route: endpoint.route,
             status: response.status,
             statusText: response.statusText,
             error: errorDetail,
             body: responseText,
           };
 
-          console.log('  Moving to next endpoint...');
+          console.log('  Trying next endpoint...\n');
           continue;
         }
+
+        console.log('  ✓ SUCCESS');
 
         let data;
         try {
           data = JSON.parse(responseText);
-          console.log('  SUCCESS: Parsed response JSON');
-          console.log('  Response keys:', Object.keys(data));
+          console.log('  Response Structure:');
+          console.log('    Top-level keys:', Object.keys(data));
+
+          if (data.data) {
+            console.log('    data keys:', Object.keys(data.data));
+          }
+          if (data.devices) {
+            console.log('    devices count:', data.devices.length);
+            if (data.devices.length > 0) {
+              console.log('    first device keys:', Object.keys(data.devices[0]));
+            }
+          }
+
           console.log('  Full Response:', JSON.stringify(data, null, 2));
         } catch (e) {
-          console.error('  ERROR: Failed to parse JSON response');
+          console.error('  ERROR: Failed to parse JSON');
           throw new Error('Invalid JSON response from FieldClimate API');
         }
 
@@ -161,26 +209,30 @@ class ProbeProviderAdapter {
         return data;
 
       } catch (error: any) {
-        console.error(`  Exception for endpoint ${route}:`, error.message);
+        console.error(`  Exception: ${error.message}`);
         lastError = {
-          endpoint: route,
+          endpoint: endpoint.name,
+          route: endpoint.route,
           error: error.message,
         };
       }
     }
 
     console.log('=== FIELDCLIMATE API DEBUG END (ALL ENDPOINTS FAILED) ===\n');
-    console.log('Last Error:', JSON.stringify(lastError, null, 2));
+    console.log('Final Error:', JSON.stringify(lastError, null, 2));
 
     if (lastError) {
-      let errorMessage = 'FieldClimate API: ';
+      let errorMessage = 'FieldClimate API Error: ';
 
       if (lastError.status === 401) {
-        errorMessage += 'Authentication failed - check your API keys';
+        errorMessage += 'Authentication failed. Please verify:\n';
+        errorMessage += '- HMAC Public Key is correct\n';
+        errorMessage += '- HMAC Private Key is correct\n';
+        errorMessage += '- Keys have not expired';
       } else if (lastError.status === 404) {
-        errorMessage += `Station ${stationId} not found`;
+        errorMessage += `Station ${stationId} not found. Verify the station ID is correct.`;
       } else if (lastError.status === 403) {
-        errorMessage += 'Access forbidden - check station permissions';
+        errorMessage += 'Access forbidden. Check that your API keys have permission for this station.';
       } else if (lastError.error) {
         errorMessage += lastError.error;
       } else {
