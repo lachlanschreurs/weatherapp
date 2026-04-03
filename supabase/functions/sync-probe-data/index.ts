@@ -38,27 +38,81 @@ class ProbeProviderAdapter {
   }
 
   static async fetchFieldClimateData(connection: ProbeConnection): Promise<any> {
-    const authString = `${connection.api_key}:${connection.api_secret}`;
-    const base64Auth = btoa(authString);
+    const publicKey = connection.api_key;
+    const privateKey = connection.api_secret;
+    const stationId = connection.station_id;
 
-    const url = `https://api.fieldclimate.com/v2/data/${connection.station_id}/last`;
+    const method = 'GET';
+    const route = `/data/${stationId}/last`;
+    const timestamp = new Date().toUTCString();
 
-    console.log(`Fetching FieldClimate data for station: ${connection.station_id}`);
+    const stringToSign = `${method}${route}${timestamp}${publicKey}`;
+
+    console.log('HMAC Signing Details:', {
+      method,
+      route,
+      timestamp,
+      publicKey,
+      stringToSign,
+    });
+
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(privateKey);
+    const messageData = encoder.encode(stringToSign);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const hmacHex = Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    console.log('Generated HMAC signature:', hmacHex);
+
+    const url = `https://api.fieldclimate.com/v2${route}`;
+
+    console.log(`Fetching FieldClimate data from: ${url}`);
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: method,
       headers: {
-        'Authorization': `Basic ${base64Auth}`,
         'Accept': 'application/json',
+        'Authorization': `hmac ${publicKey}:${hmacHex}`,
+        'Date': timestamp,
       },
     });
 
+    console.log('FieldClimate API Response Status:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`FieldClimate API error (${response.status}): ${errorText}`);
+      console.error('FieldClimate API Error Response:', errorText);
+
+      let errorMessage = `FieldClimate API error (${response.status})`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+          errorMessage += `: ${errorJson.message}`;
+        } else {
+          errorMessage += `: ${errorText}`;
+        }
+      } catch {
+        errorMessage += `: ${errorText}`;
+      }
+
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log('FieldClimate API Response received successfully');
+
+    return data;
   }
 
   static normalizeData(
