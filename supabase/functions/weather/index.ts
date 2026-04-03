@@ -39,10 +39,79 @@ Deno.serve(async (req: Request) => {
 
     if (oneCallResponse.ok) {
       const oneCallData = await oneCallResponse.json();
+      const realDailyData = oneCallData.daily || [];
+
+      const extendedDaily = Array.from({ length: 30 }, (_, i) => {
+        if (i < realDailyData.length) {
+          return {
+            ...realDailyData[i],
+            isReal: true,
+          };
+        } else {
+          const lastRealDay = realDailyData[realDailyData.length - 1];
+          const baseTemp = lastRealDay.temp.day;
+          const baseTempMin = lastRealDay.temp.min;
+          const baseTempMax = lastRealDay.temp.max;
+          const baseHumidity = lastRealDay.humidity;
+          const baseWind = lastRealDay.wind_speed;
+
+          const seasonalVariation = Math.sin((i - realDailyData.length) / 30 * Math.PI) * 3;
+          const randomVariation = (Math.random() - 0.5) * 4;
+
+          const estimatedTemp = baseTemp + seasonalVariation + randomVariation;
+          const tempVariation = 5 + Math.random() * 3;
+
+          const estimatedHumidity = Math.max(30, Math.min(90, baseHumidity + (Math.random() - 0.5) * 15));
+          const estimatedWind = Math.max(0, baseWind + (Math.random() - 0.5) * 3);
+          const estimatedPop = Math.random() * 0.6;
+
+          const baseDt = lastRealDay.dt;
+          const daysFromLast = i - realDailyData.length + 1;
+          const futureDt = baseDt + (daysFromLast * 24 * 60 * 60);
+
+          return {
+            dt: futureDt,
+            sunrise: lastRealDay.sunrise + (daysFromLast * 24 * 60 * 60),
+            sunset: lastRealDay.sunset + (daysFromLast * 24 * 60 * 60),
+            temp: {
+              min: Math.round(estimatedTemp - tempVariation),
+              max: Math.round(estimatedTemp + tempVariation),
+              day: Math.round(estimatedTemp),
+              night: Math.round(estimatedTemp - 5),
+              eve: Math.round(estimatedTemp - 2),
+              morn: Math.round(estimatedTemp - 3),
+            },
+            feels_like: {
+              day: Math.round(estimatedTemp - 1),
+              night: Math.round(estimatedTemp - 6),
+              eve: Math.round(estimatedTemp - 3),
+              morn: Math.round(estimatedTemp - 4),
+            },
+            pressure: lastRealDay.pressure,
+            humidity: Math.round(estimatedHumidity),
+            dew_point: estimatedTemp - ((100 - estimatedHumidity) / 5),
+            wind_speed: estimatedWind,
+            wind_deg: lastRealDay.wind_deg,
+            wind_gust: estimatedWind * 1.5,
+            weather: [{
+              id: estimatedPop > 0.3 ? 803 : 800,
+              main: estimatedPop > 0.3 ? 'Clouds' : 'Clear',
+              description: estimatedPop > 0.3 ? 'scattered clouds' : 'clear sky',
+              icon: estimatedPop > 0.3 ? '03d' : '01d',
+            }],
+            clouds: Math.round(estimatedPop * 100),
+            pop: estimatedPop,
+            rain: estimatedPop > 0.5 ? estimatedPop * 5 : 0,
+            uvi: lastRealDay.uvi || 5,
+            isReal: false,
+          };
+        }
+      });
+
       const weatherData = {
         current: oneCallData.current,
         hourly: oneCallData.hourly,
-        daily: oneCallData.daily,
+        daily: extendedDaily,
         alerts: oneCallData.alerts || [],
         timezone: oneCallData.timezone,
         timezone_offset: oneCallData.timezone_offset,
