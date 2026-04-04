@@ -10,7 +10,6 @@ import { HourlyForecast } from './components/HourlyForecast';
 import { RainRadar } from './components/RainRadar';
 import { ExtendedForecast } from './components/ExtendedForecast';
 import { ProbeConnectionManager } from './components/ProbeConnectionManager';
-import { ProbeDataCard } from './components/ProbeDataCard';
 import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -931,13 +930,8 @@ function App() {
         </div>
 
         {user && (
-          <div className="mt-8 mb-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div>
-              <ProbeDataCard />
-            </div>
-            <div>
-              <ProbeConnectionManager />
-            </div>
+          <div className="mt-8 mb-8">
+            <ProbeConnectionManager />
           </div>
         )}
 
