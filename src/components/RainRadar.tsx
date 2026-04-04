@@ -145,8 +145,9 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         touchZoom: true,
         boxZoom: true,
         dragging: true,
-        maxZoom: 14,
-        minZoom: 5
+        keyboard: true,
+        maxZoom: 16,
+        minZoom: 4
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -181,7 +182,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           opacity: 0,
           tileSize: 256,
           zIndex: 1000,
-          maxZoom: 14,
+          maxZoom: 16,
+          minZoom: 4,
           attribution: 'RainViewer'
         });
         layer.addTo(map);
