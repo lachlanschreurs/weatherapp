@@ -221,16 +221,13 @@ function App() {
       })();
     });
 
-    // Handle Square redirect
+    // Handle redirect cleanup
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
     if (subscriptionStatus) {
-      console.log('Square redirect detected:', subscriptionStatus);
-      // Clean up URL immediately to prevent blank page
+      console.log('Redirect detected:', subscriptionStatus);
+      // Clean up URL without reloading
       window.history.replaceState({}, '', window.location.pathname);
-
-      // Don't reload - just let the normal flow continue
-      // The auth state will be picked up by the useEffect above
     }
 
     return () => {

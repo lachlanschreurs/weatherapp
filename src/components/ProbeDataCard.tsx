@@ -330,10 +330,11 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
                         <span className="text-xs font-medium text-green-700">Battery</span>
                       </div>
                       <div className="text-2xl font-bold text-green-900">
-                        {(reading.battery_level / 100).toFixed(1)}V
+                        {reading.battery_level.toFixed(0)}
                       </div>
-                      <div className="text-xs text-green-600">
-                        {reading.battery_level > 6000 ? 'Good' : 'Low'}
+                      <div className="text-xs text-green-600">mV</div>
+                      <div className="text-xs text-green-600 font-semibold mt-1">
+                        {reading.battery_level >= 3000 ? 'Good' : reading.battery_level >= 2500 ? 'Fair' : 'Low'}
                       </div>
                     </div>
                   )}
