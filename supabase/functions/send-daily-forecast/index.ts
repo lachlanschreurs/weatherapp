@@ -167,7 +167,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         let probeReport = '';
         if (subscriber.user_id) {
-          probeReport = await generateProbeReport(subscriber.user_id, supabaseAdmin);
+          probeReport = await generateProbeReport(subscriber.user_id, supabaseAdmin, weatherData, oneCallData.daily);
         }
 
         const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly, probeReport);
@@ -309,7 +309,7 @@ function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: 
   return '✓';
 }
 
-async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<string> {
+async function generateProbeReport(userId: string, supabaseAdmin: any, weatherData?: any, dailyForecast?: any[]): Promise<string> {
   try {
     const { data: connections, error: connError } = await supabaseAdmin
       .from('probe_connections')
@@ -368,12 +368,30 @@ async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<
       };
     });
 
-    const prompt = `You are an agricultural soil expert analyzing moisture probe data from multiple field stations. Based on the following recent readings, provide:
+    const weatherContext = weatherData && dailyForecast ? `
+
+CURRENT WEATHER CONDITIONS:
+- Temperature: ${weatherData.current.temp_c}°C
+- Humidity: ${weatherData.current.humidity}%
+- Conditions: ${weatherData.current.condition.text}
+
+UPCOMING 3-DAY FORECAST:
+${dailyForecast.slice(0, 3).map((day: any, i: number) => {
+  const date = new Date(day.dt * 1000).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' });
+  return `Day ${i + 1} (${date}):
+  - Temp: ${day.temp.min}°C to ${day.temp.max}°C
+  - Rain chance: ${Math.round((day.pop || 0) * 100)}%
+  - Expected rainfall: ${((day.rain || 0) + (day.snow || 0)).toFixed(1)}mm
+  - Conditions: ${day.weather[0].description}`;
+}).join('\n')}
+` : '';
+
+    const prompt = `You are an agricultural soil expert analyzing moisture probe data from multiple field stations. Based on the following recent readings AND upcoming weather forecast, provide:
 
 1. A brief summary of overall soil conditions across all probes
 2. Specific concerns or opportunities identified (e.g., dry zones, optimal moisture areas)
-3. Actionable irrigation recommendations for the next 24 hours
-4. Any plant health considerations based on soil temperature and moisture
+3. Actionable irrigation recommendations for the next 24-48 hours, considering upcoming weather
+4. Any plant health considerations based on soil temperature, moisture, and weather trends
 
 MOISTURE LEVEL GUIDE:
 - Very Dry (<15%): Critical - immediate irrigation needed
@@ -388,11 +406,11 @@ SOIL TEMP GUIDE:
 - Optimal (15-25°C): Ideal for most crops
 - Warm (25-30°C): Monitor stress, increase irrigation
 - Hot (>30°C): Heat stress risk, critical monitoring
-
+${weatherContext}
 Probe Data (latest readings):
 ${JSON.stringify(probeDataForAI, null, 2)}
 
-Provide a practical analysis in 3-4 sentences. Focus on actionable insights for farm operations. Keep it under 120 words.`;
+Provide a practical analysis in 3-5 sentences that considers BOTH current soil conditions AND upcoming weather. If rain is forecast, adjust irrigation advice accordingly. If hot weather is coming, factor that into moisture management. Focus on actionable insights for farm operations. Keep it under 150 words.`;
 
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -406,7 +424,7 @@ Provide a practical analysis in 3-4 sentences. Focus on actionable insights for 
           { role: 'system', content: 'You are a helpful agricultural advisor providing concise, actionable soil analysis for farmers.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 200,
+        max_tokens: 250,
         temperature: 0.7,
       }),
     });
