@@ -47,7 +47,7 @@ class ProbeProviderAdapter {
     console.log('Public Key:', publicKey);
     console.log('Private Key (length):', privateKey.length);
 
-    const route = `/v2/data/${stationId}/raw/last/1h`;
+    const route = `/data/${stationId}/raw/last/1h`;
     const method = 'GET';
 
     const now = new Date();
@@ -92,7 +92,7 @@ class ProbeProviderAdapter {
     const headers = {
       'Accept': 'application/json',
       'Authorization': authHeader,
-      'Request-Date': dateHeader,
+      'Date': dateHeader,
     };
 
     console.log('Headers:', JSON.stringify(headers, null, 2));
