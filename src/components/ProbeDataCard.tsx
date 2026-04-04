@@ -325,14 +325,15 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {reading.rainfall_mm !== null && (
                     <div className="bg-cyan-50 rounded-lg p-3 border border-cyan-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CloudRain className="w-4 h-4 text-cyan-600" />
-                        <span className="text-xs font-medium text-cyan-700">Rainfall</span>
+                      <div className="text-xs font-medium text-cyan-700 mb-1">
+                        Rainfall
                       </div>
                       <div className="text-2xl font-bold text-cyan-900">
-                        {reading.rainfall_mm.toFixed(1)}
+                        {reading.rainfall_mm.toFixed(1)}mm
                       </div>
-                      <div className="text-xs text-cyan-600">mm</div>
+                      <div className="text-xs font-semibold text-cyan-600 mt-1">
+                        Total
+                      </div>
                     </div>
                   )}
 
@@ -341,15 +342,14 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
 
                     return (
                       <div className={`${batteryStatus.bgColor} rounded-lg p-3 border ${batteryStatus.borderColor}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Battery className={`w-4 h-4 ${batteryStatus.labelColor}`} />
-                          <span className={`text-xs font-medium ${batteryStatus.labelColor}`}>Battery</span>
+                        <div className={`text-xs font-medium ${batteryStatus.labelColor} mb-1`}>
+                          Battery
                         </div>
                         <div className={`text-2xl font-bold ${batteryStatus.textColor}`}>
-                          {batteryStatus.label}
-                        </div>
-                        <div className={`text-xs ${batteryStatus.statusColor} mt-1`}>
                           {(reading.battery_level / 1000).toFixed(2)}V
+                        </div>
+                        <div className={`text-xs font-semibold ${batteryStatus.statusColor} mt-1`}>
+                          {batteryStatus.label}
                         </div>
                       </div>
                     );
