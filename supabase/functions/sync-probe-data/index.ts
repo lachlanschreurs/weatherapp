@@ -194,6 +194,34 @@ class ProbeProviderAdapter {
       return result;
     }
 
+    if (rawData.data && Array.isArray(rawData.data) && rawData.data.length > 0) {
+      const latestReading = rawData.data[rawData.data.length - 1];
+
+      result.measured_at = latestReading.date || new Date().toISOString();
+
+      if (sensorMapping.moisture && latestReading[sensorMapping.moisture]) {
+        result.moisture_percent = parseFloat(latestReading[sensorMapping.moisture]);
+      }
+      if (sensorMapping.soil_temp && latestReading[sensorMapping.soil_temp]) {
+        result.soil_temp_c = parseFloat(latestReading[sensorMapping.soil_temp]);
+      }
+      if (sensorMapping.rainfall && latestReading[sensorMapping.rainfall]) {
+        result.rainfall_mm = parseFloat(latestReading[sensorMapping.rainfall]);
+      }
+      if (sensorMapping.battery && latestReading[sensorMapping.battery]) {
+        result.battery_level = parseFloat(latestReading[sensorMapping.battery]);
+      }
+
+      console.log('Normalized data:', {
+        moisture: result.moisture_percent,
+        soil_temp: result.soil_temp_c,
+        rainfall: result.rainfall_mm,
+        battery: result.battery_level,
+      });
+
+      return result;
+    }
+
     result.measured_at = rawData.date_time || rawData.dateTime || rawData.timestamp || new Date().toISOString();
 
     const sensors = rawData.data || rawData.sensors || rawData;
@@ -514,6 +542,10 @@ Deno.serve(async (req: Request) => {
       throw new Error('Missing Supabase configuration');
     }
 
+    const url = new URL(req.url);
+    const connectionId = url.searchParams.get('connection_id');
+    const syncAll = url.searchParams.get('sync_all') === 'true';
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -524,19 +556,23 @@ Deno.serve(async (req: Request) => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    let user = null;
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (syncAll) {
+      console.log('sync_all=true: Processing all active connections with service role');
+    } else {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData, error: authError } = await supabaseClient.auth.getUser(token);
+
+      if (authError || !userData.user) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid authentication' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      user = userData.user;
     }
-
-    const url = new URL(req.url);
-    const connectionId = url.searchParams.get('connection_id');
-    const syncAll = url.searchParams.get('sync_all') === 'true';
 
     if (syncAll) {
       const { data: connections, error: fetchError } = await supabaseClient
@@ -565,12 +601,16 @@ Deno.serve(async (req: Request) => {
     }
 
     if (connectionId) {
-      const { data: connection, error: fetchError } = await supabaseClient
+      let query = supabaseClient
         .from('probe_connections')
         .select('*')
-        .eq('id', connectionId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('id', connectionId);
+
+      if (user) {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data: connection, error: fetchError } = await query.maybeSingle();
 
       if (fetchError) {
         throw fetchError;
@@ -604,11 +644,16 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { data: connections, error: fetchError } = await supabaseClient
+    let query = supabaseClient
       .from('probe_connections')
       .select('*')
-      .eq('user_id', user.id)
       .eq('is_active', true);
+
+    if (user) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data: connections, error: fetchError } = await query;
 
     if (fetchError) {
       throw fetchError;
@@ -624,10 +669,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: readings } = await supabaseClient
+    let readingsQuery = supabaseClient
       .from('probe_readings_latest')
-      .select('*')
-      .eq('user_id', user.id);
+      .select('*');
+
+    if (user) {
+      readingsQuery = readingsQuery.eq('user_id', user.id);
+    }
+
+    const { data: readings } = await readingsQuery;
 
     return new Response(
       JSON.stringify({ success: true, results, readings }),
