@@ -347,11 +347,21 @@ async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<
         location: reading.station_name || connection?.friendly_name || 'Probe',
         lastUpdate: new Date(reading.last_reading_time).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
         moisture: moistureDepths.length > 0
-          ? moistureDepths.map((d: any) => `${d.depth_cm}cm: ${d.value}%`).join(', ')
-          : reading.moisture_percent ? `${reading.moisture_percent}%` : 'N/A',
+          ? moistureDepths.map((d: any) => {
+              const status = getMoistureStatus(d.value);
+              return `${d.depth_cm}cm: ${d.value}% (${status.status})`;
+            }).join(', ')
+          : reading.moisture_percent
+          ? `${reading.moisture_percent}% (${getMoistureStatus(reading.moisture_percent).status})`
+          : 'N/A',
         soilTemp: soilTempDepths.length > 0
-          ? soilTempDepths.map((d: any) => `${d.depth_cm}cm: ${d.value}°C`).join(', ')
-          : reading.soil_temp_c ? `${reading.soil_temp_c}°C` : 'N/A',
+          ? soilTempDepths.map((d: any) => {
+              const status = getSoilTempStatus(d.value);
+              return `${d.depth_cm}cm: ${d.value}°C (${status.status})`;
+            }).join(', ')
+          : reading.soil_temp_c
+          ? `${reading.soil_temp_c}°C (${getSoilTempStatus(reading.soil_temp_c).status})`
+          : 'N/A',
         airTemp: reading.air_temp_c ? `${reading.air_temp_c}°C` : 'N/A',
         humidity: reading.humidity_percent ? `${reading.humidity_percent}%` : 'N/A',
         battery: reading.battery_level ? `${reading.battery_level}%` : 'N/A',
@@ -364,6 +374,20 @@ async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<
 2. Specific concerns or opportunities identified (e.g., dry zones, optimal moisture areas)
 3. Actionable irrigation recommendations for the next 24 hours
 4. Any plant health considerations based on soil temperature and moisture
+
+MOISTURE LEVEL GUIDE:
+- Very Dry (<15%): Critical - immediate irrigation needed
+- Dry (15-25%): Irrigation recommended soon
+- Ideal (25-40%): Optimal moisture for most crops
+- Moist (40-55%): Good moisture, monitor for excess
+- Saturated (>55%): Risk of waterlogging, avoid irrigation
+
+SOIL TEMP GUIDE:
+- Cold (<10°C): Slow growth, delay planting
+- Cool (10-15°C): Suitable for cool-season crops
+- Optimal (15-25°C): Ideal for most crops
+- Warm (25-30°C): Monitor stress, increase irrigation
+- Hot (>30°C): Heat stress risk, critical monitoring
 
 Probe Data (latest readings):
 ${JSON.stringify(probeDataForAI, null, 2)}
@@ -433,6 +457,34 @@ Provide a practical analysis in 3-4 sentences. Focus on actionable insights for 
   }
 }
 
+function getMoistureStatus(moisturePercent: number): { status: string; color: string; bgColor: string; icon: string } {
+  if (moisturePercent < 15) {
+    return { status: 'Very Dry', color: '#dc2626', bgColor: '#fee2e2', icon: '🔴' };
+  } else if (moisturePercent >= 15 && moisturePercent < 25) {
+    return { status: 'Dry', color: '#f59e0b', bgColor: '#fef3c7', icon: '🟡' };
+  } else if (moisturePercent >= 25 && moisturePercent <= 40) {
+    return { status: 'Ideal', color: '#059669', bgColor: '#d1fae5', icon: '🟢' };
+  } else if (moisturePercent > 40 && moisturePercent <= 55) {
+    return { status: 'Moist', color: '#3b82f6', bgColor: '#dbeafe', icon: '🔵' };
+  } else {
+    return { status: 'Saturated', color: '#6366f1', bgColor: '#e0e7ff', icon: '💧' };
+  }
+}
+
+function getSoilTempStatus(tempC: number): { status: string; color: string } {
+  if (tempC < 10) {
+    return { status: 'Cold', color: '#3b82f6' };
+  } else if (tempC >= 10 && tempC < 15) {
+    return { status: 'Cool', color: '#10b981' };
+  } else if (tempC >= 15 && tempC <= 25) {
+    return { status: 'Optimal', color: '#059669' };
+  } else if (tempC > 25 && tempC <= 30) {
+    return { status: 'Warm', color: '#f59e0b' };
+  } else {
+    return { status: 'Hot', color: '#dc2626' };
+  }
+}
+
 function buildBasicProbeReport(readings: any[], connections: any[]): string {
   const readingCards = readings.slice(0, 5).map((reading: any) => {
     const connection = connections.find((c: any) => c.id === reading.connection_id);
@@ -468,31 +520,55 @@ function buildProbeReadingCard(reading: any, connection: any, moistureDepths: an
   });
 
   const moistureRows = moistureDepths.length > 0
-    ? moistureDepths.map((d: any) => `
+    ? moistureDepths.map((d: any) => {
+        const moistStatus = getMoistureStatus(d.value);
+        return `
         <tr>
           <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💧 ${d.depth_cm}cm depth</td>
-          <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${d.value}%</td>
+          <td style="padding: 6px 8px; text-align: right;">
+            <div style="font-size: 12px; font-weight: 800; color: #047857;">${d.value}%</div>
+            <div style="font-size: 9px; font-weight: 700; color: ${moistStatus.color}; margin-top: 2px;">${moistStatus.icon} ${moistStatus.status}</div>
+          </td>
         </tr>
-      `).join('')
+      `;
+      }).join('')
     : reading.moisture_percent
-    ? `<tr>
+    ? (() => {
+        const moistStatus = getMoistureStatus(reading.moisture_percent);
+        return `<tr>
         <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💧 Moisture</td>
-        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.moisture_percent}%</td>
-      </tr>`
+        <td style="padding: 6px 8px; text-align: right;">
+          <div style="font-size: 12px; font-weight: 800; color: #047857;">${reading.moisture_percent}%</div>
+          <div style="font-size: 9px; font-weight: 700; color: ${moistStatus.color}; margin-top: 2px;">${moistStatus.icon} ${moistStatus.status}</div>
+        </td>
+      </tr>`;
+      })()
     : '';
 
   const soilTempRows = soilTempDepths.length > 0
-    ? soilTempDepths.map((d: any) => `
+    ? soilTempDepths.map((d: any) => {
+        const tempStatus = getSoilTempStatus(d.value);
+        return `
         <tr>
           <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌡️ Soil ${d.depth_cm}cm</td>
-          <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${d.value}°C</td>
+          <td style="padding: 6px 8px; text-align: right;">
+            <div style="font-size: 12px; font-weight: 800; color: #047857;">${d.value}°C</div>
+            <div style="font-size: 9px; font-weight: 700; color: ${tempStatus.color}; margin-top: 2px;">${tempStatus.status}</div>
+          </td>
         </tr>
-      `).join('')
+      `;
+      }).join('')
     : reading.soil_temp_c
-    ? `<tr>
+    ? (() => {
+        const tempStatus = getSoilTempStatus(reading.soil_temp_c);
+        return `<tr>
         <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌡️ Soil Temp</td>
-        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.soil_temp_c}°C</td>
-      </tr>`
+        <td style="padding: 6px 8px; text-align: right;">
+          <div style="font-size: 12px; font-weight: 800; color: #047857;">${reading.soil_temp_c}°C</div>
+          <div style="font-size: 9px; font-weight: 700; color: ${tempStatus.color}; margin-top: 2px;">${tempStatus.status}</div>
+        </td>
+      </tr>`;
+      })()
     : '';
 
   const extraRows = `
