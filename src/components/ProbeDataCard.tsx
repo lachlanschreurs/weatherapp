@@ -159,6 +159,19 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
+  function getBatteryStatus(batteryVoltage: number | null): { label: string; color: string; bgColor: string; borderColor: string; textColor: string; labelColor: string; statusColor: string } {
+    if (batteryVoltage === null) {
+      return { label: 'Unknown', color: 'gray', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', textColor: 'text-gray-900', labelColor: 'text-gray-700', statusColor: 'text-gray-700' };
+    }
+    if (batteryVoltage >= 3000) {
+      return { label: 'Healthy', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-900', labelColor: 'text-green-700', statusColor: 'text-green-700' };
+    } else if (batteryVoltage >= 2500) {
+      return { label: 'Monitor', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-900', labelColor: 'text-yellow-700', statusColor: 'text-yellow-700' };
+    } else {
+      return { label: 'Replace', color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-900', labelColor: 'text-red-700', statusColor: 'text-red-700' };
+    }
+  }
+
   function getMoistureStatus(moisturePercent: number | null): { status: string; color: string; bgColor: string; borderColor: string; textColor: string } {
     if (moisturePercent === null) {
       return { status: 'Unknown', color: '#6b7280', bgColor: '#f9fafb', borderColor: '#d1d5db', textColor: '#374151' };
@@ -324,11 +337,7 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
                   )}
 
                   {reading.battery_level !== null && (() => {
-                    const batteryStatus = reading.battery_level >= 3000
-                      ? { label: 'Healthy', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-900', labelColor: 'text-green-700', statusColor: 'text-green-700' }
-                      : reading.battery_level >= 2500
-                      ? { label: 'Monitor', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-900', labelColor: 'text-yellow-700', statusColor: 'text-yellow-700' }
-                      : { label: 'Replace', color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-900', labelColor: 'text-red-700', statusColor: 'text-red-700' };
+                    const batteryStatus = getBatteryStatus(reading.battery_level);
 
                     return (
                       <div className={`${batteryStatus.bgColor} rounded-lg p-3 border ${batteryStatus.borderColor}`}>
