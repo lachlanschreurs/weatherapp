@@ -22,6 +22,10 @@ interface NormalizedReading {
   soil_temp_c: number | null;
   rainfall_mm: number | null;
   battery_level: number | null;
+  air_temp_c: number | null;
+  humidity_percent: number | null;
+  moisture_depths: { depths: Array<{ depth_cm: number; value: number; channel: number }> };
+  soil_temp_depths: { depths: Array<{ depth_cm: number; value: number; channel: number }> };
   measured_at: string;
   raw_payload: any;
 }
@@ -185,6 +189,10 @@ class ProbeProviderAdapter {
       soil_temp_c: null,
       rainfall_mm: null,
       battery_level: null,
+      air_temp_c: null,
+      humidity_percent: null,
+      moisture_depths: { depths: [] },
+      soil_temp_depths: { depths: [] },
       measured_at: new Date().toISOString(),
       raw_payload: rawData,
     };
@@ -211,12 +219,54 @@ class ProbeProviderAdapter {
       if (sensorMapping.battery && latestReading[sensorMapping.battery]) {
         result.battery_level = parseFloat(latestReading[sensorMapping.battery]);
       }
+      if (sensorMapping.air_temp && latestReading[sensorMapping.air_temp]) {
+        result.air_temp_c = parseFloat(latestReading[sensorMapping.air_temp]);
+      }
+      if (sensorMapping.humidity && latestReading[sensorMapping.humidity]) {
+        result.humidity_percent = parseFloat(latestReading[sensorMapping.humidity]);
+      }
+
+      if (rawData.sensors && Array.isArray(rawData.sensors)) {
+        const moistureSensors = rawData.sensors.filter((s: any) => s.code === 34944);
+        const tempSensors = rawData.sensors.filter((s: any) => s.code === 34946);
+
+        const serialKey = Object.keys(latestReading).find(k => k.includes('33809'));
+        const serialNum = latestReading[serialKey];
+
+        moistureSensors.forEach((sensor: any, index: number) => {
+          const key = `${sensor.ch}_X_${serialNum}_34944_avg`;
+          const value = latestReading[key];
+          if (value !== undefined && value !== null) {
+            result.moisture_depths.depths.push({
+              depth_cm: (index + 1) * 10,
+              value: parseFloat(value),
+              channel: sensor.ch
+            });
+          }
+        });
+
+        tempSensors.forEach((sensor: any, index: number) => {
+          const key = `${sensor.ch}_X_${serialNum}_34946_avg`;
+          const value = latestReading[key];
+          if (value !== undefined && value !== null) {
+            result.soil_temp_depths.depths.push({
+              depth_cm: (index + 1) * 10,
+              value: parseFloat(value),
+              channel: sensor.ch
+            });
+          }
+        });
+      }
 
       console.log('Normalized data:', {
         moisture: result.moisture_percent,
         soil_temp: result.soil_temp_c,
         rainfall: result.rainfall_mm,
         battery: result.battery_level,
+        air_temp: result.air_temp_c,
+        humidity: result.humidity_percent,
+        moisture_depths: result.moisture_depths.depths.length,
+        temp_depths: result.soil_temp_depths.depths.length,
       });
 
       return result;
@@ -491,6 +541,10 @@ async function syncProbeData(
         soil_temp_c: normalizedData.soil_temp_c,
         rainfall_mm: normalizedData.rainfall_mm,
         battery_level: normalizedData.battery_level,
+        air_temp_c: normalizedData.air_temp_c,
+        humidity_percent: normalizedData.humidity_percent,
+        moisture_depths: normalizedData.moisture_depths,
+        soil_temp_depths: normalizedData.soil_temp_depths,
         raw_payload: normalizedData.raw_payload,
         measured_at: normalizedData.measured_at,
         synced_at: new Date().toISOString(),
