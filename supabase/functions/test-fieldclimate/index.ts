@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
     const headers = {
       'Accept': 'application/json',
       'Authorization': authHeader,
-      'Request-Date': dateHeader,
+      'Date': dateHeader,
     };
 
     debugInfo.request.allHeaders = headers;
