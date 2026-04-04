@@ -122,7 +122,7 @@ class ProbeProviderAdapter {
         const headers = {
           'Accept': 'application/json',
           'Authorization': authHeader,
-          'Date': dateHeader,
+          'Request-Date': dateHeader,
         };
 
         console.log('\nSending Request...');

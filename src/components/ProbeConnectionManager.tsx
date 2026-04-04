@@ -196,7 +196,9 @@ export function ProbeConnectionManager() {
             .delete()
             .eq('id', connection.id);
 
-          throw new Error(result.error || 'Failed to connect to probe. Please check your credentials and station ID.');
+          const detailedError = result.error || 'Failed to connect to probe';
+          console.error('FieldClimate API Error Details:', result);
+          throw new Error(`FieldClimate Error: ${detailedError}`);
         }
       }
 
