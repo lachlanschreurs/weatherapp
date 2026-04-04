@@ -311,51 +311,64 @@ function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: 
 
 async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<string> {
   try {
-    const { data: probeApis, error: apiError } = await supabaseAdmin
-      .from('probe_apis')
+    const { data: connections, error: connError } = await supabaseAdmin
+      .from('probe_connections')
       .select('*')
       .eq('user_id', userId)
-      .limit(5);
+      .eq('is_active', true)
+      .limit(10);
 
-    if (apiError || !probeApis || probeApis.length === 0) {
+    if (connError || !connections || connections.length === 0) {
       return '';
     }
 
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setHours(startDate.getHours() - 24);
-
-    const { data: probeData, error: dataError } = await supabaseAdmin
-      .from('probe_data')
-      .select('probe_id, depth, moisture, temperature, reading_time')
-      .eq('probe_api_id', probeApis[0].id)
-      .gte('reading_time', startDate.toISOString())
-      .lte('reading_time', endDate.toISOString())
-      .order('reading_time', { ascending: false })
+    const { data: latestReadings, error: readingError } = await supabaseAdmin
+      .from('probe_readings_latest')
+      .select('*')
+      .in('connection_id', connections.map((c: any) => c.id))
+      .order('last_reading_time', { ascending: false })
       .limit(50);
 
-    if (dataError || !probeData || probeData.length === 0) {
+    if (readingError || !latestReadings || latestReadings.length === 0) {
       return '';
     }
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiApiKey) {
-      return '';
+      return buildBasicProbeReport(latestReadings, connections);
     }
 
-    const probeDataSummary = probeData.slice(0, 10).map((reading: any) => ({
-      time: new Date(reading.reading_time).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
-      depth: reading.depth,
-      moisture: reading.moisture,
-      temperature: reading.temperature
-    }));
+    const probeDataForAI = latestReadings.slice(0, 10).map((reading: any) => {
+      const connection = connections.find((c: any) => c.id === reading.connection_id);
+      const moistureDepths = reading.moisture_depths?.depths || [];
+      const soilTempDepths = reading.soil_temp_depths?.depths || [];
 
-    const prompt = `You are an agricultural soil expert analyzing moisture probe data. Based on the following recent readings, provide a brief 2-3 sentence summary of soil conditions and one actionable recommendation for the farmer.
+      return {
+        location: reading.station_name || connection?.friendly_name || 'Probe',
+        lastUpdate: new Date(reading.last_reading_time).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
+        moisture: moistureDepths.length > 0
+          ? moistureDepths.map((d: any) => `${d.depth_cm}cm: ${d.value}%`).join(', ')
+          : reading.moisture_percent ? `${reading.moisture_percent}%` : 'N/A',
+        soilTemp: soilTempDepths.length > 0
+          ? soilTempDepths.map((d: any) => `${d.depth_cm}cm: ${d.value}°C`).join(', ')
+          : reading.soil_temp_c ? `${reading.soil_temp_c}°C` : 'N/A',
+        airTemp: reading.air_temp_c ? `${reading.air_temp_c}°C` : 'N/A',
+        humidity: reading.humidity_percent ? `${reading.humidity_percent}%` : 'N/A',
+        battery: reading.battery_level ? `${reading.battery_level}%` : 'N/A',
+      };
+    });
 
-Recent readings (last 24 hours):
-${JSON.stringify(probeDataSummary, null, 2)}
+    const prompt = `You are an agricultural soil expert analyzing moisture probe data from multiple field stations. Based on the following recent readings, provide:
 
-Provide a concise, practical analysis focused on moisture levels, trends, and irrigation recommendations. Keep it under 100 words.`;
+1. A brief summary of overall soil conditions across all probes
+2. Specific concerns or opportunities identified (e.g., dry zones, optimal moisture areas)
+3. Actionable irrigation recommendations for the next 24 hours
+4. Any plant health considerations based on soil temperature and moisture
+
+Probe Data (latest readings):
+${JSON.stringify(probeDataForAI, null, 2)}
+
+Provide a practical analysis in 3-4 sentences. Focus on actionable insights for farm operations. Keep it under 120 words.`;
 
     const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -366,43 +379,158 @@ Provide a concise, practical analysis focused on moisture levels, trends, and ir
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are a helpful agricultural advisor providing concise soil analysis.' },
+          { role: 'system', content: 'You are a helpful agricultural advisor providing concise, actionable soil analysis for farmers.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 150,
+        max_tokens: 200,
         temperature: 0.7,
       }),
     });
 
     if (!aiResponse.ok) {
       console.error('OpenAI API error:', await aiResponse.text());
-      return '';
+      return buildBasicProbeReport(latestReadings, connections);
     }
 
     const aiData = await aiResponse.json();
     const analysis = aiData.choices[0]?.message?.content || '';
 
     if (!analysis) {
-      return '';
+      return buildBasicProbeReport(latestReadings, connections);
     }
+
+    const detailedReadings = latestReadings.slice(0, 5).map((reading: any) => {
+      const connection = connections.find((c: any) => c.id === reading.connection_id);
+      const moistureDepths = reading.moisture_depths?.depths || [];
+      const soilTempDepths = reading.soil_temp_depths?.depths || [];
+
+      return buildProbeReadingCard(reading, connection, moistureDepths, soilTempDepths);
+    }).join('');
 
     return `
       <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 10px; padding: 16px; margin-top: 20px;">
-        <div style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-          🌱 Soil Moisture Analysis
+        <div style="font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+          🌱 AI Soil Analysis & Recommendations
         </div>
-        <div style="font-size: 13px; color: #78350f; line-height: 1.6; font-weight: 500;">
+        <div style="font-size: 13px; color: #78350f; line-height: 1.6; font-weight: 500; margin-bottom: 12px;">
           ${analysis}
         </div>
-        <div style="font-size: 10px; color: #92400e; margin-top: 8px; font-weight: 600;">
-          Based on ${probeData.length} readings from the last 24 hours
+        <div style="font-size: 10px; color: #92400e; font-weight: 600;">
+          Analysis based on ${latestReadings.length} active probe${latestReadings.length > 1 ? 's' : ''}
         </div>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; margin-bottom: 8px;">
+          📊 Detailed Probe Readings
+        </div>
+        ${detailedReadings}
       </div>
     `;
   } catch (error) {
     console.error('Error generating probe report:', error);
     return '';
   }
+}
+
+function buildBasicProbeReport(readings: any[], connections: any[]): string {
+  const readingCards = readings.slice(0, 5).map((reading: any) => {
+    const connection = connections.find((c: any) => c.id === reading.connection_id);
+    const moistureDepths = reading.moisture_depths?.depths || [];
+    const soilTempDepths = reading.soil_temp_depths?.depths || [];
+
+    return buildProbeReadingCard(reading, connection, moistureDepths, soilTempDepths);
+  }).join('');
+
+  return `
+    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 10px; padding: 16px; margin-top: 20px;">
+      <div style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase; margin-bottom: 8px;">
+        🌱 Soil Moisture Readings
+      </div>
+      <div style="font-size: 13px; color: #78350f; line-height: 1.6; font-weight: 500;">
+        Latest data from ${readings.length} active probe${readings.length > 1 ? 's' : ''} in your field.
+      </div>
+    </div>
+
+    <div style="margin-top: 16px;">
+      ${readingCards}
+    </div>
+  `;
+}
+
+function buildProbeReadingCard(reading: any, connection: any, moistureDepths: any[], soilTempDepths: any[]): string {
+  const probeName = reading.station_name || connection?.friendly_name || 'Probe Station';
+  const lastUpdate = new Date(reading.last_reading_time).toLocaleString('en-AU', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+
+  const moistureRows = moistureDepths.length > 0
+    ? moistureDepths.map((d: any) => `
+        <tr>
+          <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💧 ${d.depth_cm}cm depth</td>
+          <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${d.value}%</td>
+        </tr>
+      `).join('')
+    : reading.moisture_percent
+    ? `<tr>
+        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💧 Moisture</td>
+        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.moisture_percent}%</td>
+      </tr>`
+    : '';
+
+  const soilTempRows = soilTempDepths.length > 0
+    ? soilTempDepths.map((d: any) => `
+        <tr>
+          <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌡️ Soil ${d.depth_cm}cm</td>
+          <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${d.value}°C</td>
+        </tr>
+      `).join('')
+    : reading.soil_temp_c
+    ? `<tr>
+        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌡️ Soil Temp</td>
+        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.soil_temp_c}°C</td>
+      </tr>`
+    : '';
+
+  const extraRows = `
+    ${reading.air_temp_c ? `
+      <tr>
+        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌤️ Air Temp</td>
+        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.air_temp_c}°C</td>
+      </tr>
+    ` : ''}
+    ${reading.humidity_percent ? `
+      <tr>
+        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💨 Humidity</td>
+        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.humidity_percent}%</td>
+      </tr>
+    ` : ''}
+    ${reading.battery_level ? `
+      <tr>
+        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🔋 Battery</td>
+        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: ${reading.battery_level < 20 ? '#dc2626' : '#047857'}; text-align: right;">${reading.battery_level}%</td>
+      </tr>
+    ` : ''}
+  `;
+
+  return `
+    <div style="background: white; border: 2px solid #d1d5db; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+      <div style="font-size: 12px; font-weight: 800; color: #047857; margin-bottom: 6px;">
+        ${probeName}
+      </div>
+      <div style="font-size: 9px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">
+        Last update: ${lastUpdate}
+      </div>
+      <table style="width: 100%; border-collapse: collapse;">
+        ${moistureRows}
+        ${soilTempRows}
+        ${extraRows}
+      </table>
+    </div>
+  `;
 }
 
 function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeReport: string = ''): string {
