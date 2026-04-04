@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FieldClimate Connection Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #059669;
+      margin-bottom: 30px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #374151;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #059669;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #047857;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .output {
+      margin-top: 30px;
+      padding: 20px;
+      background: #1f2937;
+      border-radius: 5px;
+      color: #10b981;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 600px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .error {
+      color: #ef4444;
+    }
+    .success {
+      color: #10b981;
+    }
+    .info {
+      color: #60a5fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>FieldClimate Connection Test - Station 03110CD2</h1>
+
+    <form id="testForm">
+      <div class="form-group">
+        <label>Station ID</label>
+        <input type="text" id="stationId" value="03110CD2" required>
+      </div>
+
+      <div class="form-group">
+        <label>HMAC Public Key (API Key)</label>
+        <input type="text" id="publicKey" placeholder="Enter your public key" required>
+      </div>
+
+      <div class="form-group">
+        <label>HMAC Private Key (API Secret)</label>
+        <input type="password" id="privateKey" placeholder="Enter your private key" required>
+      </div>
+
+      <div class="form-group">
+        <label>Supabase URL</label>
+        <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co" required>
+      </div>
+
+      <div class="form-group">
+        <label>Your Access Token (from browser console)</label>
+        <input type="password" id="accessToken" placeholder="Get from supabase.auth.getSession()" required>
+      </div>
+
+      <button type="submit" id="testBtn">Test Connection</button>
+    </form>
+
+    <div id="output" class="output" style="display: none;"></div>
+  </div>
+
+  <script type="module">
+    const form = document.getElementById('testForm');
+    const output = document.getElementById('output');
+    const testBtn = document.getElementById('testBtn');
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+      output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+      output.style.display = 'block';
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function clearLog() {
+      output.innerHTML = '';
+      output.style.display = 'none';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      clearLog();
+      testBtn.disabled = true;
+      testBtn.textContent = 'Testing...';
+
+      const stationId = document.getElementById('stationId').value;
+      const publicKey = document.getElementById('publicKey').value;
+      const privateKey = document.getElementById('privateKey').value;
+      const supabaseUrl = document.getElementById('supabaseUrl').value;
+      const accessToken = document.getElementById('accessToken').value;
+
+      try {
+        log('Starting FieldClimate connection test...', 'info');
+        log(`Station ID: ${stationId}`, 'info');
+        log(`Public Key: ${publicKey.substring(0, 12)}...`, 'info');
+        log('', 'info');
+
+        // First, create a probe connection
+        log('Step 1: Creating probe connection in database...', 'info');
+
+        const createResponse = await fetch(`${supabaseUrl}/rest/v1/probe_connections`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+            'apikey': accessToken,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            provider: 'fieldclimate',
+            friendly_name: 'TW Main Probe',
+            connection_method: 'api_key',
+            api_key: publicKey,
+            api_secret: privateKey,
+            station_id: stationId,
+            auth_config: {
+              api_key: publicKey,
+              api_secret: privateKey
+            },
+            is_active: true,
+            sensor_mapping: {}
+          })
+        });
+
+        if (!createResponse.ok) {
+          const errorText = await createResponse.text();
+          log(`Failed to create connection: ${createResponse.status}`, 'error');
+          log(errorText, 'error');
+          throw new Error('Failed to create connection');
+        }
+
+        const connections = await createResponse.json();
+        const connection = Array.isArray(connections) ? connections[0] : connections;
+
+        log(`✓ Connection created: ${connection.id}`, 'success');
+        log('', 'info');
+
+        // Now test sync
+        log('Step 2: Testing FieldClimate API sync...', 'info');
+        log('This will show detailed debug logs from the edge function.', 'info');
+        log('', 'info');
+
+        const syncResponse = await fetch(
+          `${supabaseUrl}/functions/v1/sync-probe-data?connection_id=${connection.id}`,
+          {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const syncResult = await syncResponse.json();
+
+        log('=== SYNC RESULT ===', 'info');
+        log(JSON.stringify(syncResult, null, 2), syncResult.success ? 'success' : 'error');
+
+        if (syncResult.success) {
+          log('', 'info');
+          log('✓✓✓ CONNECTION SUCCESSFUL! ✓✓✓', 'success');
+          log('', 'info');
+
+          if (syncResult.reading) {
+            log('Latest Reading:', 'success');
+            log(`  Moisture: ${syncResult.reading.moisture_percent}%`, 'success');
+            log(`  Soil Temp: ${syncResult.reading.soil_temp_c}°C`, 'success');
+            log(`  Rainfall: ${syncResult.reading.rainfall_mm}mm`, 'success');
+            log(`  Battery: ${syncResult.reading.battery_level}%`, 'success');
+          }
+        } else {
+          log('', 'info');
+          log('❌ CONNECTION FAILED', 'error');
+          log(`Error: ${syncResult.error}`, 'error');
+          log('', 'info');
+          log('Check the Supabase Edge Function logs for detailed debugging info:', 'info');
+          log(`${supabaseUrl}/project/[project-id]/logs/edge-functions`, 'info');
+        }
+
+      } catch (error) {
+        log('', 'info');
+        log('❌ Test failed with exception:', 'error');
+        log(error.message, 'error');
+        log(error.stack, 'error');
+      } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = 'Test Connection';
+      }
+    });
+
+    // Helper to get token
+    log('To get your access token, run this in the browser console:', 'info');
+    log('const { data } = await supabase.auth.getSession(); console.log(data.session.access_token);', 'info');
+    log('', 'info');
+    log('Then paste the token into the form above.', 'info');
+  </script>
+</body>
+</html>
