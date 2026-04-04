@@ -326,7 +326,7 @@ async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<
       .from('probe_readings_latest')
       .select('*')
       .in('connection_id', connections.map((c: any) => c.id))
-      .order('last_reading_time', { ascending: false })
+      .order('measured_at', { ascending: false })
       .limit(50);
 
     if (readingError || !latestReadings || latestReadings.length === 0) {
@@ -344,8 +344,8 @@ async function generateProbeReport(userId: string, supabaseAdmin: any): Promise<
       const soilTempDepths = reading.soil_temp_depths?.depths || [];
 
       return {
-        location: reading.station_name || connection?.friendly_name || 'Probe',
-        lastUpdate: new Date(reading.last_reading_time).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
+        location: reading.station_id || connection?.friendly_name || connection?.station_id || 'Probe',
+        lastUpdate: new Date(reading.measured_at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
         moisture: moistureDepths.length > 0
           ? moistureDepths.map((d: any) => {
               const status = getMoistureStatus(d.value);
@@ -511,8 +511,8 @@ function buildBasicProbeReport(readings: any[], connections: any[]): string {
 }
 
 function buildProbeReadingCard(reading: any, connection: any, moistureDepths: any[], soilTempDepths: any[]): string {
-  const probeName = reading.station_name || connection?.friendly_name || 'Probe Station';
-  const lastUpdate = new Date(reading.last_reading_time).toLocaleString('en-AU', {
+  const probeName = connection?.friendly_name || reading.station_id || 'Probe Station';
+  const lastUpdate = new Date(reading.measured_at).toLocaleString('en-AU', {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
