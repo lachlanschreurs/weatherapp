@@ -18,11 +18,21 @@ interface ProbeConnection {
   friendly_name: string | null;
 }
 
+interface MoistureDepth {
+  depth_cm: number;
+  value: number;
+  channel?: number;
+}
+
 interface ProbeReading {
   id: string;
   connection_id: string;
   moisture_percent: number | null;
+  moisture_depths?: { depths: MoistureDepth[] };
   soil_temp_c: number | null;
+  soil_temp_depths?: { depths: MoistureDepth[] };
+  air_temp_c?: number | null;
+  humidity_percent?: number | null;
   rainfall_mm: number | null;
   battery_level: number | null;
   measured_at: string;
@@ -830,16 +840,36 @@ export function ProbeConnectionManager() {
                     {reading ? (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="bg-blue-50 rounded-lg p-3">
-                          <div className="text-xs text-blue-600 font-medium mb-1">Soil Moisture</div>
+                          <div className="text-xs text-blue-700 font-medium mb-1">Soil Moisture</div>
                           <div className="text-2xl font-bold text-blue-900">
                             {reading.moisture_percent !== null ? `${reading.moisture_percent.toFixed(1)}%` : 'N/A'}
                           </div>
+                          {reading.moisture_depths?.depths && reading.moisture_depths.depths.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-blue-200 space-y-1">
+                              {reading.moisture_depths.depths.map((depth, idx) => (
+                                <div key={idx} className="flex justify-between text-xs">
+                                  <span className="text-blue-600 font-medium">{depth.depth_cm}cm:</span>
+                                  <span className="text-blue-900 font-semibold">{depth.value.toFixed(1)}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="bg-orange-50 rounded-lg p-3">
-                          <div className="text-xs text-orange-600 font-medium mb-1">Soil Temp</div>
+                          <div className="text-xs text-orange-700 font-medium mb-1">Soil Temp</div>
                           <div className="text-2xl font-bold text-orange-900">
                             {reading.soil_temp_c !== null ? `${reading.soil_temp_c.toFixed(1)}°C` : 'N/A'}
                           </div>
+                          {reading.soil_temp_depths?.depths && reading.soil_temp_depths.depths.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-orange-200 space-y-1">
+                              {reading.soil_temp_depths.depths.map((depth, idx) => (
+                                <div key={idx} className="flex justify-between text-xs">
+                                  <span className="text-orange-600 font-medium">{depth.depth_cm}cm:</span>
+                                  <span className="text-orange-900 font-semibold">{depth.value.toFixed(1)}°C</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="bg-cyan-50 rounded-lg p-3">
                           <div className="text-xs text-cyan-700 font-medium mb-1">Rainfall</div>
