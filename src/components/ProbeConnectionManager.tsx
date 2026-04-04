@@ -46,6 +46,39 @@ const CONNECTION_METHODS = [
   { id: 'email', name: 'Email Import', icon: Mail, description: 'Forward reports to Farmcast' },
 ];
 
+function getBatteryStatus(mV: number) {
+  const voltage = mV / 1000;
+
+  if (voltage >= 3.2) {
+    return {
+      label: 'Healthy',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200',
+      textColor: 'text-green-900',
+      labelColor: 'text-green-700',
+      statusColor: 'text-green-600',
+    };
+  } else if (voltage >= 2.8) {
+    return {
+      label: 'Fair',
+      bgColor: 'bg-yellow-50',
+      borderColor: 'border-yellow-200',
+      textColor: 'text-yellow-900',
+      labelColor: 'text-yellow-700',
+      statusColor: 'text-yellow-600',
+    };
+  } else {
+    return {
+      label: 'Low',
+      bgColor: 'bg-red-50',
+      borderColor: 'border-red-200',
+      textColor: 'text-red-900',
+      labelColor: 'text-red-700',
+      statusColor: 'text-red-600',
+    };
+  }
+}
+
 export function ProbeConnectionManager() {
   const [connections, setConnections] = useState<ProbeConnection[]>([]);
   const [readings, setReadings] = useState<Map<string, ProbeReading>>(new Map());
@@ -809,17 +842,26 @@ export function ProbeConnectionManager() {
                           </div>
                         </div>
                         <div className="bg-cyan-50 rounded-lg p-3">
-                          <div className="text-xs text-cyan-600 font-medium mb-1">Rainfall</div>
+                          <div className="text-xs text-cyan-700 font-medium mb-1">Rainfall</div>
                           <div className="text-2xl font-bold text-cyan-900">
                             {reading.rainfall_mm !== null ? `${reading.rainfall_mm.toFixed(1)}mm` : 'N/A'}
                           </div>
+                          <div className="text-xs text-cyan-600 font-semibold mt-1">Total</div>
                         </div>
-                        <div className="bg-green-50 rounded-lg p-3">
-                          <div className="text-xs text-green-600 font-medium mb-1">Battery</div>
-                          <div className="text-2xl font-bold text-green-900">
-                            {reading.battery_level !== null ? `${reading.battery_level.toFixed(0)}%` : 'N/A'}
-                          </div>
-                        </div>
+                        {reading.battery_level !== null && (() => {
+                          const batteryStatus = getBatteryStatus(reading.battery_level);
+                          return (
+                            <div className={`${batteryStatus.bgColor} rounded-lg p-3 border ${batteryStatus.borderColor}`}>
+                              <div className={`text-xs ${batteryStatus.labelColor} font-medium mb-1`}>Battery</div>
+                              <div className={`text-2xl font-bold ${batteryStatus.textColor}`}>
+                                {(reading.battery_level / 1000).toFixed(2)}V
+                              </div>
+                              <div className={`text-xs ${batteryStatus.statusColor} font-semibold mt-1`}>
+                                {batteryStatus.label}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className="text-center py-4 text-gray-500">
