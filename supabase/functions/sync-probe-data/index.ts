@@ -44,206 +44,105 @@ class ProbeProviderAdapter {
 
     console.log('=== FIELDCLIMATE API DEBUG START ===');
     console.log('Station ID:', stationId);
-    console.log('Public Key (first 12 chars):', publicKey.substring(0, 12) + '...');
-    console.log('Private Key (first 12 chars):', privateKey.substring(0, 12) + '...');
+    console.log('Public Key:', publicKey);
+    console.log('Private Key (length):', privateKey.length);
+
+    const route = `/data/${stationId}/raw/last/0`;
+    const method = 'GET';
 
     const now = new Date();
-    const timestampUnix = Math.floor(now.getTime() / 1000);
+    const dateHeader = now.toUTCString();
 
-    const endpoints = [
-      {
-        route: `/v2/data/${stationId}/raw/last/${timestampUnix}`,
-        name: 'raw/last with timestamp'
-      },
-      {
-        route: `/v2/data/${stationId}/last/${timestampUnix}`,
-        name: 'last with timestamp'
-      },
-      {
-        route: `/v2/data/${stationId}/raw/last`,
-        name: 'raw/last without timestamp'
-      },
-      {
-        route: `/v2/data/${stationId}/last`,
-        name: 'last without timestamp'
-      },
-    ];
+    const stringToSign = method + route + dateHeader + publicKey;
 
-    let lastError = null;
+    console.log('\n=== SIGNATURE GENERATION ===');
+    console.log('Method:', method);
+    console.log('Route:', route);
+    console.log('Date Header:', dateHeader);
+    console.log('Public Key:', publicKey);
+    console.log('String to Sign:', stringToSign);
+    console.log('String to Sign (length):', stringToSign.length);
 
-    for (const endpoint of endpoints) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(privateKey);
+    const messageData = encoder.encode(stringToSign);
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+    const hmacHex = Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    console.log('Generated Signature:', hmacHex);
+
+    const authHeader = `hmac ${publicKey}:${hmacHex}`;
+    console.log('Authorization Header:', authHeader);
+
+    const url = `https://api.fieldclimate.com${route}`;
+    console.log('\n=== REQUEST ===');
+    console.log('URL:', url);
+
+    const headers = {
+      'Accept': 'application/json',
+      'Authorization': authHeader,
+      'Request-Date': dateHeader,
+    };
+
+    console.log('Headers:', JSON.stringify(headers, null, 2));
+
+    const response = await fetch(url, { method, headers });
+
+    console.log('\n=== RESPONSE ===');
+    console.log('Status:', response.status, response.statusText);
+
+    const responseText = await response.text();
+    console.log('Body (length):', responseText.length);
+    console.log('Body:', responseText);
+
+    if (!response.ok) {
+      console.error('❌ REQUEST FAILED');
+
+      let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
       try {
-        console.log(`\n--- Testing endpoint: ${endpoint.name} ---`);
-        console.log('Route:', endpoint.route);
-
-        const method = 'GET';
-
-        const dateHeader = now.toUTCString();
-
-        const stringToSign = `${method}${endpoint.route}${dateHeader}${publicKey}`;
-
-        console.log('Authentication Details:');
-        console.log('  Method:', method);
-        console.log('  Route:', endpoint.route);
-        console.log('  Date Header:', dateHeader);
-        console.log('  Public Key:', publicKey);
-        console.log('  String to sign:', `"${stringToSign}"`);
-        console.log('  String length:', stringToSign.length);
-        console.log('  String bytes:', new TextEncoder().encode(stringToSign).length);
-
-        const encoder = new TextEncoder();
-        const keyData = encoder.encode(privateKey);
-        const messageData = encoder.encode(stringToSign);
-
-        console.log('  Private key length:', privateKey.length);
-        console.log('  Private key bytes:', keyData.length);
-
-        const cryptoKey = await crypto.subtle.importKey(
-          'raw',
-          keyData,
-          { name: 'HMAC', hash: 'SHA-256' },
-          false,
-          ['sign']
-        );
-
-        const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-        const hmacHex = Array.from(new Uint8Array(signature))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-
-        console.log('  HMAC Signature:', hmacHex);
-
-        const authHeader = `hmac ${publicKey}:${hmacHex}`;
-        console.log('  Authorization Header:', authHeader);
-
-        const url = `https://api.fieldclimate.com${endpoint.route}`;
-        console.log('  Full URL:', url);
-
-        const headers = {
-          'Accept': 'application/json',
-          'Authorization': authHeader,
-          'Request-Date': dateHeader,
-        };
-
-        console.log('\nSending Request...');
-
-        const response = await fetch(url, {
-          method: method,
-          headers: headers,
-        });
-
-        console.log('\nResponse Received:');
-        console.log('  Status:', response.status, response.statusText);
-
-        const responseHeaders = Object.fromEntries(response.headers.entries());
-        console.log('  Response Headers:', JSON.stringify(responseHeaders, null, 2));
-
-        const responseText = await response.text();
-        console.log('  Body Length:', responseText.length);
-
-        if (responseText.length > 0) {
-          console.log('  Body (first 1000 chars):', responseText.substring(0, 1000));
-        }
-
-        if (!response.ok) {
-          console.error('  ❌ REQUEST FAILED');
-
-          let errorDetail = `HTTP ${response.status}: ${response.statusText}`;
-          try {
-            const errorJson = JSON.parse(responseText);
-            console.log('  Error JSON:', JSON.stringify(errorJson, null, 2));
-
-            if (errorJson.message) {
-              errorDetail = errorJson.message;
-            } else if (errorJson.error) {
-              errorDetail = errorJson.error;
-            } else if (errorJson.errors) {
-              errorDetail = JSON.stringify(errorJson.errors);
-            } else {
-              errorDetail = JSON.stringify(errorJson);
-            }
-          } catch (e) {
-            console.log('  Error body is not JSON');
-            if (responseText.length > 0) {
-              errorDetail = responseText.substring(0, 300);
-            }
-          }
-
-          lastError = {
-            endpoint: endpoint.name,
-            route: endpoint.route,
-            status: response.status,
-            statusText: response.statusText,
-            error: errorDetail,
-            body: responseText,
-          };
-
-          console.log('  Trying next endpoint...\n');
-          continue;
-        }
-
-        console.log('  ✓ SUCCESS');
-
-        let data;
-        try {
-          data = JSON.parse(responseText);
-          console.log('  Response Structure:');
-          console.log('    Top-level keys:', Object.keys(data));
-
-          if (data.data) {
-            console.log('    data keys:', Object.keys(data.data));
-          }
-          if (data.devices) {
-            console.log('    devices count:', data.devices.length);
-            if (data.devices.length > 0) {
-              console.log('    first device keys:', Object.keys(data.devices[0]));
-            }
-          }
-
-          console.log('  Full Response:', JSON.stringify(data, null, 2));
-        } catch (e) {
-          console.error('  ERROR: Failed to parse JSON');
-          throw new Error('Invalid JSON response from FieldClimate API');
-        }
-
-        console.log('=== FIELDCLIMATE API DEBUG END (SUCCESS) ===\n');
-        return data;
-
-      } catch (error: any) {
-        console.error(`  Exception: ${error.message}`);
-        lastError = {
-          endpoint: endpoint.name,
-          route: endpoint.route,
-          error: error.message,
-        };
-      }
-    }
-
-    console.log('=== FIELDCLIMATE API DEBUG END (ALL ENDPOINTS FAILED) ===\n');
-    console.log('Final Error:', JSON.stringify(lastError, null, 2));
-
-    if (lastError) {
-      let errorMessage = 'FieldClimate API Error: ';
-
-      if (lastError.status === 401) {
-        errorMessage += 'Authentication failed. Please verify:\n';
-        errorMessage += '- HMAC Public Key is correct\n';
-        errorMessage += '- HMAC Private Key is correct\n';
-        errorMessage += '- Keys have not expired';
-      } else if (lastError.status === 404) {
-        errorMessage += `Station ${stationId} not found. Verify the station ID is correct.`;
-      } else if (lastError.status === 403) {
-        errorMessage += 'Access forbidden. Check that your API keys have permission for this station.';
-      } else if (lastError.error) {
-        errorMessage += lastError.error;
-      } else {
-        errorMessage += `Request failed (${lastError.status || 'unknown error'})`;
+        const errorJson = JSON.parse(responseText);
+        console.log('Error JSON:', JSON.stringify(errorJson, null, 2));
+        errorDetail = errorJson.message || errorJson.error || JSON.stringify(errorJson);
+      } catch (e) {
+        errorDetail = responseText || errorDetail;
       }
 
-      throw new Error(errorMessage);
+      if (response.status === 401) {
+        throw new Error('Authentication failed (401). The HMAC signature is being rejected by FieldClimate. Verify your HMAC Public Key and Private Key are correct.');
+      } else if (response.status === 404) {
+        throw new Error(`Station ${stationId} not found (404). Verify the station ID is correct.`);
+      } else if (response.status === 403) {
+        throw new Error('Access forbidden (403). Check that your API keys have permission for this station.');
+      }
+
+      throw new Error(errorDetail);
     }
 
-    throw new Error('FieldClimate API: All endpoints failed with unknown errors');
+    console.log('✓ SUCCESS');
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+      console.log('Response Structure:', Object.keys(data));
+      console.log('Full Response:', JSON.stringify(data, null, 2));
+    } catch (e) {
+      console.error('ERROR: Failed to parse JSON');
+      throw new Error('Invalid JSON response from FieldClimate API');
+    }
+
+    console.log('=== FIELDCLIMATE API DEBUG END ===\n');
+    return data;
   }
 
   static normalizeData(
