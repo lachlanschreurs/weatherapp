@@ -741,11 +741,30 @@ export function ProbeConnectionManager() {
             </div>
           ) : (
             <div className="space-y-4">
-              {connections.map((connection) => {
+              {connections.map((connection, index) => {
                 const reading = readings.get(connection.id);
 
+                const bgColors = [
+                  'bg-gradient-to-br from-blue-50 to-cyan-50',
+                  'bg-gradient-to-br from-green-50 to-emerald-50',
+                  'bg-gradient-to-br from-amber-50 to-orange-50',
+                  'bg-gradient-to-br from-rose-50 to-pink-50',
+                  'bg-gradient-to-br from-violet-50 to-purple-50',
+                  'bg-gradient-to-br from-teal-50 to-cyan-50',
+                ];
+                const borderColors = [
+                  'border-blue-200',
+                  'border-green-200',
+                  'border-amber-200',
+                  'border-rose-200',
+                  'border-violet-200',
+                  'border-teal-200',
+                ];
+
+                const colorIndex = index % bgColors.length;
+
                 return (
-                  <div key={connection.id} className="border border-gray-200 rounded-lg p-4">
+                  <div key={connection.id} className={`${bgColors[colorIndex]} border ${borderColors[colorIndex]} rounded-lg p-4`}>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
