@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Gauge, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle, Settings, Eye, EyeOff, Upload, Mail, Zap } from 'lucide-react';
+import { Gauge, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle, Settings, Eye, EyeOff, Upload, Mail, Zap, CreditCard as Edit2, Check, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CSVUploadModal } from './CSVUploadModal';
 import { EmailImportInstructions } from './EmailImportInstructions';
@@ -75,6 +75,8 @@ export function ProbeConnectionManager() {
   const [showSecrets, setShowSecrets] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [showRawData, setShowRawData] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
 
   useEffect(() => {
     loadConnections();
@@ -325,6 +327,38 @@ export function ProbeConnectionManager() {
       setError(err.message);
     } finally {
       setIsSyncing(false);
+    }
+  }
+
+  function handleStartEditName(connection: ProbeConnection) {
+    setEditingName(connection.id);
+    setEditNameValue(connection.friendly_name || getProviderDisplayName(connection.provider));
+  }
+
+  function handleCancelEditName() {
+    setEditingName(null);
+    setEditNameValue('');
+  }
+
+  async function handleSaveEditName(connectionId: string) {
+    try {
+      setError(null);
+
+      const { error: updateError } = await supabase
+        .from('probe_connections')
+        .update({ friendly_name: editNameValue.trim() || null })
+        .eq('id', connectionId);
+
+      if (updateError) throw updateError;
+
+      setSuccessMessage('Probe renamed successfully');
+      setEditingName(null);
+      setEditNameValue('');
+      await loadConnections();
+
+    } catch (err: any) {
+      console.error('Error renaming probe:', err);
+      setError(err.message);
     }
   }
 
@@ -672,13 +706,53 @@ export function ProbeConnectionManager() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-900">
-                            {connection.friendly_name || getProviderDisplayName(connection.provider)}
-                          </h4>
-                          {connection.friendly_name && (
-                            <span className="text-sm text-gray-500">
-                              ({getProviderDisplayName(connection.provider)})
-                            </span>
+                          {editingName === connection.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editNameValue}
+                                onChange={(e) => setEditNameValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveEditName(connection.id);
+                                  if (e.key === 'Escape') handleCancelEditName();
+                                }}
+                                className="px-3 py-1.5 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-semibold text-gray-900"
+                                placeholder="e.g., North Field Probe"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handleSaveEditName(connection.id)}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="Save name"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={handleCancelEditName}
+                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                title="Cancel"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <h4 className="font-semibold text-gray-900">
+                                {connection.friendly_name || getProviderDisplayName(connection.provider)}
+                              </h4>
+                              <button
+                                onClick={() => handleStartEditName(connection)}
+                                className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                title="Rename probe"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              {connection.friendly_name && (
+                                <span className="text-sm text-gray-500">
+                                  ({getProviderDisplayName(connection.provider)})
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
