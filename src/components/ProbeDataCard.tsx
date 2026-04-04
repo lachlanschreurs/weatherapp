@@ -159,21 +159,21 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  function getMoistureColor(percent: number | null) {
-    if (percent === null) return 'gray';
-    if (percent < 20) return 'red';
-    if (percent < 40) return 'orange';
-    if (percent < 60) return 'yellow';
-    return 'blue';
-  }
-
-  function getMoistureLabel(percent: number | null) {
-    if (percent === null) return 'Unknown';
-    if (percent < 20) return 'Very Dry';
-    if (percent < 40) return 'Dry';
-    if (percent < 60) return 'Moderate';
-    if (percent < 80) return 'Moist';
-    return 'Very Moist';
+  function getMoistureStatus(moisturePercent: number | null): { status: string; color: string; bgColor: string; borderColor: string; textColor: string } {
+    if (moisturePercent === null) {
+      return { status: 'Unknown', color: '#6b7280', bgColor: '#f9fafb', borderColor: '#d1d5db', textColor: '#374151' };
+    }
+    if (moisturePercent < 15) {
+      return { status: 'Very Dry', color: '#dc2626', bgColor: '#fee2e2', borderColor: '#fca5a5', textColor: '#991b1b' };
+    } else if (moisturePercent >= 15 && moisturePercent < 25) {
+      return { status: 'Dry', color: '#f59e0b', bgColor: '#fef3c7', borderColor: '#fcd34d', textColor: '#92400e' };
+    } else if (moisturePercent >= 25 && moisturePercent <= 40) {
+      return { status: 'Ideal', color: '#059669', bgColor: '#d1fae5', borderColor: '#6ee7b7', textColor: '#065f46' };
+    } else if (moisturePercent > 40 && moisturePercent <= 55) {
+      return { status: 'Moist', color: '#3b82f6', bgColor: '#dbeafe', borderColor: '#93c5fd', textColor: '#1e40af' };
+    } else {
+      return { status: 'Saturated', color: '#6366f1', bgColor: '#e0e7ff', borderColor: '#a5b4fc', textColor: '#4338ca' };
+    }
   }
 
   if (isLoading) {
@@ -274,17 +274,33 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
                     </h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {reading.moisture_depths.depths.map((depth, idx) => {
-                        const color = getMoistureColor(depth.value);
+                        const moistStatus = getMoistureStatus(depth.value);
                         return (
-                          <div key={idx} className={`bg-${color}-50 rounded-lg p-3 border border-${color}-200`}>
-                            <div className={`text-xs font-medium text-${color}-700 mb-1`}>
+                          <div
+                            key={idx}
+                            className="rounded-lg p-3 border"
+                            style={{
+                              backgroundColor: moistStatus.bgColor,
+                              borderColor: moistStatus.borderColor
+                            }}
+                          >
+                            <div
+                              className="text-xs font-medium mb-1"
+                              style={{ color: moistStatus.textColor }}
+                            >
                               {depth.depth_cm}cm depth
                             </div>
-                            <div className={`text-2xl font-bold text-${color}-900`}>
+                            <div
+                              className="text-2xl font-bold"
+                              style={{ color: moistStatus.textColor }}
+                            >
                               {depth.value.toFixed(1)}%
                             </div>
-                            <div className={`text-xs text-${color}-600 mt-1`}>
-                              {getMoistureLabel(depth.value)}
+                            <div
+                              className="text-xs font-semibold mt-1"
+                              style={{ color: moistStatus.color }}
+                            >
+                              {moistStatus.status}
                             </div>
                           </div>
                         );
