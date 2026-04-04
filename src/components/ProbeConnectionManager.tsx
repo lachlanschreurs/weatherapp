@@ -745,20 +745,16 @@ export function ProbeConnectionManager() {
                 const reading = readings.get(connection.id);
 
                 const bgColors = [
-                  'bg-gradient-to-br from-blue-50 to-cyan-50',
-                  'bg-gradient-to-br from-green-50 to-emerald-50',
-                  'bg-gradient-to-br from-amber-50 to-orange-50',
-                  'bg-gradient-to-br from-rose-50 to-pink-50',
-                  'bg-gradient-to-br from-violet-50 to-purple-50',
-                  'bg-gradient-to-br from-teal-50 to-cyan-50',
+                  'bg-gradient-to-br from-blue-100 via-blue-50 to-cyan-100',
+                  'bg-gradient-to-br from-emerald-100 via-green-50 to-teal-100',
+                  'bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100',
+                  'bg-gradient-to-br from-teal-100 via-cyan-50 to-sky-100',
                 ];
                 const borderColors = [
-                  'border-blue-200',
-                  'border-green-200',
-                  'border-amber-200',
-                  'border-rose-200',
-                  'border-violet-200',
-                  'border-teal-200',
+                  'border-2 border-blue-300',
+                  'border-2 border-emerald-300',
+                  'border-2 border-amber-300',
+                  'border-2 border-teal-300',
                 ];
 
                 const colorIndex = index % bgColors.length;
