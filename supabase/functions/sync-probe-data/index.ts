@@ -47,7 +47,7 @@ class ProbeProviderAdapter {
     console.log('Public Key:', publicKey);
     console.log('Private Key (length):', privateKey.length);
 
-    const route = `/data/${stationId}/raw/last/0`;
+    const route = `/v2/data/${stationId}/raw/last/1h`;
     const method = 'GET';
 
     const now = new Date();
@@ -97,7 +97,24 @@ class ProbeProviderAdapter {
 
     console.log('Headers:', JSON.stringify(headers, null, 2));
 
-    const response = await fetch(url, { method, headers });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('FieldClimate API request timed out after 30 seconds. The station may be offline or experiencing connectivity issues.');
+      }
+      throw error;
+    }
 
     console.log('\n=== RESPONSE ===');
     console.log('Status:', response.status, response.statusText);
