@@ -150,7 +150,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         minZoom: 4
       });
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap, © CartoDB',
         maxZoom: 19,
         subdomains: 'abcd'
@@ -236,7 +236,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const isFutureFrame = currentFrame && currentFrame.time > Date.now() / 1000;
 
   return (
-    <div className={`bg-gray-900 rounded-xl shadow-2xl overflow-hidden ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
+    <div className={`bg-white rounded-xl shadow-2xl overflow-hidden ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
       <div className="bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
@@ -266,19 +266,19 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
       {showRadar && (
         <>
-          <div className={`relative bg-gray-950 ${isExpanded ? 'h-[calc(100vh-18rem)]' : 'h-[500px]'}`}>
+          <div className={`relative bg-gray-100 ${isExpanded ? 'h-[calc(100vh-18rem)]' : 'h-[500px]'}`}>
             {isLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500 mx-auto mb-3"></div>
-                  <p className="text-gray-300 font-medium">Loading radar data...</p>
+                  <p className="text-gray-700 font-medium">Loading radar data...</p>
                 </div>
               </div>
             ) : radarFrames.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                 <div className="text-center">
-                  <CloudRain className="w-16 h-16 text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-300 font-medium">No radar data available</p>
+                  <CloudRain className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-700 font-medium">No radar data available</p>
                   <button
                     onClick={manualRefresh}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -293,51 +293,51 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
                 {currentFrame && (
                   <>
-                    <div className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700">
+                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200">
                       <div className="flex items-center gap-2 mb-1">
-                        <Clock className="w-4 h-4 text-cyan-400" />
-                        <span className="text-sm font-semibold text-white">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-semibold text-gray-900">
                           {formatTime(currentFrame.time)}
                         </span>
                         {isFutureFrame && (
-                          <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-medium border border-green-500/30">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium border border-green-300">
                             Forecast
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-600">
                         {formatRelativeTime(currentFrame.time)}
                       </div>
                     </div>
 
-                    <div className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700">
-                      <div className="text-xs font-bold text-white mb-2.5">Rainfall Intensity</div>
+                    <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200">
+                      <div className="text-xs font-bold text-gray-900 mb-2.5">Rainfall Intensity</div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <div className="w-8 h-3 rounded" style={{ background: 'rgba(150, 220, 255, 0.9)' }}></div>
-                          <span className="text-xs text-gray-300 font-medium flex-1">Light</span>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Light</span>
                           <span className="text-xs text-gray-500">0.5-2 mm/h</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <div className="w-8 h-3 rounded" style={{ background: 'rgba(0, 150, 255, 0.9)' }}></div>
-                          <span className="text-xs text-gray-300 font-medium flex-1">Moderate</span>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Moderate</span>
                           <span className="text-xs text-gray-500">2-10 mm/h</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <div className="w-8 h-3 rounded" style={{ background: 'rgba(255, 200, 0, 0.9)' }}></div>
-                          <span className="text-xs text-gray-300 font-medium flex-1">Heavy</span>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Heavy</span>
                           <span className="text-xs text-gray-500">10-50 mm/h</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
                           <div className="w-8 h-3 rounded" style={{ background: 'rgba(255, 100, 0, 0.9)' }}></div>
-                          <span className="text-xs text-gray-300 font-medium flex-1">Intense</span>
+                          <span className="text-xs text-gray-700 font-medium flex-1">Intense</span>
                           <span className="text-xs text-gray-500">&gt;50 mm/h</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="absolute top-4 right-4 bg-gray-900/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700">
-                      <div className="text-xs font-semibold text-white mb-2">Opacity</div>
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200">
+                      <div className="text-xs font-semibold text-gray-900 mb-2">Opacity</div>
                       <input
                         type="range"
                         min="0"
@@ -347,7 +347,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                         onChange={(e) => setOpacity(parseFloat(e.target.value))}
                         className="w-24 accent-blue-500"
                       />
-                      <div className="text-xs text-gray-400 mt-1 text-center">{Math.round(opacity * 100)}%</div>
+                      <div className="text-xs text-gray-600 mt-1 text-center">{Math.round(opacity * 100)}%</div>
                     </div>
                   </>
                 )}
@@ -356,7 +356,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           </div>
 
           {!isLoading && radarFrames.length > 0 && (
-            <div className="bg-gray-900 px-4 py-4 border-t border-gray-800">
+            <div className="bg-gray-50 px-4 py-4 border-t border-gray-200">
               <div className="flex items-center justify-center gap-3 mb-3">
                 <button
                   onClick={() => setIsAnimating(!isAnimating)}
@@ -368,7 +368,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 </button>
                 <button
                   onClick={manualRefresh}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition-colors border border-gray-300"
                   title="Refresh radar data"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -389,7 +389,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                 />
               </div>
               <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">Frame {currentFrameIndex + 1} of {radarFrames.length}</span>
+                <span className="text-gray-600">Frame {currentFrameIndex + 1} of {radarFrames.length}</span>
                 <span className="text-gray-500">Zoom with scroll wheel - Auto-refreshes every 5 min</span>
               </div>
             </div>
