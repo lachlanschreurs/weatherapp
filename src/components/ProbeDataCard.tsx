@@ -323,21 +323,28 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
                     </div>
                   )}
 
-                  {reading.battery_level !== null && (
-                    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Battery className="w-4 h-4 text-green-600" />
-                        <span className="text-xs font-medium text-green-700">Battery</span>
+                  {reading.battery_level !== null && (() => {
+                    const batteryStatus = reading.battery_level >= 3000
+                      ? { label: 'Healthy', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-900', labelColor: 'text-green-700', statusColor: 'text-green-700' }
+                      : reading.battery_level >= 2500
+                      ? { label: 'Monitor', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-900', labelColor: 'text-yellow-700', statusColor: 'text-yellow-700' }
+                      : { label: 'Replace', color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-900', labelColor: 'text-red-700', statusColor: 'text-red-700' };
+
+                    return (
+                      <div className={`${batteryStatus.bgColor} rounded-lg p-3 border ${batteryStatus.borderColor}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Battery className={`w-4 h-4 ${batteryStatus.labelColor}`} />
+                          <span className={`text-xs font-medium ${batteryStatus.labelColor}`}>Battery</span>
+                        </div>
+                        <div className={`text-2xl font-bold ${batteryStatus.textColor}`}>
+                          {batteryStatus.label}
+                        </div>
+                        <div className={`text-xs ${batteryStatus.statusColor} mt-1`}>
+                          {(reading.battery_level / 1000).toFixed(2)}V
+                        </div>
                       </div>
-                      <div className="text-2xl font-bold text-green-900">
-                        {(reading.battery_level / 1000).toFixed(2)}
-                      </div>
-                      <div className="text-xs text-green-600">V</div>
-                      <div className="text-xs text-green-600 font-semibold mt-1">
-                        {reading.battery_level >= 3000 ? 'Good' : reading.battery_level >= 2500 ? 'Fair' : 'Low'}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 <div className="text-center text-sm text-gray-500 pt-3 border-t border-gray-200">
