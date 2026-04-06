@@ -33,7 +33,7 @@ Deno.serve(async (req: Request) => {
     // Get all users with probe report access (free trial or active subscription)
     const { data: subscribers, error: subError } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, probe_report_subscription_started_at, farmer_joe_subscription_status, farmer_joe_subscription_ends_at')
+      .select('id, email, probe_report_subscription_started_at, farmer_joe_subscription_status, trial_end_date')
       .not('probe_report_subscription_started_at', 'is', null);
 
     if (subError) throw subError;
@@ -52,10 +52,7 @@ Deno.serve(async (req: Request) => {
 
       // Has active Farmer Joe subscription
       if (profile.farmer_joe_subscription_status === 'active') {
-        const endsAt = profile.farmer_joe_subscription_ends_at ? new Date(profile.farmer_joe_subscription_ends_at) : null;
-        if (!endsAt || endsAt > now) {
-          return true;
-        }
+        return true;
       }
 
       return false;
@@ -112,9 +109,9 @@ Deno.serve(async (req: Request) => {
           .from('probe_data')
           .select('*')
           .eq('user_id', subscriber.user_id)
-          .gte('timestamp', startDate.toISOString())
-          .lte('timestamp', endDate.toISOString())
-          .order('timestamp', { ascending: false });
+          .gte('recorded_at', startDate.toISOString())
+          .lte('recorded_at', endDate.toISOString())
+          .order('recorded_at', { ascending: false });
 
         if (dataError) {
           console.error(`Error fetching probe data for ${subscriber.email}:`, dataError);
@@ -277,7 +274,7 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
 
   // Group data by probe
   probeData.forEach(reading => {
-    const probeName = reading.probe_name || 'Unknown Probe';
+    const probeName = reading.location_name || 'Unknown Probe';
 
     if (!probeStats[probeName]) {
       probeStats[probeName] = {
@@ -294,36 +291,22 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
     probe.readings++;
 
     // Update temperature stats
-    if (reading.temperature !== null && reading.temperature !== undefined) {
-      probe.temperature.min = Math.min(probe.temperature.min, reading.temperature);
-      probe.temperature.max = Math.max(probe.temperature.max, reading.temperature);
-      probe.temperature.sum += reading.temperature;
+    if (reading.temperature_c !== null && reading.temperature_c !== undefined) {
+      probe.temperature.min = Math.min(probe.temperature.min, reading.temperature_c);
+      probe.temperature.max = Math.max(probe.temperature.max, reading.temperature_c);
+      probe.temperature.sum += reading.temperature_c;
       probe.temperature.count++;
     }
 
     // Update moisture stats
-    if (reading.moisture !== null && reading.moisture !== undefined) {
-      probe.moisture.min = Math.min(probe.moisture.min, reading.moisture);
-      probe.moisture.max = Math.max(probe.moisture.max, reading.moisture);
-      probe.moisture.sum += reading.moisture;
+    if (reading.moisture_percent !== null && reading.moisture_percent !== undefined) {
+      probe.moisture.min = Math.min(probe.moisture.min, reading.moisture_percent);
+      probe.moisture.max = Math.max(probe.moisture.max, reading.moisture_percent);
+      probe.moisture.sum += reading.moisture_percent;
       probe.moisture.count++;
     }
 
-    // Update pH stats
-    if (reading.ph !== null && reading.ph !== undefined) {
-      probe.ph.min = Math.min(probe.ph.min, reading.ph);
-      probe.ph.max = Math.max(probe.ph.max, reading.ph);
-      probe.ph.sum += reading.ph;
-      probe.ph.count++;
-    }
-
-    // Update EC stats
-    if (reading.ec !== null && reading.ec !== undefined) {
-      probe.ec.min = Math.min(probe.ec.min, reading.ec);
-      probe.ec.max = Math.max(probe.ec.max, reading.ec);
-      probe.ec.sum += reading.ec;
-      probe.ec.count++;
-    }
+    // pH and EC are not in current schema, but keep the structure for future use
   });
 
   return {
