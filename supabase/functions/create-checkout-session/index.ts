@@ -105,9 +105,15 @@ Deno.serve(async (req: Request) => {
     }
 
     if (user) {
+      sessionConfig.metadata = {
+        supabase_user_id: user.id,
+      };
       sessionConfig.subscription_data.metadata = {
         supabase_user_id: user.id,
       };
+      console.log('[Edge] Added user metadata to session and subscription:', user.id);
+    } else {
+      console.log('[Edge] No user found, creating session without metadata');
     }
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
