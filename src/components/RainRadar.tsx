@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudRain, Minimize2, Maximize2, RefreshCw, Play, Pause, AlertCircle } from 'lucide-react';
+import { CloudRain, Minimize2, Maximize2, RefreshCw, Play, Pause } from 'lucide-react';
 
 interface RainRadarProps {
   lat: number;
@@ -13,89 +13,27 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
-  const [radarLoadError, setRadarLoadError] = useState(false);
-  const [radarCode, setRadarCode] = useState('');
-  const [radarStation, setRadarStation] = useState('');
+  const [radarFrames, setRadarFrames] = useState<string[]>([]);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const radarLayersRef = useRef<any[]>([]);
   const animationIntervalRef = useRef<any>(null);
 
-  const getClosestRadarCode = (lat: number, lon: number): { code: string; name: string } => {
-    const radars = [
-      { code: '63', name: 'Adelaide', lat: -34.6177, lon: 138.4689 },
-      { code: '01', name: 'Albany', lat: -34.9414, lon: 117.8161 },
-      { code: '25', name: 'Alice Springs', lat: -23.7951, lon: 133.8886 },
-      { code: '04', name: 'Bairnsdale', lat: -37.8871, lon: 147.5705 },
-      { code: '70', name: 'Brisbane', lat: -27.7179, lon: 153.2401 },
-      { code: '66', name: 'Cairns', lat: -17.0428, lon: 145.6631 },
-      { code: '02', name: 'Canberra', lat: -35.6614, lon: 149.5121 },
-      { code: '50', name: 'Carnarvon', lat: -24.8868, lon: 113.6711 },
-      { code: '40', name: 'Darwin', lat: -12.4566, lon: 131.0443 },
-      { code: '15', name: 'Esperance', lat: -33.8309, lon: 121.8917 },
-      { code: '29', name: 'Geraldton', lat: -28.8049, lon: 114.6969 },
-      { code: '39', name: 'Gove', lat: -12.2751, lon: 136.8194 },
-      { code: '53', name: 'Grafton', lat: -29.6219, lon: 152.9517 },
-      { code: '68', name: 'Gympie', lat: -26.2267, lon: 152.5771 },
-      { code: '71', name: 'Hobart', lat: -42.8362, lon: 147.5050 },
-      { code: '49', name: 'Katherine', lat: -14.5121, lon: 132.4470 },
-      { code: '31', name: 'Kalgoorlie', lat: -30.7847, lon: 121.4537 },
-      { code: '48', name: 'Learmonth', lat: -22.2356, lon: 114.0967 },
-      { code: '30', name: 'Longreach', lat: -23.4397, lon: 144.2810 },
-      { code: '69', name: 'Mackay', lat: -21.1175, lon: 149.1769 },
-      { code: '03', name: 'Melbourne', lat: -37.8550, lon: 144.7561 },
-      { code: '72', name: 'Mildura', lat: -34.2361, lon: 142.0864 },
-      { code: '73', name: 'Moree', lat: -29.4994, lon: 149.8506 },
-      { code: '05', name: 'Mt Gambier', lat: -37.7477, lon: 140.7746 },
-      { code: '23', name: 'Namoi', lat: -31.0242, lon: 149.1969 },
-      { code: '28', name: 'Newcastle', lat: -32.7298, lon: 151.8314 },
-      { code: '76', name: 'Newdegate', lat: -33.0969, lon: 119.0197 },
-      { code: '14', name: 'Perth', lat: -31.9247, lon: 116.2308 },
-      { code: '24', name: 'Port Hedland', lat: -20.3717, lon: 118.6336 },
-      { code: '67', name: 'Sydney', lat: -33.7008, lon: 151.2099 },
-      { code: '64', name: 'Townsville', lat: -19.2506, lon: 146.5506 },
-      { code: '19', name: 'Wagga Wagga', lat: -35.1575, lon: 147.4606 },
-      { code: '42', name: 'Warrego', lat: -26.4406, lon: 147.3497 },
-      { code: '78', name: 'Warruwi', lat: -11.6489, lon: 133.3806 },
-      { code: '77', name: 'Watheroo', lat: -30.3194, lon: 116.0069 },
-      { code: '17', name: 'Woomera', lat: -31.1558, lon: 136.8172 },
-      { code: '41', name: 'Wyndham', lat: -15.4531, lon: 128.1189 }
-    ];
+  const fetchRadarFrames = async () => {
+    try {
+      const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+      const data = await response.json();
 
-    let closest = radars[0];
-    let minDist = Number.MAX_VALUE;
-
-    for (const radar of radars) {
-      const dist = Math.sqrt(
-        Math.pow(lat - radar.lat, 2) + Math.pow(lon - radar.lon, 2)
+      const frames = data.radar.past.map((frame: any) =>
+        `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/4/1_1.png`
       );
-      if (dist < minDist) {
-        minDist = dist;
-        closest = radar;
-      }
+
+      setRadarFrames(frames);
+      return frames;
+    } catch (error) {
+      console.error('Failed to fetch radar frames:', error);
+      return [];
     }
-
-    return closest;
-  };
-
-  const getRadarFrames = (radarCode: string, numFrames: number = 6): string[] => {
-    const frames: string[] = [];
-    const baseTime = new Date();
-    baseTime.setUTCMinutes(Math.floor(baseTime.getUTCMinutes() / 10) * 10, 0, 0);
-
-    for (let i = numFrames - 1; i >= 0; i--) {
-      const frameTime = new Date(baseTime.getTime() - (i * 10 * 60 * 1000));
-      const year = frameTime.getUTCFullYear();
-      const month = String(frameTime.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(frameTime.getUTCDate()).padStart(2, '0');
-      const hours = String(frameTime.getUTCHours()).padStart(2, '0');
-      const mins = String(frameTime.getUTCMinutes()).padStart(2, '0');
-      const timeStr = `${year}${month}${day}${hours}${mins}`;
-
-      frames.push(`https://www.bom.gov.au/radar/IDR${radarCode}.T.${timeStr}.png`);
-    }
-
-    return frames;
   };
 
   useEffect(() => {
@@ -126,7 +64,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 8 : 7;
+      const zoom = isExpanded ? 9 : 8;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
@@ -138,45 +76,27 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         boxZoom: true,
         dragging: true,
         keyboard: true,
-        maxZoom: 12,
-        minZoom: 4
+        maxZoom: 18,
+        minZoom: 3
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CartoDB',
         maxZoom: 19
       }).addTo(map);
 
-      const radar = getClosestRadarCode(lat, lon);
-      setRadarCode(radar.code);
-      setRadarStation(radar.name);
-      const frames = getRadarFrames(radar.code, 6);
+      const frames = await fetchRadarFrames();
 
-      let loadedCount = 0;
-      radarLayersRef.current = frames.map((frameUrl, index) => {
-        const img = new Image();
-        img.onload = () => {
-          loadedCount++;
-          if (loadedCount === 1) {
-            setRadarLoadError(false);
-          }
-        };
-        img.onerror = () => {
-          if (index === frames.length - 1) {
-            setRadarLoadError(true);
-          }
-        };
-        img.src = frameUrl;
-
-        const layer = L.imageOverlay(frameUrl, [
-          [-44, 112],
-          [-10, 154]
-        ], {
-          opacity: index === frames.length - 1 ? 0.7 : 0,
-          className: 'radar-layer'
-        }).addTo(map);
-        return layer;
-      });
+      if (frames.length > 0) {
+        radarLayersRef.current = frames.map((frameUrl, index) => {
+          const layer = L.tileLayer(frameUrl, {
+            opacity: index === frames.length - 1 ? 0.8 : 0,
+            maxZoom: 19,
+            attribution: 'RainViewer'
+          }).addTo(map);
+          return layer;
+        });
+      }
 
       L.marker([lat, lon], {
         icon: L.divIcon({
@@ -227,23 +147,22 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           const nextFrame = (prev + 1) % radarLayersRef.current.length;
 
           radarLayersRef.current.forEach((layer, index) => {
-            layer.setOpacity(index === nextFrame ? 0.7 : 0);
+            layer.setOpacity(index === nextFrame ? 0.8 : 0);
           });
 
           return nextFrame;
         });
-      }, 500);
+      }, 400);
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (animationIntervalRef.current) {
       clearInterval(animationIntervalRef.current);
       animationIntervalRef.current = null;
     }
     setIsPlaying(false);
     setCurrentFrame(0);
-    setRadarLoadError(false);
 
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
@@ -251,11 +170,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     }
     setIsLoading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (!mapRef.current) return;
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 8 : 7;
+      const zoom = isExpanded ? 9 : 8;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
@@ -263,45 +182,27 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         scrollWheelZoom: true,
         doubleClickZoom: true,
         touchZoom: true,
-        maxZoom: 12,
-        minZoom: 4
+        maxZoom: 18,
+        minZoom: 3
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CartoDB',
         maxZoom: 19
       }).addTo(map);
 
-      const radar = getClosestRadarCode(lat, lon);
-      setRadarCode(radar.code);
-      setRadarStation(radar.name);
-      const frames = getRadarFrames(radar.code, 6);
+      const frames = await fetchRadarFrames();
 
-      let loadedCount = 0;
-      radarLayersRef.current = frames.map((frameUrl, index) => {
-        const img = new Image();
-        img.onload = () => {
-          loadedCount++;
-          if (loadedCount === 1) {
-            setRadarLoadError(false);
-          }
-        };
-        img.onerror = () => {
-          if (index === frames.length - 1) {
-            setRadarLoadError(true);
-          }
-        };
-        img.src = frameUrl;
-
-        const layer = L.imageOverlay(frameUrl, [
-          [-44, 112],
-          [-10, 154]
-        ], {
-          opacity: index === frames.length - 1 ? 0.7 : 0,
-          className: 'radar-layer'
-        }).addTo(map);
-        return layer;
-      });
+      if (frames.length > 0) {
+        radarLayersRef.current = frames.map((frameUrl, index) => {
+          const layer = L.tileLayer(frameUrl, {
+            opacity: index === frames.length - 1 ? 0.8 : 0,
+            maxZoom: 19,
+            attribution: 'RainViewer'
+          }).addTo(map);
+          return layer;
+        });
+      }
 
       L.marker([lat, lon], {
         icon: L.divIcon({
@@ -326,16 +227,23 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     }, 100);
   };
 
+  const getTimeAgo = () => {
+    if (radarFrames.length === 0 || currentFrame >= radarFrames.length) return '';
+    const minutesAgo = (radarFrames.length - 1 - currentFrame) * 10;
+    if (minutesAgo === 0) return 'Now';
+    return `${minutesAgo} min ago`;
+  };
+
   return (
     <div className={`bg-white rounded-xl shadow-2xl overflow-hidden ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
-      <div className="bg-gradient-to-r from-red-600 via-red-700 to-red-600 p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
             <CloudRain className="w-6 h-6 text-white" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Live Rain Radar</h3>
-            <p className="text-sm text-red-100">{locationName}</p>
+            <p className="text-sm text-blue-100">{locationName}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -357,73 +265,47 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
       {showRadar && (
         <>
-          <div className={`relative bg-gray-100 ${isExpanded ? 'h-[calc(100vh-12rem)]' : 'h-[500px]'}`}>
+          <div className={`relative bg-gray-900 ${isExpanded ? 'h-[calc(100vh-12rem)]' : 'h-[500px]'}`}>
             {isLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-red-600 mx-auto mb-3"></div>
-                  <p className="text-gray-700 font-medium">Loading BOM radar...</p>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500 mx-auto mb-3"></div>
+                  <p className="text-white font-medium">Loading radar...</p>
                 </div>
               </div>
             ) : null}
 
-            {radarLoadError && !isLoading && (
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 shadow-xl z-10 max-w-md">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-gray-900 mb-1">Radar Images Unavailable</h4>
-                    <p className="text-sm text-gray-700 mb-2">
-                      Unable to load radar images from BOM. This may be due to:
-                    </p>
-                    <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-                      <li>Radar maintenance or temporary outage</li>
-                      <li>Images not yet available for this time period</li>
-                      <li>Network connectivity issues</li>
-                    </ul>
-                    <button
-                      onClick={handleRefresh}
-                      className="mt-3 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div ref={mapRef} className="w-full h-full"></div>
 
-            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200 max-w-xs">
-              <div className="text-xs font-bold text-gray-900 mb-2.5">BOM Radar Legend</div>
+            <div className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700 max-w-xs">
+              <div className="text-xs font-bold text-white mb-2.5">Rain Intensity</div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'linear-gradient(to right, #00ECEC, #00BBBB)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Light Rain</span>
+                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(0, 236, 236, 0.7)' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">Light</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'linear-gradient(to right, #009900, #00FF00)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Moderate Rain</span>
+                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(0, 153, 0, 0.7)' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">Moderate</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'linear-gradient(to right, #FFFF00, #FF9900)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Heavy Rain</span>
+                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(255, 255, 0, 0.7)' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">Heavy</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'linear-gradient(to right, #FF0000, #CC0000)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Very Heavy</span>
+                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(255, 0, 0, 0.7)' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">Intense</span>
                 </div>
               </div>
-              <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-600">
-                {!radarLoadError && <div className="font-medium mb-1">No rain visible? The radar shows real-time data.</div>}
+              <div className="mt-2.5 pt-2.5 border-t border-gray-700 text-xs text-gray-300">
                 <div className="font-medium">Scroll to zoom • Drag to pan</div>
               </div>
             </div>
 
-            <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-200">
-              <div className="text-xs font-bold text-red-700">Bureau of Meteorology</div>
-              <div className="text-xs text-gray-600 mt-0.5">{radarStation} Radar (IDR{radarCode})</div>
-              <div className="text-xs text-gray-500 mt-0.5">Last {6 - currentFrame}0 minutes</div>
+            <div className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-700">
+              <div className="text-xs font-bold text-blue-400">Global Rain Radar</div>
+              <div className="text-xs text-gray-300 mt-0.5">{getTimeAgo()}</div>
+              <div className="text-xs text-gray-400 mt-0.5">Powered by RainViewer</div>
             </div>
           </div>
 
@@ -431,11 +313,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={toggleAnimation}
-                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
                 title={isPlaying ? 'Pause animation' : 'Play animation'}
               >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                <span className="text-sm">{isPlaying ? 'Pause' : 'Play'} Radar</span>
+                <span className="text-sm">{isPlaying ? 'Pause' : 'Play'} Animation</span>
               </button>
               <button
                 onClick={handleRefresh}
@@ -447,7 +329,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
               </button>
             </div>
             <div className="text-center text-xs text-gray-500 mt-3">
-              Official radar data • Australian Bureau of Meteorology
+              Real-time global precipitation data • Free & unlimited
             </div>
           </div>
         </>
