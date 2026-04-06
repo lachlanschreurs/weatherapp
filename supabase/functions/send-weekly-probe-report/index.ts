@@ -365,13 +365,14 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
     .footer { background: #374151; color: #9ca3af; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
     .graph-container { background: white; padding: 25px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     .graph-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #374151; }
-    .graph-canvas { position: relative; height: 200px; margin: 20px 0; }
-    .graph-bar { position: absolute; bottom: 0; background: linear-gradient(180deg, #059669 0%, #047857 100%); border-radius: 4px 4px 0 0; transition: all 0.3s; }
+    .graph-wrapper { position: relative; padding-left: 10px; margin-top: 30px; }
+    .graph-canvas { display: flex; align-items: flex-end; justify-content: space-between; height: 220px; border-bottom: 2px solid #e5e7eb; border-left: 2px solid #e5e7eb; padding: 10px 10px 35px 10px; gap: 6px; }
+    .bar-wrapper { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative; }
+    .graph-bar { width: 100%; background: linear-gradient(180deg, #059669 0%, #047857 100%); border-radius: 6px 6px 0 0; box-shadow: 0 2px 4px rgba(0,0,0,0.15); min-height: 10px; }
     .graph-bar-moisture { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); }
-    .graph-label { position: absolute; bottom: -25px; font-size: 11px; color: #6b7280; text-align: center; width: 100%; }
-    .graph-value { position: absolute; top: -20px; font-size: 11px; font-weight: bold; color: #374151; text-align: center; width: 100%; }
-    .graph-y-axis { position: absolute; left: -40px; top: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; font-size: 10px; color: #6b7280; }
-    .highlight-box { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin: 0 5px; }
+    .bar-value { position: absolute; top: -25px; font-size: 12px; font-weight: bold; color: #374151; white-space: nowrap; }
+    .bar-label { position: absolute; bottom: -30px; font-size: 11px; color: #6b7280; white-space: nowrap; }
+    .highlight-box { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin: 0 6px; }
     .highlight-high { background: #fee2e2; color: #dc2626; }
     .highlight-low { background: #dbeafe; color: #2563eb; }
   </style>
@@ -585,25 +586,24 @@ function buildGraphsSection(reportData: any): string {
             <span class="highlight-box highlight-high">High: ${tempMax.toFixed(1)}°C</span>
             <span class="highlight-box highlight-low">Low: ${tempMin.toFixed(1)}°C</span>
           </div>
-          <div style="position: relative; padding-left: 50px; margin-top: 30px;">
-            <div class="graph-canvas" style="display: flex; align-items: flex-end; justify-content: space-around; gap: 8px;">
+          <div class="graph-wrapper">
+            <div class="graph-canvas">
               ${days.map((day, i) => {
                 const temp = dailyTemps[i];
                 if (temp === null) {
                   return `
-                    <div style="flex: 1; position: relative;">
-                      <div style="height: 20px; background: #e5e7eb; border-radius: 4px; opacity: 0.3;"></div>
-                      <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                    <div class="bar-wrapper">
+                      <div style="width: 100%; height: 15px; background: #f3f4f6; border-radius: 6px; opacity: 0.5;"></div>
+                      <div class="bar-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
                     </div>
                   `;
                 }
                 const height = tempRange > 0 ? ((temp - tempMin) / tempRange * 180) + 20 : 100;
                 return `
-                  <div style="flex: 1; position: relative;">
-                    <div class="graph-bar" style="height: ${height}px;">
-                      <div class="graph-value">${temp.toFixed(1)}°C</div>
-                    </div>
-                    <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                  <div class="bar-wrapper">
+                    <div class="bar-value">${temp.toFixed(1)}°C</div>
+                    <div class="graph-bar" style="height: ${height}px;"></div>
+                    <div class="bar-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
                   </div>
                 `;
               }).join('')}
@@ -626,25 +626,24 @@ function buildGraphsSection(reportData: any): string {
             <span class="highlight-box highlight-high">High: ${moistMax.toFixed(1)}%</span>
             <span class="highlight-box highlight-low">Low: ${moistMin.toFixed(1)}%</span>
           </div>
-          <div style="position: relative; padding-left: 50px; margin-top: 30px;">
-            <div class="graph-canvas" style="display: flex; align-items: flex-end; justify-content: space-around; gap: 8px;">
+          <div class="graph-wrapper">
+            <div class="graph-canvas">
               ${days.map((day, i) => {
                 const moisture = dailyMoisture[i];
                 if (moisture === null) {
                   return `
-                    <div style="flex: 1; position: relative;">
-                      <div style="height: 20px; background: #e5e7eb; border-radius: 4px; opacity: 0.3;"></div>
-                      <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                    <div class="bar-wrapper">
+                      <div style="width: 100%; height: 15px; background: #f3f4f6; border-radius: 6px; opacity: 0.5;"></div>
+                      <div class="bar-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
                     </div>
                   `;
                 }
                 const height = moistRange > 0 ? ((moisture - moistMin) / moistRange * 180) + 20 : 100;
                 return `
-                  <div style="flex: 1; position: relative;">
-                    <div class="graph-bar graph-bar-moisture" style="height: ${height}px;">
-                      <div class="graph-value">${moisture.toFixed(1)}%</div>
-                    </div>
-                    <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                  <div class="bar-wrapper">
+                    <div class="bar-value">${moisture.toFixed(1)}%</div>
+                    <div class="graph-bar graph-bar-moisture" style="height: ${height}px;"></div>
+                    <div class="bar-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
                   </div>
                 `;
               }).join('')}
