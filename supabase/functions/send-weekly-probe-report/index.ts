@@ -272,7 +272,6 @@ Provide a friendly, professional analysis that helps the farmer understand what 
 function analyzeProbeData(probeData: any[], probeApis: any[]) {
   const probeStats: any = {};
 
-  // Group data by probe
   probeData.forEach(reading => {
     const probeName = reading.location_name || 'Unknown Probe';
 
@@ -280,33 +279,40 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
       probeStats[probeName] = {
         name: probeName,
         readings: 0,
-        temperature: { min: Infinity, max: -Infinity, sum: 0, count: 0 },
-        moisture: { min: Infinity, max: -Infinity, sum: 0, count: 0 },
-        ph: { min: Infinity, max: -Infinity, sum: 0, count: 0 },
-        ec: { min: Infinity, max: -Infinity, sum: 0, count: 0 },
+        depths: new Set(),
+        temperature: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
+        moisture: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
+        ph: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
+        ec: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
       };
     }
 
     const probe = probeStats[probeName];
     probe.readings++;
 
-    // Update temperature stats
+    if (reading.depth_cm) {
+      probe.depths.add(reading.depth_cm);
+    }
+
     if (reading.temperature_c !== null && reading.temperature_c !== undefined) {
       probe.temperature.min = Math.min(probe.temperature.min, reading.temperature_c);
       probe.temperature.max = Math.max(probe.temperature.max, reading.temperature_c);
       probe.temperature.sum += reading.temperature_c;
       probe.temperature.count++;
+      probe.temperature.values.push(reading.temperature_c);
     }
 
-    // Update moisture stats
     if (reading.moisture_percent !== null && reading.moisture_percent !== undefined) {
       probe.moisture.min = Math.min(probe.moisture.min, reading.moisture_percent);
       probe.moisture.max = Math.max(probe.moisture.max, reading.moisture_percent);
       probe.moisture.sum += reading.moisture_percent;
       probe.moisture.count++;
+      probe.moisture.values.push(reading.moisture_percent);
     }
+  });
 
-    // pH and EC are not in current schema, but keep the structure for future use
+  Object.values(probeStats).forEach((probe: any) => {
+    probe.depths = Array.from(probe.depths).sort((a: number, b: number) => a - b);
   });
 
   return {
@@ -370,11 +376,14 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
         ${reportData.probeStats.map((probe: any) => `
           <div class="probe-card">
             <h3>${probe.name}</h3>
-            <p style="color: #6b7280; font-size: 14px;">${probe.readings} readings this week</p>
+            <p style="color: #6b7280; font-size: 14px;">
+              ${probe.readings} readings this week
+              ${probe.depths.length > 0 ? ` • Monitoring depths: ${probe.depths.join('cm, ')}cm` : ''}
+            </p>
 
             ${probe.temperature.count > 0 ? `
               <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px;">Temperature</h4>
+                <h4 style="margin-bottom: 10px;">🌡️ Soil Temperature</h4>
                 <div class="metric">
                   <div class="metric-label">Average</div>
                   <div class="metric-value">${(probe.temperature.sum / probe.temperature.count).toFixed(1)}°C</div>
@@ -387,12 +396,16 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
                   <div class="metric-label">Max</div>
                   <div class="metric-value">${probe.temperature.max.toFixed(1)}°C</div>
                 </div>
+                <div class="metric">
+                  <div class="metric-label">Range</div>
+                  <div class="metric-value">${(probe.temperature.max - probe.temperature.min).toFixed(1)}°C</div>
+                </div>
               </div>
             ` : ''}
 
             ${probe.moisture.count > 0 ? `
               <div style="margin-top: 15px;">
-                <h4 style="margin-bottom: 10px;">Soil Moisture</h4>
+                <h4 style="margin-bottom: 10px;">💧 Soil Moisture</h4>
                 <div class="metric">
                   <div class="metric-label">Average</div>
                   <div class="metric-value ${getMoistureStatus(probe.moisture.sum / probe.moisture.count)}">${(probe.moisture.sum / probe.moisture.count).toFixed(1)}%</div>
@@ -405,9 +418,13 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
                   <div class="metric-label">Max</div>
                   <div class="metric-value">${probe.moisture.max.toFixed(1)}%</div>
                 </div>
-                <p style="margin-top: 10px; font-size: 14px;">
-                  ${getMoistureRecommendation(probe.moisture.sum / probe.moisture.count)}
-                </p>
+                <div class="metric">
+                  <div class="metric-label">Variation</div>
+                  <div class="metric-value">${(probe.moisture.max - probe.moisture.min).toFixed(1)}%</div>
+                </div>
+                <div style="margin-top: 12px; padding: 12px; background: ${getMoistureColor(probe.moisture.sum / probe.moisture.count)}; border-radius: 6px; color: white;">
+                  <strong>${getMoistureRecommendation(probe.moisture.sum / probe.moisture.count)}</strong>
+                </div>
               </div>
             ` : ''}
 
@@ -490,9 +507,19 @@ function getMoistureStatus(moisture: number): string {
 }
 
 function getMoistureRecommendation(moisture: number): string {
-  if (moisture < 20) return 'Low moisture detected. Consider irrigation.';
-  if (moisture > 80) return 'High moisture detected. Monitor drainage.';
-  return 'Moisture levels are optimal.';
+  if (moisture < 30) return 'Very Dry - Irrigation Recommended';
+  if (moisture < 40) return 'Dry - Monitor Closely';
+  if (moisture < 60) return 'Optimal Moisture Range';
+  if (moisture < 70) return 'Moist - Good Conditions';
+  return 'Very Wet - Check Drainage';
+}
+
+function getMoistureColor(moisture: number): string {
+  if (moisture < 30) return '#D32F2F';
+  if (moisture < 40) return '#F57C00';
+  if (moisture < 60) return '#388E3C';
+  if (moisture < 70) return '#1976D2';
+  return '#0277BD';
 }
 
 function getPhStatus(ph: number): string {
