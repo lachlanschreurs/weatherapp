@@ -208,7 +208,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
       });
     }
 
-    // Make request to OpenAI (use gpt-4o for vision, gpt-3.5-turbo for text)
+    // Make request to OpenAI (use gpt-4o for all requests)
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -216,10 +216,10 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
-        model: imageData ? 'gpt-4o' : 'gpt-3.5-turbo',
+        model: 'gpt-4o',
         messages: messages,
         temperature: 0.7,
-        max_tokens: imageData ? 1000 : 500,
+        max_tokens: 1000,
       }),
     });
 
