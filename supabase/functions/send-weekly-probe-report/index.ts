@@ -272,9 +272,14 @@ Provide a friendly, professional analysis that helps the farmer understand what 
 function analyzeProbeData(probeData: any[], probeApis: any[]) {
   const probeStats: any = {};
 
+  // Group data by day for trending
+  const dailyData: any = {};
+
   probeData.forEach(reading => {
     const probeName = reading.location_name || 'Unknown Probe';
+    const date = new Date(reading.recorded_at).toLocaleDateString('en-AU');
 
+    // Initialize probe stats
     if (!probeStats[probeName]) {
       probeStats[probeName] = {
         name: probeName,
@@ -284,11 +289,20 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
         moisture: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
         ph: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
         ec: { min: Infinity, max: -Infinity, sum: 0, count: 0, values: [] },
+        dailyReadings: {},
       };
     }
 
     const probe = probeStats[probeName];
     probe.readings++;
+
+    // Track daily readings for graphing
+    if (!probe.dailyReadings[date]) {
+      probe.dailyReadings[date] = {
+        temperature: [],
+        moisture: [],
+      };
+    }
 
     if (reading.depth_cm) {
       probe.depths.add(reading.depth_cm);
@@ -300,6 +314,7 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
       probe.temperature.sum += reading.temperature_c;
       probe.temperature.count++;
       probe.temperature.values.push(reading.temperature_c);
+      probe.dailyReadings[date].temperature.push(reading.temperature_c);
     }
 
     if (reading.moisture_percent !== null && reading.moisture_percent !== undefined) {
@@ -308,6 +323,7 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
       probe.moisture.sum += reading.moisture_percent;
       probe.moisture.count++;
       probe.moisture.values.push(reading.moisture_percent);
+      probe.dailyReadings[date].moisture.push(reading.moisture_percent);
     }
   });
 
@@ -347,6 +363,17 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
     .status-warning { color: #f59e0b; }
     .status-alert { color: #dc2626; }
     .footer { background: #374151; color: #9ca3af; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
+    .graph-container { background: white; padding: 25px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .graph-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #374151; }
+    .graph-canvas { position: relative; height: 200px; margin: 20px 0; }
+    .graph-bar { position: absolute; bottom: 0; background: linear-gradient(180deg, #059669 0%, #047857 100%); border-radius: 4px 4px 0 0; transition: all 0.3s; }
+    .graph-bar-moisture { background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); }
+    .graph-label { position: absolute; bottom: -25px; font-size: 11px; color: #6b7280; text-align: center; width: 100%; }
+    .graph-value { position: absolute; top: -20px; font-size: 11px; font-weight: bold; color: #374151; text-align: center; width: 100%; }
+    .graph-y-axis { position: absolute; left: -40px; top: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; font-size: 10px; color: #6b7280; }
+    .highlight-box { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin: 0 5px; }
+    .highlight-high { background: #fee2e2; color: #dc2626; }
+    .highlight-low { background: #dbeafe; color: #2563eb; }
   </style>
 </head>
 <body>
@@ -357,12 +384,7 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
     </div>
 
     <div class="content">
-      ${aiInterpretation ? `
-        <div class="ai-box">
-          <h2 style="margin-top: 0; color: #1e40af; font-size: 18px;">Farmer Joe's Weekly Analysis</h2>
-          <p style="margin-bottom: 0; font-size: 15px; line-height: 1.7;">${aiInterpretation}</p>
-        </div>
-      ` : ''}
+      ${buildGraphsSection(reportData)}
 
       <div class="summary-box">
         <h2>Overview</h2>
@@ -476,6 +498,13 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
         </div>
       `}
 
+      ${aiInterpretation ? `
+        <div class="ai-box">
+          <h2 style="margin-top: 0; color: #1e40af; font-size: 18px;">Farmer Joe's Weekly Analysis</h2>
+          <p style="margin-bottom: 0; font-size: 15px; line-height: 1.7;">${aiInterpretation}</p>
+        </div>
+      ` : ''}
+
       <div style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px; font-size: 14px;">
         <strong>Tip:</strong> Regular monitoring of soil conditions helps optimize irrigation, fertilization, and crop health.
         Check your FarmCast dashboard for real-time updates.
@@ -498,6 +527,135 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string =
 </body>
 </html>
   `.trim();
+}
+
+function buildGraphsSection(reportData: any): string {
+  if (!reportData.probeStats || reportData.probeStats.length === 0) {
+    return '';
+  }
+
+  let graphsHtml = '';
+
+  reportData.probeStats.forEach((probe: any) => {
+    // Get last 7 days
+    const days: string[] = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      days.push(date.toLocaleDateString('en-AU'));
+    }
+
+    // Calculate daily averages
+    const dailyTemps: (number | null)[] = [];
+    const dailyMoisture: (number | null)[] = [];
+
+    days.forEach(day => {
+      const dayData = probe.dailyReadings[day];
+      if (dayData) {
+        if (dayData.temperature && dayData.temperature.length > 0) {
+          const avg = dayData.temperature.reduce((a: number, b: number) => a + b, 0) / dayData.temperature.length;
+          dailyTemps.push(avg);
+        } else {
+          dailyTemps.push(null);
+        }
+
+        if (dayData.moisture && dayData.moisture.length > 0) {
+          const avg = dayData.moisture.reduce((a: number, b: number) => a + b, 0) / dayData.moisture.length;
+          dailyMoisture.push(avg);
+        } else {
+          dailyMoisture.push(null);
+        }
+      } else {
+        dailyTemps.push(null);
+        dailyMoisture.push(null);
+      }
+    });
+
+    // Build temperature graph
+    if (probe.temperature.count > 0) {
+      const tempMin = probe.temperature.min;
+      const tempMax = probe.temperature.max;
+      const tempRange = tempMax - tempMin;
+
+      graphsHtml += `
+        <div class="graph-container">
+          <div class="graph-title">🌡️ ${probe.name} - Soil Temperature Trend</div>
+          <div style="margin-bottom: 15px; text-align: center;">
+            <span class="highlight-box highlight-high">High: ${tempMax.toFixed(1)}°C</span>
+            <span class="highlight-box highlight-low">Low: ${tempMin.toFixed(1)}°C</span>
+          </div>
+          <div style="position: relative; padding-left: 50px; margin-top: 30px;">
+            <div class="graph-canvas" style="display: flex; align-items: flex-end; justify-content: space-around; gap: 8px;">
+              ${days.map((day, i) => {
+                const temp = dailyTemps[i];
+                if (temp === null) {
+                  return `
+                    <div style="flex: 1; position: relative;">
+                      <div style="height: 20px; background: #e5e7eb; border-radius: 4px; opacity: 0.3;"></div>
+                      <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                    </div>
+                  `;
+                }
+                const height = tempRange > 0 ? ((temp - tempMin) / tempRange * 180) + 20 : 100;
+                return `
+                  <div style="flex: 1; position: relative;">
+                    <div class="graph-bar" style="height: ${height}px;">
+                      <div class="graph-value">${temp.toFixed(1)}°C</div>
+                    </div>
+                    <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Build moisture graph
+    if (probe.moisture.count > 0) {
+      const moistMin = probe.moisture.min;
+      const moistMax = probe.moisture.max;
+      const moistRange = moistMax - moistMin;
+
+      graphsHtml += `
+        <div class="graph-container">
+          <div class="graph-title">💧 ${probe.name} - Soil Moisture Trend</div>
+          <div style="margin-bottom: 15px; text-align: center;">
+            <span class="highlight-box highlight-high">High: ${moistMax.toFixed(1)}%</span>
+            <span class="highlight-box highlight-low">Low: ${moistMin.toFixed(1)}%</span>
+          </div>
+          <div style="position: relative; padding-left: 50px; margin-top: 30px;">
+            <div class="graph-canvas" style="display: flex; align-items: flex-end; justify-content: space-around; gap: 8px;">
+              ${days.map((day, i) => {
+                const moisture = dailyMoisture[i];
+                if (moisture === null) {
+                  return `
+                    <div style="flex: 1; position: relative;">
+                      <div style="height: 20px; background: #e5e7eb; border-radius: 4px; opacity: 0.3;"></div>
+                      <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                    </div>
+                  `;
+                }
+                const height = moistRange > 0 ? ((moisture - moistMin) / moistRange * 180) + 20 : 100;
+                return `
+                  <div style="flex: 1; position: relative;">
+                    <div class="graph-bar graph-bar-moisture" style="height: ${height}px;">
+                      <div class="graph-value">${moisture.toFixed(1)}%</div>
+                    </div>
+                    <div class="graph-label">${day.split('/')[0]}/${day.split('/')[1]}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  return graphsHtml;
 }
 
 function getMoistureStatus(moisture: number): string {
