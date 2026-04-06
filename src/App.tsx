@@ -416,7 +416,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#8FA88E' }}>
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Application Error</h2>
-          <p className="text-gray-700 mb-4">{appError}</p>
+          <p className="text-black mb-4">{appError}</p>
           <button
             onClick={() => {
               setAppError(null);
@@ -436,9 +436,9 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-700 text-lg font-semibold">Loading FarmCast...</p>
-          <p className="mt-2 text-gray-600 text-sm">Fetching weather data for {location.name}</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto"></div>
+          <p className="mt-4 text-white text-lg font-semibold">Loading FarmCast...</p>
+          <p className="mt-2 text-white text-sm">Fetching weather data for {location.name}</p>
         </div>
       </div>
     );
@@ -449,7 +449,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#8FA88E' }}>
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-          <p className="text-gray-700">{error}</p>
+          <p className="text-black">{error}</p>
           <button
             onClick={fetchWeather}
             className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -469,7 +469,7 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
         <div className="text-center">
-          <p className="text-gray-700 text-lg">No weather data available</p>
+          <p className="text-white text-lg">No weather data available</p>
           <button
             onClick={fetchWeather}
             className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
