@@ -17,6 +17,7 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { PremiumTeaser } from './components/PremiumTeaser';
 import { WeatherEffects } from './components/WeatherEffects';
 import FarmerJoe from './components/FarmerJoe';
+import TikTokReel from './components/TikTokReel';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import { getFavoriteLocation } from './utils/savedLocations';
@@ -104,6 +105,7 @@ function App() {
   const [appError, setAppError] = useState<string | null>(null);
   const [hasLoadedInitialLocation, setHasLoadedInitialLocation] = useState(false);
   const [isUsingCurrentLocation, setIsUsingCurrentLocation] = useState(false);
+  const [showTikTokReel, setShowTikTokReel] = useState(false);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -641,6 +643,13 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowTikTokReel(!showTikTokReel)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-rose-500 px-4 py-2 rounded-lg shadow-md hover:shadow-lg hover:from-pink-600 hover:to-rose-600 transition-all"
+                  title="View TikTok Reel"
+                >
+                  <span className="font-semibold text-white">Create Reel</span>
+                </button>
                 {user ? (
                   <>
                     <NotificationCenter userId={user.id} />
@@ -1087,6 +1096,21 @@ function App() {
         }}
         isAuthenticated={!!user}
       />
+
+      {showTikTokReel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/80" onClick={() => setShowTikTokReel(false)} />
+          <div className="relative z-10 w-full h-full">
+            <button
+              onClick={() => setShowTikTokReel(false)}
+              className="absolute top-4 right-4 z-20 bg-white/10 backdrop-blur-md text-white px-6 py-3 rounded-full hover:bg-white/20 transition-all text-lg font-semibold"
+            >
+              Close
+            </button>
+            <TikTokReel />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
