@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FarmCast</string>
+    <string name="title_activity_main">FarmCast</string>
+    <string name="package_name">com.farmcast.app</string>
+    <string name="custom_url_scheme">com.farmcast.app</string>
+</resources>
