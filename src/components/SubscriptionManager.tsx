@@ -21,23 +21,35 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       console.log('[Checkout] access token exists:', !!session?.access_token);
       console.log('[Checkout] calling create-checkout-session');
 
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
 
       if (session?.access_token) {
         headers.Authorization = `Bearer ${session.access_token}`;
         console.log('[Checkout] including auth header');
       } else {
-        console.log('[Checkout] no auth token, calling without authentication (JWT disabled)');
+        console.log('[Checkout] no auth token, calling without authentication');
       }
 
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+      console.log('[Checkout] calling URL:', functionUrl);
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
         headers,
       });
 
-      if (error) {
-        console.error('[Checkout] function invoke error:', error);
-        throw error;
+      console.log('[Checkout] response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[Checkout] error response:', errorData);
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log('[Checkout] success, got URL:', !!data.url);
 
       if (data?.url) {
         window.location.href = data.url;

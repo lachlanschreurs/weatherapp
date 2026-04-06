@@ -16,7 +16,21 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    const stripePriceId = Deno.env.get('STRIPE_PRICE_ID');
+
+    console.log('[Edge] Stripe secret key exists:', !!stripeSecretKey);
+    console.log('[Edge] Stripe price ID exists:', !!stripePriceId);
+
+    if (!stripeSecretKey) {
+      throw new Error('STRIPE_SECRET_KEY not configured');
+    }
+
+    if (!stripePriceId) {
+      throw new Error('STRIPE_PRICE_ID not configured');
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: '2023-10-16',
     });
 
