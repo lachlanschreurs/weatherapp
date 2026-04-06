@@ -17,6 +17,10 @@ interface ForecastItem {
     description: string;
   }>;
   pop: number;
+  rain?: {
+    '3h'?: number;
+    '1h'?: number;
+  };
 }
 
 export interface SprayWindow {
@@ -40,7 +44,7 @@ export function findBestSprayWindow(forecastItems: ForecastItem[]): SprayWindow 
   for (let i = 0; i < forecastItems.length; i++) {
     const item = forecastItems[i];
     const windSpeedKmh = item.wind_speed * 3.6;
-    const rainfall = item.pop > 0.3 ? item.pop * 10 : 0;
+    const rainfall = item.rain?.['3h'] || item.rain?.['1h'] || 0;
     const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
 
     if (sprayCondition.rating === 'Good' || sprayCondition.rating === 'Moderate') {

@@ -102,6 +102,22 @@ export function generateWeatherAlerts(
         message: `Rain forecast within 24 hours: ${totalRain24h.toFixed(1)}mm expected. Starting around ${rainTime}.`,
         icon: 'cloud-rain'
       });
+    } else if (totalRain24h > 0 && totalRain24h <= 10 && !next30Min) {
+      alerts.push({
+        id: 'light-rain',
+        severity: 'info',
+        title: 'Light Rain Possible',
+        message: `Light rain possible within 24 hours: ${totalRain24h.toFixed(1)}mm forecast. Starting around ${rainTime}.`,
+        icon: 'cloud-rain'
+      });
+    } else if (totalRain24h === 0 && rainForecast.pop > 0.5) {
+      alerts.push({
+        id: 'rain-chance',
+        severity: 'info',
+        title: 'Rain Possible',
+        message: `${Math.round(rainForecast.pop * 100)}% chance of rain around ${rainTime}. Monitor conditions closely.`,
+        icon: 'cloud-rain'
+      });
     }
   }
 

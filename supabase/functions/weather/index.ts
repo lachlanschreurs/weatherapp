@@ -171,6 +171,7 @@ Deno.serve(async (req: Request) => {
         wind_gust: item.wind.gust,
         weather: item.weather,
         pop: item.pop,
+        rain: item.rain ? { '3h': item.rain['3h'] || 0 } : undefined,
       })),
       daily: Array.from({ length: 30 }, (_, i) => {
         if (i < 5) {
