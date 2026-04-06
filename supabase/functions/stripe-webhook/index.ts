@@ -49,7 +49,7 @@ Deno.serve(async (req: Request) => {
         const userId = session.metadata?.supabase_user_id;
 
         if (!userId) {
-          console.warn('No user ID in session metadata');
+          console.warn('checkout.session.completed: No user ID in session metadata');
           break;
         }
 
@@ -72,20 +72,22 @@ Deno.serve(async (req: Request) => {
           .eq('id', userId);
 
         if (error) {
-          console.error('Error updating profile on checkout completion:', error);
-          throw error;
+          console.error('checkout.session.completed: Error updating profile:', error);
+          console.error('checkout.session.completed: Failed at line 69-72');
+          break;
         }
 
-        console.log('Checkout completed for user:', userId, 'Subscription:', session.subscription);
+        console.log('checkout.session.completed: Success for user:', userId, 'Subscription:', session.subscription);
         break;
       }
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.supabase_user_id;
+        let userId = subscription.metadata?.supabase_user_id;
 
         if (!userId) {
-          console.warn('No user ID in subscription metadata, trying to find by subscription ID');
+          console.warn(`${event.type}: No user ID in subscription metadata, trying to find by subscription ID`);
           const { data: profile } = await supabaseClient
             .from('profiles')
             .select('id')
@@ -93,9 +95,10 @@ Deno.serve(async (req: Request) => {
             .maybeSingle();
 
           if (!profile) {
-            console.warn('Could not find user for subscription:', subscription.id);
+            console.warn(`${event.type}: Could not find user for subscription:`, subscription.id);
             break;
           }
+          userId = profile.id;
         }
 
         let status: string;
@@ -125,20 +128,21 @@ Deno.serve(async (req: Request) => {
             stripe_customer_id: subscription.customer as string,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', userId || '');
+          .eq('id', userId);
 
         if (error) {
-          console.error('Error updating subscription status:', error);
-          throw error;
+          console.error(`${event.type}: Error updating subscription status:`, error);
+          console.error(`${event.type}: Failed at line 120-128`);
+          break;
         }
 
-        console.log('Subscription updated for user:', userId, 'Stripe status:', subscription.status, 'Our status:', status);
+        console.log(`${event.type}: Success for user:`, userId, 'Stripe status:', subscription.status, 'Our status:', status);
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.supabase_user_id;
+        let userId = subscription.metadata?.supabase_user_id;
 
         if (!userId) {
           const { data: profile } = await supabaseClient
@@ -148,9 +152,10 @@ Deno.serve(async (req: Request) => {
             .maybeSingle();
 
           if (!profile) {
-            console.warn('Could not find user for deleted subscription:', subscription.id);
+            console.warn('customer.subscription.deleted: Could not find user for deleted subscription:', subscription.id);
             break;
           }
+          userId = profile.id;
         }
 
         const { error } = await supabaseClient
@@ -159,14 +164,15 @@ Deno.serve(async (req: Request) => {
             farmer_joe_subscription_status: 'expired',
             updated_at: new Date().toISOString(),
           })
-          .eq('id', userId || '');
+          .eq('id', userId);
 
         if (error) {
-          console.error('Error handling subscription deletion:', error);
-          throw error;
+          console.error('customer.subscription.deleted: Error handling subscription deletion:', error);
+          console.error('customer.subscription.deleted: Failed at line 156-162');
+          break;
         }
 
-        console.log('Subscription deleted for user:', userId);
+        console.log('customer.subscription.deleted: Success for user:', userId);
         break;
       }
 
@@ -182,7 +188,8 @@ Deno.serve(async (req: Request) => {
             .maybeSingle();
 
           if (fetchError) {
-            console.error('Error fetching profile for payment success:', fetchError);
+            console.error('invoice.payment_succeeded: Error fetching profile:', fetchError);
+            console.error('invoice.payment_succeeded: Failed at line 178-182');
             break;
           }
 
@@ -196,12 +203,17 @@ Deno.serve(async (req: Request) => {
               .eq('id', profile.id);
 
             if (error) {
-              console.error('Error updating profile on payment success:', error);
-              throw error;
+              console.error('invoice.payment_succeeded: Error updating profile:', error);
+              console.error('invoice.payment_succeeded: Failed at line 190-196');
+              break;
             }
 
-            console.log('Payment succeeded, subscription reactivated for user:', profile.id);
+            console.log('invoice.payment_succeeded: Success, subscription reactivated for user:', profile.id);
+          } else {
+            console.warn('invoice.payment_succeeded: No profile found for subscription:', subscription);
           }
+        } else {
+          console.warn('invoice.payment_succeeded: No subscription ID in invoice');
         }
         break;
       }
@@ -218,7 +230,8 @@ Deno.serve(async (req: Request) => {
             .maybeSingle();
 
           if (fetchError) {
-            console.error('Error fetching profile for payment failure:', fetchError);
+            console.error('invoice.payment_failed: Error fetching profile:', fetchError);
+            console.error('invoice.payment_failed: Failed at line 214-218');
             break;
           }
 
@@ -232,15 +245,24 @@ Deno.serve(async (req: Request) => {
               .eq('id', profile.id);
 
             if (error) {
-              console.error('Error updating profile on payment failure:', error);
-              throw error;
+              console.error('invoice.payment_failed: Error updating profile:', error);
+              console.error('invoice.payment_failed: Failed at line 226-232');
+              break;
             }
 
-            console.log('Payment failed, subscription expired for user:', profile.id);
+            console.log('invoice.payment_failed: Success, subscription expired for user:', profile.id);
+          } else {
+            console.warn('invoice.payment_failed: No profile found for subscription:', subscription);
           }
+        } else {
+          console.warn('invoice.payment_failed: No subscription ID in invoice');
         }
         break;
       }
+
+      default:
+        console.log('Unhandled event type:', event.type);
+        break;
     }
 
     return new Response(JSON.stringify({ received: true }), {
