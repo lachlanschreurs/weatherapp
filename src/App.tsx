@@ -16,6 +16,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
 import { PremiumTeaser } from './components/PremiumTeaser';
 import { WeatherEffects } from './components/WeatherEffects';
+import { AlertBanner } from './components/AlertBanner';
 import FarmerJoe from './components/FarmerJoe';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
@@ -641,6 +642,7 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <AlertBanner alerts={alerts} />
                 {user ? (
                   <>
                     <NotificationCenter userId={user.id} />
