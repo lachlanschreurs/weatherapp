@@ -24,8 +24,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
       const data = await response.json();
 
-      const frames = data.radar.past.map((frame: any) =>
-        `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/4/1_1.png`
+      const frames = data.radar.past.concat(data.radar.nowcast || []).map((frame: any) =>
+        `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/8/1_0.png`
       );
 
       setRadarFrames(frames);
@@ -64,7 +64,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 9 : 8;
+      const zoom = isExpanded ? 10 : 9;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
@@ -80,9 +80,15 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         minZoom: 3
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, Earthstar Geographics',
         maxZoom: 19
+      }).addTo(map);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
+        attribution: '© CARTO',
+        maxZoom: 19,
+        pane: 'shadowPane'
       }).addTo(map);
 
       const frames = await fetchRadarFrames();
@@ -90,10 +96,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (frames.length > 0) {
         radarLayersRef.current = frames.map((frameUrl, index) => {
           const layer = L.tileLayer(frameUrl, {
-            opacity: index === frames.length - 1 ? 0.9 : 0,
+            opacity: index === frames.length - 1 ? 1.0 : 0,
             maxZoom: 19,
             attribution: 'RainViewer',
-            zIndex: 1000
+            zIndex: 1000,
+            className: 'radar-layer'
           }).addTo(map);
           return layer;
         });
@@ -148,7 +155,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           const nextFrame = (prev + 1) % radarLayersRef.current.length;
 
           radarLayersRef.current.forEach((layer, index) => {
-            layer.setOpacity(index === nextFrame ? 0.9 : 0);
+            layer.setOpacity(index === nextFrame ? 1.0 : 0);
           });
 
           return nextFrame;
@@ -175,7 +182,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (!mapRef.current) return;
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 9 : 8;
+      const zoom = isExpanded ? 10 : 9;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
@@ -187,9 +194,15 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         minZoom: 3
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, Earthstar Geographics',
         maxZoom: 19
+      }).addTo(map);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
+        attribution: '© CARTO',
+        maxZoom: 19,
+        pane: 'shadowPane'
       }).addTo(map);
 
       const frames = await fetchRadarFrames();
@@ -197,10 +210,11 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (frames.length > 0) {
         radarLayersRef.current = frames.map((frameUrl, index) => {
           const layer = L.tileLayer(frameUrl, {
-            opacity: index === frames.length - 1 ? 0.9 : 0,
+            opacity: index === frames.length - 1 ? 1.0 : 0,
             maxZoom: 19,
             attribution: 'RainViewer',
-            zIndex: 1000
+            zIndex: 1000,
+            className: 'radar-layer'
           }).addTo(map);
           return layer;
         });
@@ -279,35 +293,39 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
             <div ref={mapRef} className="w-full h-full"></div>
 
-            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200 max-w-xs">
-              <div className="text-xs font-bold text-gray-900 mb-2.5">Rain Intensity</div>
+            <div className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700 max-w-xs">
+              <div className="text-xs font-bold text-white mb-2.5">Rain Intensity</div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(0, 236, 236, 0.9)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Light</span>
+                  <div className="w-12 h-4 rounded shadow-md border border-gray-600" style={{ background: '#00ecec' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">0.5-2 mm/h</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(0, 153, 0, 0.9)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Moderate</span>
+                  <div className="w-12 h-4 rounded shadow-md border border-gray-600" style={{ background: '#00aa00' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">2-5 mm/h</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(255, 255, 0, 0.9)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Heavy</span>
+                  <div className="w-12 h-4 rounded shadow-md border border-gray-600" style={{ background: '#ffff00' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">5-10 mm/h</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(255, 0, 0, 0.9)' }}></div>
-                  <span className="text-xs text-gray-700 font-medium">Intense</span>
+                  <div className="w-12 h-4 rounded shadow-md border border-gray-600" style={{ background: '#ff9900' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">10-20 mm/h</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-4 rounded shadow-md border border-gray-600" style={{ background: '#ff0000' }}></div>
+                  <span className="text-xs text-gray-200 font-medium">20+ mm/h</span>
                 </div>
               </div>
-              <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-600">
+              <div className="mt-2.5 pt-2.5 border-t border-gray-700 text-xs text-gray-300">
                 <div className="font-medium">Scroll to zoom • Drag to pan</div>
               </div>
             </div>
 
-            <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-200">
-              <div className="text-xs font-bold text-blue-600">Live Rain Radar</div>
-              <div className="text-xs text-gray-700 mt-0.5">{getTimeAgo()}</div>
-              <div className="text-xs text-gray-500 mt-0.5">Powered by RainViewer</div>
+            <div className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-700">
+              <div className="text-xs font-bold text-cyan-400">Live Rain Radar</div>
+              <div className="text-xs text-white mt-0.5 font-semibold">{getTimeAgo()}</div>
+              <div className="text-xs text-gray-400 mt-0.5">Powered by RainViewer</div>
             </div>
           </div>
 
