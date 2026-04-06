@@ -80,8 +80,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         minZoom: 3
       });
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CartoDB',
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
         maxZoom: 19
       }).addTo(map);
 
@@ -90,9 +90,10 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (frames.length > 0) {
         radarLayersRef.current = frames.map((frameUrl, index) => {
           const layer = L.tileLayer(frameUrl, {
-            opacity: index === frames.length - 1 ? 0.8 : 0,
+            opacity: index === frames.length - 1 ? 0.9 : 0,
             maxZoom: 19,
-            attribution: 'RainViewer'
+            attribution: 'RainViewer',
+            zIndex: 1000
           }).addTo(map);
           return layer;
         });
@@ -147,7 +148,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
           const nextFrame = (prev + 1) % radarLayersRef.current.length;
 
           radarLayersRef.current.forEach((layer, index) => {
-            layer.setOpacity(index === nextFrame ? 0.8 : 0);
+            layer.setOpacity(index === nextFrame ? 0.9 : 0);
           });
 
           return nextFrame;
@@ -186,8 +187,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         minZoom: 3
       });
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap © CartoDB',
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
         maxZoom: 19
       }).addTo(map);
 
@@ -196,9 +197,10 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       if (frames.length > 0) {
         radarLayersRef.current = frames.map((frameUrl, index) => {
           const layer = L.tileLayer(frameUrl, {
-            opacity: index === frames.length - 1 ? 0.8 : 0,
+            opacity: index === frames.length - 1 ? 0.9 : 0,
             maxZoom: 19,
-            attribution: 'RainViewer'
+            attribution: 'RainViewer',
+            zIndex: 1000
           }).addTo(map);
           return layer;
         });
@@ -265,47 +267,47 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
 
       {showRadar && (
         <>
-          <div className={`relative bg-gray-900 ${isExpanded ? 'h-[calc(100vh-12rem)]' : 'h-[500px]'}`}>
+          <div className={`relative bg-gray-100 ${isExpanded ? 'h-[calc(100vh-12rem)]' : 'h-[500px]'}`}>
             {isLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900 z-10">
+              <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-500 mx-auto mb-3"></div>
-                  <p className="text-white font-medium">Loading radar...</p>
+                  <p className="text-gray-700 font-medium">Loading radar...</p>
                 </div>
               </div>
             ) : null}
 
             <div ref={mapRef} className="w-full h-full"></div>
 
-            <div className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-700 max-w-xs">
-              <div className="text-xs font-bold text-white mb-2.5">Rain Intensity</div>
+            <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200 max-w-xs">
+              <div className="text-xs font-bold text-gray-900 mb-2.5">Rain Intensity</div>
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(0, 236, 236, 0.7)' }}></div>
-                  <span className="text-xs text-gray-200 font-medium">Light</span>
+                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(0, 236, 236, 0.9)' }}></div>
+                  <span className="text-xs text-gray-700 font-medium">Light</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(0, 153, 0, 0.7)' }}></div>
-                  <span className="text-xs text-gray-200 font-medium">Moderate</span>
+                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(0, 153, 0, 0.9)' }}></div>
+                  <span className="text-xs text-gray-700 font-medium">Moderate</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(255, 255, 0, 0.7)' }}></div>
-                  <span className="text-xs text-gray-200 font-medium">Heavy</span>
+                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(255, 255, 0, 0.9)' }}></div>
+                  <span className="text-xs text-gray-700 font-medium">Heavy</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-3 rounded shadow-sm" style={{ background: 'rgba(255, 0, 0, 0.7)' }}></div>
-                  <span className="text-xs text-gray-200 font-medium">Intense</span>
+                  <div className="w-10 h-3 rounded shadow-sm border border-gray-200" style={{ background: 'rgba(255, 0, 0, 0.9)' }}></div>
+                  <span className="text-xs text-gray-700 font-medium">Intense</span>
                 </div>
               </div>
-              <div className="mt-2.5 pt-2.5 border-t border-gray-700 text-xs text-gray-300">
+              <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-600">
                 <div className="font-medium">Scroll to zoom • Drag to pan</div>
               </div>
             </div>
 
-            <div className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-700">
-              <div className="text-xs font-bold text-blue-400">Global Rain Radar</div>
-              <div className="text-xs text-gray-300 mt-0.5">{getTimeAgo()}</div>
-              <div className="text-xs text-gray-400 mt-0.5">Powered by RainViewer</div>
+            <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-200">
+              <div className="text-xs font-bold text-blue-600">Live Rain Radar</div>
+              <div className="text-xs text-gray-700 mt-0.5">{getTimeAgo()}</div>
+              <div className="text-xs text-gray-500 mt-0.5">Powered by RainViewer</div>
             </div>
           </div>
 
