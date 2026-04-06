@@ -573,7 +573,7 @@ function App() {
   const alerts = generateWeatherAlerts(
     tempC,
     humidity,
-    windSpeedKmh,
+    current.wind_speed,
     rainfall,
     weatherCode,
     hourlyList
@@ -642,10 +642,9 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <AlertBanner alerts={alerts} />
                 {user ? (
                   <>
-                    <NotificationCenter userId={user.id} />
+                    <NotificationCenter userId={user.id} alerts={alerts} />
                     <UserMenu
                       user={user}
                       onSignOut={handleSignOut}
