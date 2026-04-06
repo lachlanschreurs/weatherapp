@@ -311,7 +311,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
             <CloudRain className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white">BOM Rain Radar</h3>
+            <h3 className="text-lg font-bold text-white">Live Rain Radar</h3>
             <p className="text-sm text-red-100">{locationName}</p>
           </div>
         </div>

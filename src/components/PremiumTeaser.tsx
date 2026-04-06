@@ -67,7 +67,6 @@ export function PremiumTeaser({ onSignUpClick }: PremiumTeaserProps) {
         >
           Start Free Trial
         </button>
-        <p className="text-sm text-gray-500 mt-3">No credit card required</p>
       </div>
     </div>
   );
