@@ -52,7 +52,15 @@ export function generateWeatherAlerts(
     return hoursDiff <= 240 && hoursDiff >= 0;
   });
 
-  const totalRain24h = next24Hours.reduce((sum, item) => sum + (item.rain?.['3h'] || item.pop * 3 || 0), 0);
+  const totalRain24h = next24Hours.reduce((sum, item) => {
+    if (item.rain?.['3h']) {
+      return sum + item.rain['3h'];
+    }
+    if (item.rain?.['1h']) {
+      return sum + item.rain['1h'];
+    }
+    return sum;
+  }, 0);
   const rainForecast = next24Hours.find(item => (item.pop || 0) > 0.3);
 
   const next30Min = forecast.find(item => {
