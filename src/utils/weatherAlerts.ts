@@ -122,7 +122,7 @@ export function generateWeatherAlerts(
   }
 
   const windSpeedKmh = currentWindSpeed * 3.6;
-  if (windSpeedKmh > 25) {
+  if (windSpeedKmh > 15) {
     alerts.push({
       id: 'strong-wind',
       severity: 'warning',
@@ -130,7 +130,7 @@ export function generateWeatherAlerts(
       message: `Strong winds detected: ${Math.round(windSpeedKmh)} km/h. Spraying and field work not recommended.`,
       icon: 'wind'
     });
-  } else if (windSpeedKmh >= 20) {
+  } else if (windSpeedKmh >= 10) {
     alerts.push({
       id: 'wind',
       severity: 'caution',
@@ -292,12 +292,12 @@ export function generateWeatherAlerts(
     });
   }
 
-  if (windSpeedKmh >= 20 && (currentRain > 0 || rainForecast)) {
+  if (windSpeedKmh >= 10 && (currentRain > 0 || rainForecast)) {
     alerts.push({
       id: 'wind-rain-combo',
       severity: 'warning',
       title: 'Combined Wind & Rain Warning',
-      message: 'Strong winds combined with rain. Spraying and field work not recommended.',
+      message: 'Winds combined with rain. Spraying and field work not recommended.',
       icon: 'alert-triangle'
     });
   }
