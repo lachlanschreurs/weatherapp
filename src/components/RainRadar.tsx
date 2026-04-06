@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CloudRain, Minimize2, Maximize2, RefreshCw, Play, Pause } from 'lucide-react';
+import { CloudRain, Minimize2, Maximize2, RefreshCw, Play, Pause, AlertCircle } from 'lucide-react';
 
 interface RainRadarProps {
   lat: number;
@@ -13,12 +13,15 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const [radarLoadError, setRadarLoadError] = useState(false);
+  const [radarCode, setRadarCode] = useState('');
+  const [radarStation, setRadarStation] = useState('');
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const radarLayersRef = useRef<any[]>([]);
   const animationIntervalRef = useRef<any>(null);
 
-  const getClosestRadarCode = (lat: number, lon: number): string => {
+  const getClosestRadarCode = (lat: number, lon: number): { code: string; name: string } => {
     const radars = [
       { code: '63', name: 'Adelaide', lat: -34.6177, lon: 138.4689 },
       { code: '01', name: 'Albany', lat: -34.9414, lon: 117.8161 },
@@ -72,22 +75,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       }
     }
 
-    return closest.code;
-  };
-
-  const getNearestRadarTime = (): string => {
-    const now = new Date();
-    const minutes = now.getUTCMinutes();
-    const nearestMinute = Math.floor(minutes / 10) * 10;
-    now.setUTCMinutes(nearestMinute, 0, 0);
-
-    const year = now.getUTCFullYear();
-    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(now.getUTCDate()).padStart(2, '0');
-    const hours = String(now.getUTCHours()).padStart(2, '0');
-    const mins = String(now.getUTCMinutes()).padStart(2, '0');
-
-    return `${year}${month}${day}${hours}${mins}`;
+    return closest;
   };
 
   const getRadarFrames = (radarCode: string, numFrames: number = 6): string[] => {
@@ -104,7 +92,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const mins = String(frameTime.getUTCMinutes()).padStart(2, '0');
       const timeStr = `${year}${month}${day}${hours}${mins}`;
 
-      frames.push(`http://www.bom.gov.au/radar/IDR${radarCode}3.T.${timeStr}.png`);
+      frames.push(`https://www.bom.gov.au/radar/IDR${radarCode}.T.${timeStr}.png`);
     }
 
     return frames;
@@ -159,10 +147,27 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         maxZoom: 19
       }).addTo(map);
 
-      const radarCode = getClosestRadarCode(lat, lon);
-      const frames = getRadarFrames(radarCode, 6);
+      const radar = getClosestRadarCode(lat, lon);
+      setRadarCode(radar.code);
+      setRadarStation(radar.name);
+      const frames = getRadarFrames(radar.code, 6);
 
+      let loadedCount = 0;
       radarLayersRef.current = frames.map((frameUrl, index) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedCount++;
+          if (loadedCount === 1) {
+            setRadarLoadError(false);
+          }
+        };
+        img.onerror = () => {
+          if (index === frames.length - 1) {
+            setRadarLoadError(true);
+          }
+        };
+        img.src = frameUrl;
+
         const layer = L.imageOverlay(frameUrl, [
           [-44, 112],
           [-10, 154]
@@ -238,6 +243,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
     }
     setIsPlaying(false);
     setCurrentFrame(0);
+    setRadarLoadError(false);
 
     if (mapInstanceRef.current) {
       mapInstanceRef.current.remove();
@@ -266,10 +272,27 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         maxZoom: 19
       }).addTo(map);
 
-      const radarCode = getClosestRadarCode(lat, lon);
-      const frames = getRadarFrames(radarCode, 6);
+      const radar = getClosestRadarCode(lat, lon);
+      setRadarCode(radar.code);
+      setRadarStation(radar.name);
+      const frames = getRadarFrames(radar.code, 6);
 
+      let loadedCount = 0;
       radarLayersRef.current = frames.map((frameUrl, index) => {
+        const img = new Image();
+        img.onload = () => {
+          loadedCount++;
+          if (loadedCount === 1) {
+            setRadarLoadError(false);
+          }
+        };
+        img.onerror = () => {
+          if (index === frames.length - 1) {
+            setRadarLoadError(true);
+          }
+        };
+        img.src = frameUrl;
+
         const layer = L.imageOverlay(frameUrl, [
           [-44, 112],
           [-10, 154]
@@ -344,6 +367,31 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
               </div>
             ) : null}
 
+            {radarLoadError && !isLoading && (
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 shadow-xl z-10 max-w-md">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-1">Radar Images Unavailable</h4>
+                    <p className="text-sm text-gray-700 mb-2">
+                      Unable to load radar images from BOM. This may be due to:
+                    </p>
+                    <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                      <li>Radar maintenance or temporary outage</li>
+                      <li>Images not yet available for this time period</li>
+                      <li>Network connectivity issues</li>
+                    </ul>
+                    <button
+                      onClick={handleRefresh}
+                      className="mt-3 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div ref={mapRef} className="w-full h-full"></div>
 
             <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-xl border border-gray-200 max-w-xs">
@@ -366,14 +414,16 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                   <span className="text-xs text-gray-700 font-medium">Very Heavy</span>
                 </div>
               </div>
-              <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-600 font-medium">
-                Scroll to zoom • Drag to pan
+              <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-600">
+                {!radarLoadError && <div className="font-medium mb-1">No rain visible? The radar shows real-time data.</div>}
+                <div className="font-medium">Scroll to zoom • Drag to pan</div>
               </div>
             </div>
 
             <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-xl border border-gray-200">
               <div className="text-xs font-bold text-red-700">Bureau of Meteorology</div>
-              <div className="text-xs text-gray-600 mt-0.5">Last {6 - currentFrame}0 minutes</div>
+              <div className="text-xs text-gray-600 mt-0.5">{radarStation} Radar (IDR{radarCode})</div>
+              <div className="text-xs text-gray-500 mt-0.5">Last {6 - currentFrame}0 minutes</div>
             </div>
           </div>
 
