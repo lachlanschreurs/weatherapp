@@ -124,8 +124,18 @@ Deno.serve(async (req: Request) => {
         // Build report data
         const reportData = analyzeProbeData(probeData || [], probeApis);
 
+        // Get AI interpretation of the week's data
+        let aiInterpretation = '';
+        if (probeData && probeData.length > 0) {
+          try {
+            aiInterpretation = await generateAIInterpretation(reportData, probeData);
+          } catch (aiError) {
+            console.error(`Failed to generate AI interpretation for ${subscriber.email}:`, aiError);
+          }
+        }
+
         // Build email HTML
-        const emailHtml = buildWeeklyProbeReportEmail(reportData);
+        const emailHtml = buildWeeklyProbeReportEmail(reportData, aiInterpretation);
 
         // Send email via Resend
         const emailResponse = await fetch('https://api.resend.com/emails', {
@@ -139,7 +149,7 @@ Deno.serve(async (req: Request) => {
             to: subscriber.email,
             subject: 'Weekly Soil Health Report',
             html: emailHtml,
-            text: buildWeeklyProbeReportEmailText(reportData),
+            text: buildWeeklyProbeReportEmailText(reportData, aiInterpretation),
           }),
         });
 
@@ -181,6 +191,86 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+async function generateAIInterpretation(reportData: any, rawProbeData: any[]): Promise<string> {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openaiApiKey) {
+    console.warn('OPENAI_API_KEY not configured, skipping AI interpretation');
+    return '';
+  }
+
+  const summaryText = reportData.probeStats.map((probe: any) => {
+    let text = `${probe.name}: ${probe.readings} readings\n`;
+
+    if (probe.temperature.count > 0) {
+      const avg = (probe.temperature.sum / probe.temperature.count).toFixed(1);
+      text += `  Temperature: ${probe.temperature.min.toFixed(1)}°C - ${probe.temperature.max.toFixed(1)}°C (avg: ${avg}°C)\n`;
+    }
+
+    if (probe.moisture.count > 0) {
+      const avg = (probe.moisture.sum / probe.moisture.count).toFixed(1);
+      text += `  Moisture: ${probe.moisture.min.toFixed(1)}% - ${probe.moisture.max.toFixed(1)}% (avg: ${avg}%)\n`;
+    }
+
+    if (probe.ph.count > 0) {
+      const avg = (probe.ph.sum / probe.ph.count).toFixed(2);
+      text += `  pH: ${probe.ph.min.toFixed(2)} - ${probe.ph.max.toFixed(2)} (avg: ${avg})\n`;
+    }
+
+    if (probe.ec.count > 0) {
+      const avg = (probe.ec.sum / probe.ec.count).toFixed(2);
+      text += `  EC: ${probe.ec.min.toFixed(2)} - ${probe.ec.max.toFixed(2)} mS/cm (avg: ${avg} mS/cm)\n`;
+    }
+
+    return text;
+  }).join('\n');
+
+  const prompt = `You are Farmer Joe, an experienced agricultural advisor. Analyze this week's soil probe data and provide a concise, actionable interpretation in 3-4 sentences. Focus on:
+1. Overall soil health trends
+2. Any concerning patterns or changes
+3. Specific recommendations for the farmer
+
+Data Summary:
+${summaryText}
+
+Provide a friendly, professional analysis that helps the farmer understand what happened this week and what actions to take.`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are Farmer Joe, an experienced agricultural advisor who provides concise, actionable advice to farmers based on soil probe data.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 300,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('OpenAI API error:', await response.text());
+      return '';
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
+  } catch (error) {
+    console.error('Error generating AI interpretation:', error);
+    return '';
+  }
+}
 
 function analyzeProbeData(probeData: any[], probeApis: any[]) {
   const probeStats: any = {};
@@ -243,7 +333,7 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
   };
 }
 
-function buildWeeklyProbeReportEmail(reportData: any): string {
+function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string = ''): string {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 7);
 
@@ -259,6 +349,7 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
     .header { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
     .content { background: #f9fafb; padding: 30px; }
     .summary-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .ai-box { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; }
     .probe-card { background: white; padding: 20px; margin: 15px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #059669; }
     .metric { display: inline-block; margin: 10px 15px 10px 0; }
     .metric-label { font-size: 12px; color: #6b7280; text-transform: uppercase; }
@@ -277,6 +368,13 @@ function buildWeeklyProbeReportEmail(reportData: any): string {
     </div>
 
     <div class="content">
+      ${aiInterpretation ? `
+        <div class="ai-box">
+          <h2 style="margin-top: 0; color: #1e40af; font-size: 18px;">Farmer Joe's Weekly Analysis</h2>
+          <p style="margin-bottom: 0; font-size: 15px; line-height: 1.7;">${aiInterpretation}</p>
+        </div>
+      ` : ''}
+
       <div class="summary-box">
         <h2>Overview</h2>
         <p><strong>Active Probes:</strong> ${reportData.probeCount}</p>
@@ -428,7 +526,7 @@ function getPhRecommendation(ph: number): string {
   return 'pH levels are optimal for most crops.';
 }
 
-function buildWeeklyProbeReportEmailText(reportData: any): string {
+function buildWeeklyProbeReportEmailText(reportData: any, aiInterpretation: string = ''): string {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - 7);
   const weekEnd = new Date();
@@ -437,7 +535,7 @@ function buildWeeklyProbeReportEmailText(reportData: any): string {
 WEEKLY SOIL HEALTH REPORT
 ${weekStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' })}
 
-OVERVIEW:
+${aiInterpretation ? `FARMER JOE'S WEEKLY ANALYSIS:\n${aiInterpretation}\n\n` : ''}OVERVIEW:
 - Active Probes: ${reportData.probeCount}
 - Total Readings This Week: ${reportData.totalReadings}
 - Average Readings Per Day: ${(reportData.totalReadings / 7).toFixed(1)}
