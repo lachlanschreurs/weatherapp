@@ -134,7 +134,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       mapRef.current.innerHTML = '';
 
       const L = (window as any).L;
-      const zoom = isExpanded ? 11 : 10;
+      const zoom = isExpanded ? 8 : 7;
       const map = L.map(mapRef.current, {
         center: [lat, lon],
         zoom: zoom,
@@ -147,7 +147,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         dragging: true,
         keyboard: true,
         maxZoom: 16,
-        minZoom: 4
+        minZoom: 3
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -168,7 +168,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
         color: '#0284c7',
         fillColor: '#0284c7',
         fillOpacity: 0.08,
-        radius: 15000,
+        radius: 50000,
         weight: 2,
         opacity: 0.5
       }).addTo(map);
@@ -334,8 +334,8 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
                           <span className="text-xs text-gray-700 font-medium">Intense (&gt;50 mm/h)</span>
                         </div>
                       </div>
-                      <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-500">
-                        {isPastFrame ? '📊 Historical data' : isFutureFrame ? '🔮 Forecast data' : '🔴 Live data'}
+                      <div className="mt-2.5 pt-2.5 border-t border-gray-200 text-xs text-gray-600 font-medium">
+                        Scroll to zoom • Drag to pan
                       </div>
                     </div>
 
@@ -393,7 +393,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-700 font-medium">Frame {currentFrameIndex + 1} of {radarFrames.length}</span>
-                <span className="text-gray-500">Drag map to pan • Scroll to zoom • Auto-refresh: 5 min</span>
+                <span className="text-gray-500">🔄 Auto-refresh: 5 min</span>
               </div>
             </div>
           )}
