@@ -1,6 +1,23 @@
 import { Location } from '../components/LocationSearch';
+import { getCurrentPosition as getCapacitorPosition, isNativePlatform } from './capacitor';
 
 export async function getCurrentPosition(): Promise<GeolocationPosition> {
+  if (isNativePlatform()) {
+    const coords = await getCapacitorPosition();
+    return {
+      coords: {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy: 0,
+        altitude: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null
+      },
+      timestamp: Date.now()
+    } as GeolocationPosition;
+  }
+
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by your browser'));
