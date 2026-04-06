@@ -25,7 +25,7 @@ export function RainRadar({ lat, lon, locationName }: RainRadarProps) {
       const data = await response.json();
 
       const frames = data.radar.past.concat(data.radar.nowcast || []).map((frame: any) =>
-        `https://tilecache.rainviewer.com/v2/radar/${frame.path}/512/{z}/{x}/{y}/8/1_0.png`
+        `https://tilecache.rainviewer.com/v2/radar/${frame.path}/256/{z}/{x}/{y}/2/1_1.png`
       );
 
       setRadarFrames(frames);
