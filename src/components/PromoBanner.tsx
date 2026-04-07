@@ -28,7 +28,7 @@ export function PromoBanner({ onSignUp, isLoggedIn }: PromoBannerProps) {
           </div>
           <div>
             <div className="text-white font-semibold text-sm">
-              Get daily forecasts + probe reports
+              Get daily forecasts + probe reports + AI farming analysis and assistance
             </div>
             <div className="text-green-100 text-xs">
               30-day free trial, then $2.99/month
