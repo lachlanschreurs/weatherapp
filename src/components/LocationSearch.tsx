@@ -9,6 +9,7 @@ export interface Location {
   lon: number;
   country: string;
   state?: string;
+  postcode?: string;
 }
 
 interface LocationSearchProps {
@@ -63,9 +64,35 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
 
     try {
       const apiKey = '205a644e0f57ecf98260a957076e46db';
-      const apiUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(searchQuery)}&limit=5&appid=${apiKey}`;
 
-      const response = await fetch(apiUrl);
+      // Check if query looks like a postcode (contains numbers)
+      const hasNumbers = /\d/.test(searchQuery);
+      let allResults: Location[] = [];
+
+      // Try zip/postcode search if query contains numbers
+      if (hasNumbers) {
+        const zipUrl = `https://api.openweathermap.org/geo/1.0/zip?zip=${encodeURIComponent(searchQuery)}&appid=${apiKey}`;
+        try {
+          const zipResponse = await fetch(zipUrl);
+          if (zipResponse.ok) {
+            const zipData = await zipResponse.json();
+            allResults.push({
+              name: zipData.name,
+              lat: zipData.lat,
+              lon: zipData.lon,
+              country: zipData.country,
+              postcode: searchQuery,
+            });
+          }
+        } catch (error) {
+          // Zip code search failed, continue with regular search
+          console.log('Zip code search failed, trying regular search');
+        }
+      }
+
+      // Regular location search
+      const directUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(searchQuery)}&limit=8&appid=${apiKey}`;
+      const response = await fetch(directUrl);
 
       if (!response.ok) {
         throw new Error('Failed to search locations');
@@ -80,7 +107,8 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
         state: item.state,
       }));
 
-      setResults(locations);
+      allResults = [...allResults, ...locations];
+      setResults(allResults);
       setShowResults(true);
     } catch (error) {
       console.error('Error searching location:', error);
@@ -154,6 +182,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
       lon: saved.longitude,
       country: saved.country,
       state: saved.state || undefined,
+      postcode: saved.postcode || undefined,
     };
     onLocationSelect(location, false);
     setIsExpanded(false);
@@ -196,7 +225,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
                   setShowResults(true);
                 }
               }}
-              placeholder="Search for a location..."
+              placeholder="Search location or postcode..."
               className="w-full pl-10 pr-10 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 bg-white shadow-sm"
               autoFocus
             />
@@ -248,6 +277,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
                               <div className="font-semibold text-gray-800">
                                 {saved.name}
                                 {saved.state && `, ${saved.state}`}
+                                {saved.postcode && ` (${saved.postcode})`}
                               </div>
                               <div className="text-sm text-gray-600">
                                 {saved.country}
@@ -297,6 +327,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
                         <div className="font-semibold text-gray-800">
                           {location.name}
                           {location.state && `, ${location.state}`}
+                          {location.postcode && ` (${location.postcode})`}
                         </div>
                         <div className="text-sm text-gray-600">
                           {location.country}

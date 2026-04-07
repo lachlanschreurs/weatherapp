@@ -9,6 +9,7 @@ export interface SavedLocation {
   longitude: number;
   country: string;
   state: string | null;
+  postcode: string | null;
   is_favorite: boolean;
   created_at: string;
 }
@@ -31,6 +32,7 @@ export async function getFavoriteLocation(userId: string): Promise<Location | nu
     lon: data.longitude,
     country: data.country,
     state: data.state || undefined,
+    postcode: data.postcode || undefined,
   };
 }
 
@@ -60,6 +62,7 @@ export async function saveLocation(userId: string, location: Location): Promise<
       longitude: location.lon,
       country: location.country,
       state: location.state || null,
+      postcode: location.postcode || null,
       is_favorite: false,
     })
     .select()
