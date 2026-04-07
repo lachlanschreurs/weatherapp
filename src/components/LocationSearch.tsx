@@ -63,36 +63,14 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
     setIsSearching(true);
 
     try {
-      const apiKey = '205a644e0f57ecf98260a957076e46db';
+      // Use Nominatim (OpenStreetMap) which provides postcode data
+      const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&addressdetails=1&limit=8`;
 
-      // Check if query looks like a postcode (contains numbers)
-      const hasNumbers = /\d/.test(searchQuery);
-      let allResults: Location[] = [];
-
-      // Try zip/postcode search if query contains numbers
-      if (hasNumbers) {
-        const zipUrl = `https://api.openweathermap.org/geo/1.0/zip?zip=${encodeURIComponent(searchQuery)}&appid=${apiKey}`;
-        try {
-          const zipResponse = await fetch(zipUrl);
-          if (zipResponse.ok) {
-            const zipData = await zipResponse.json();
-            allResults.push({
-              name: zipData.name,
-              lat: zipData.lat,
-              lon: zipData.lon,
-              country: zipData.country,
-              postcode: searchQuery,
-            });
-          }
-        } catch (error) {
-          // Zip code search failed, continue with regular search
-          console.log('Zip code search failed, trying regular search');
+      const response = await fetch(nominatimUrl, {
+        headers: {
+          'User-Agent': 'FarmCast Weather App'
         }
-      }
-
-      // Regular location search
-      const directUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(searchQuery)}&limit=8&appid=${apiKey}`;
-      const response = await fetch(directUrl);
+      });
 
       if (!response.ok) {
         throw new Error('Failed to search locations');
@@ -100,36 +78,16 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
 
       const data = await response.json();
 
-      // Fetch postcodes for each location using reverse geocoding
-      const locationsWithPostcodes = await Promise.all(
-        data.map(async (item: any) => {
-          let postcode = undefined;
-          try {
-            const reverseUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${item.lat}&lon=${item.lon}&limit=1&appid=${apiKey}`;
-            const reverseResponse = await fetch(reverseUrl);
-            if (reverseResponse.ok) {
-              const reverseData = await reverseResponse.json();
-              if (reverseData[0]?.zip) {
-                postcode = reverseData[0].zip;
-              }
-            }
-          } catch (error) {
-            // Continue without postcode if reverse geocoding fails
-          }
+      const locations: Location[] = data.map((item: any) => ({
+        name: item.address?.city || item.address?.town || item.address?.village || item.address?.hamlet || item.name || item.display_name.split(',')[0],
+        lat: parseFloat(item.lat),
+        lon: parseFloat(item.lon),
+        country: item.address?.country || '',
+        state: item.address?.state,
+        postcode: item.address?.postcode,
+      }));
 
-          return {
-            name: item.name,
-            lat: item.lat,
-            lon: item.lon,
-            country: item.country,
-            state: item.state,
-            postcode,
-          };
-        })
-      );
-
-      allResults = [...allResults, ...locationsWithPostcodes];
-      setResults(allResults);
+      setResults(locations);
       setShowResults(true);
     } catch (error) {
       console.error('Error searching location:', error);
