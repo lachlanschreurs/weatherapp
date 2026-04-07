@@ -99,15 +99,36 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
       }
 
       const data = await response.json();
-      const locations = data.map((item: any) => ({
-        name: item.name,
-        lat: item.lat,
-        lon: item.lon,
-        country: item.country,
-        state: item.state,
-      }));
 
-      allResults = [...allResults, ...locations];
+      // Fetch postcodes for each location using reverse geocoding
+      const locationsWithPostcodes = await Promise.all(
+        data.map(async (item: any) => {
+          let postcode = undefined;
+          try {
+            const reverseUrl = `https://api.openweathermap.org/geo/1.0/reverse?lat=${item.lat}&lon=${item.lon}&limit=1&appid=${apiKey}`;
+            const reverseResponse = await fetch(reverseUrl);
+            if (reverseResponse.ok) {
+              const reverseData = await reverseResponse.json();
+              if (reverseData[0]?.zip) {
+                postcode = reverseData[0].zip;
+              }
+            }
+          } catch (error) {
+            // Continue without postcode if reverse geocoding fails
+          }
+
+          return {
+            name: item.name,
+            lat: item.lat,
+            lon: item.lon,
+            country: item.country,
+            state: item.state,
+            postcode,
+          };
+        })
+      );
+
+      allResults = [...allResults, ...locationsWithPostcodes];
       setResults(allResults);
       setShowResults(true);
     } catch (error) {
