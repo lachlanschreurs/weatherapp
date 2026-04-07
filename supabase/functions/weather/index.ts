@@ -157,22 +157,57 @@ Deno.serve(async (req: Request) => {
         wind_gust: currentData.wind.gust,
         weather: currentData.weather,
       },
-      hourly: forecastData.list.map((item: any) => ({
-        dt: item.dt,
-        temp: item.main.temp,
-        feels_like: item.main.feels_like,
-        pressure: item.main.pressure,
-        humidity: item.main.humidity,
-        dew_point: item.main.temp - ((100 - item.main.humidity) / 5),
-        clouds: item.clouds.all,
-        visibility: item.visibility,
-        wind_speed: item.wind.speed,
-        wind_deg: item.wind.deg,
-        wind_gust: item.wind.gust,
-        weather: item.weather,
-        pop: item.pop,
-        rain: item.rain ? { '3h': item.rain['3h'] || 0 } : undefined,
-      })),
+      hourly: (() => {
+        const interpolatedHourly = [];
+        const forecastList = forecastData.list;
+
+        for (let i = 0; i < forecastList.length - 1 && interpolatedHourly.length < 48; i++) {
+          const current = forecastList[i];
+          const next = forecastList[i + 1];
+
+          interpolatedHourly.push({
+            dt: current.dt,
+            temp: current.main.temp,
+            feels_like: current.main.feels_like,
+            pressure: current.main.pressure,
+            humidity: current.main.humidity,
+            dew_point: current.main.temp - ((100 - current.main.humidity) / 5),
+            clouds: current.clouds.all,
+            visibility: current.visibility,
+            wind_speed: current.wind.speed,
+            wind_deg: current.wind.deg,
+            wind_gust: current.wind.gust,
+            weather: current.weather,
+            pop: current.pop,
+            rain: current.rain ? { '1h': (current.rain['3h'] || 0) / 3 } : undefined,
+          });
+
+          const timeDiff = next.dt - current.dt;
+          const steps = Math.floor(timeDiff / 3600);
+
+          for (let step = 1; step < steps && interpolatedHourly.length < 48; step++) {
+            const ratio = step / steps;
+            interpolatedHourly.push({
+              dt: current.dt + (step * 3600),
+              temp: current.main.temp + (next.main.temp - current.main.temp) * ratio,
+              feels_like: current.main.feels_like + (next.main.feels_like - current.main.feels_like) * ratio,
+              pressure: current.main.pressure + (next.main.pressure - current.main.pressure) * ratio,
+              humidity: Math.round(current.main.humidity + (next.main.humidity - current.main.humidity) * ratio),
+              dew_point: (current.main.temp + (next.main.temp - current.main.temp) * ratio) - ((100 - (current.main.humidity + (next.main.humidity - current.main.humidity) * ratio)) / 5),
+              clouds: Math.round(current.clouds.all + (next.clouds.all - current.clouds.all) * ratio),
+              visibility: current.visibility,
+              wind_speed: current.wind.speed + (next.wind.speed - current.wind.speed) * ratio,
+              wind_deg: current.wind.deg,
+              wind_gust: current.wind.gust ? current.wind.gust + ((next.wind.gust || current.wind.gust) - current.wind.gust) * ratio : undefined,
+              weather: current.weather,
+              pop: current.pop + (next.pop - current.pop) * ratio,
+              rain: current.rain ? { '1h': (current.rain['3h'] || 0) / 3 } : undefined,
+            });
+          }
+        }
+
+        return interpolatedHourly.slice(0, 48);
+      })(),
       daily: Array.from({ length: 30 }, (_, i) => {
         if (i < 5) {
           const dayStart = i * 8;
