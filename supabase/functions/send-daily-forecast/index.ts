@@ -1006,38 +1006,6 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       ${probeReport}
 
       <div style="margin-top: 24px;">
-        <div class="section-header">Hourly Delta T Forecast (Next 24 Hours)</div>
-        <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #047857; border-radius: 10px; padding: 16px;">
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-            ${next24Hours.slice(0, 12).map((hour: any) => {
-              const hourTime = new Date(hour.dt * 1000);
-              const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-              const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
-              const hourWindSpeed = hour.wind_speed * 3.6;
-              const deltaTCond = getDeltaTCondition(hourDeltaT);
-
-              return `
-                <div style="background: white; border: 2px solid ${deltaTCond.color}; border-radius: 6px; padding: 8px; text-align: center;">
-                  <div style="font-size: 10px; color: #065f46; font-weight: 800; margin-bottom: 4px;">${timeStr}</div>
-                  <div style="font-size: 18px; font-weight: 800; color: ${deltaTCond.color}; margin-bottom: 2px;">ΔT ${hourDeltaT.toFixed(1)}</div>
-                  <div style="font-size: 9px; color: ${deltaTCond.color}; font-weight: 700;">${deltaTCond.rating}</div>
-                  <div style="font-size: 9px; color: #059669; font-weight: 600; margin-top: 4px;">${Math.round(hour.temp)}°C</div>
-                  <div style="font-size: 9px; color: #047857; font-weight: 600;">${Math.round(hourWindSpeed)} km/h</div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-          <div style="margin-top: 12px; font-size: 10px; color: #065f46; text-align: center; font-weight: 600; line-height: 1.4;">
-            <div style="margin-bottom: 4px;">Delta T Guide:</div>
-            <div style="color: #059669;">2-8: Excellent</div>
-            <div style="color: #10b981;">8-10: Good</div>
-            <div style="color: #f59e0b;">10-14: Marginal</div>
-            <div style="color: #dc2626;">&lt;2 or &gt;14: Poor</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top: 24px;">
         <div class="section-header">5-Day Forecast</div>
         <table style="width: 100%; border-collapse: collapse; font-size: 11px; background: #f9fafb; border-radius: 8px; overflow: hidden;">
           <thead>
