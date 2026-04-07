@@ -1,10 +1,12 @@
-import { Wind, CloudRain, Thermometer, Navigation, Cloud, CloudDrizzle, Sun } from 'lucide-react';
+import { Wind, CloudRain, Thermometer, Navigation, Cloud, CloudDrizzle, Sun, Gauge } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { calculateDeltaT } from '../utils/deltaT';
 
 interface HourlyData {
   time: string;
   displayTime: string;
   temp: number;
+  humidity: number;
   windSpeed: number;
   windDirection: number;
   rainChance: number;
@@ -12,12 +14,14 @@ interface HourlyData {
   hour: number;
   day: string;
   timestamp: number;
+  deltaT: number;
 }
 
 interface HourlyForecastProps {
   forecastList: any[];
   currentWeather?: {
     temp: number;
+    humidity: number;
     wind_speed: number;
     wind_deg: number;
     weather: Array<{ icon?: string }>;
@@ -40,6 +44,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
     const windSpeed = currentWeather.wind_speed * 3.6;
     const windDirection = currentWeather.wind_deg || 0;
     const weatherIcon = currentWeather.weather?.[0]?.icon || '01d';
+    const deltaT = calculateDeltaT(currentWeather.temp, currentWeather.humidity);
 
     hourlyData.push({
       time: date.toLocaleString('en-AU', {
@@ -50,6 +55,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
       }),
       displayTime: `${date.getHours() % 12 || 12}${date.getHours() >= 12 ? 'pm' : 'am'}`,
       temp: Math.round(currentWeather.temp),
+      humidity: currentWeather.humidity,
       windSpeed: Math.round(windSpeed),
       windDirection,
       rainChance: 0,
@@ -57,6 +63,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
       hour: date.getHours(),
       day: date.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase(),
       timestamp: now,
+      deltaT,
     });
   }
 
@@ -73,10 +80,12 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
 
     const date = new Date(itemTimestamp);
     const temp = item.temp;
+    const humidity = item.humidity || 50;
     const windSpeed = item.wind_speed * 3.6;
     const windDirection = item.wind_deg || 0;
     const rainChance = (item.pop || 0) * 100;
     const weatherIcon = item.weather?.[0]?.icon || '01d';
+    const deltaT = calculateDeltaT(temp, humidity);
 
     hourlyData.push({
       time: date.toLocaleString('en-AU', {
@@ -87,6 +96,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
       }),
       displayTime: `${date.getHours() % 12 || 12}${date.getHours() >= 12 ? 'pm' : 'am'}`,
       temp: Math.round(temp),
+      humidity,
       windSpeed: Math.round(windSpeed),
       windDirection,
       rainChance: Math.round(rainChance),
@@ -94,6 +104,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
       hour: date.getHours(),
       day: date.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase(),
       timestamp: itemTimestamp,
+      deltaT,
     });
 
     hoursAdded++;
@@ -167,6 +178,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
   const tempRange = maxTemp - minTemp || 1;
   const maxWind = 60;
   const maxRain = Math.max(...hourlyData.map(d => d.rainChance), 1);
+  const maxDeltaT = 15;
 
   const normalize = (value: number, max: number, min: number = 0) => {
     const range = max - min;
@@ -264,6 +276,11 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
             <Navigation className="w-4 h-4 text-white" />
             <span className="text-slate-300">Wind Direction</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-1 bg-green-500 rounded"></div>
+            <Gauge className="w-4 h-4 text-green-400" />
+            <span className="text-slate-300">Delta T</span>
+          </div>
         </div>
       </div>
 
@@ -307,6 +324,16 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
                   <div className="flex items-center gap-1">
                     <Navigation className="w-3 h-3 text-white" style={{ transform: `rotate(${hour.windDirection}deg)` }} />
                     <span className="text-xs text-slate-300 font-medium">{getWindDirectionLabel(hour.windDirection)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3 text-green-400" />
+                    <span className={`text-xs font-medium ${
+                      hour.deltaT >= 2 && hour.deltaT <= 8 ? 'text-green-400' :
+                      hour.deltaT > 8 && hour.deltaT <= 10 ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`}>
+                      ΔT {hour.deltaT.toFixed(1)}
+                    </span>
                   </div>
                 </div>
               );
@@ -483,6 +510,19 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
                 strokeLinejoin="round"
               />
 
+              <path
+                d={hourlyData.map((d, i) => {
+                  const x = i * (2000 / (hourlyData.length - 1));
+                  const y = 400 - normalize(d.deltaT, maxDeltaT) * 3.6;
+                  return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
+                }).join(' ')}
+                stroke="#22c55e"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
               {hourlyData.map((d, i) => {
                 const x = i * (2000 / (hourlyData.length - 1));
                 const yWind = 400 - normalize(d.windSpeed, maxWind) * 3.6;
@@ -512,6 +552,24 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
                     fill="#f59e0b"
                     stroke="#1e293b"
                     strokeWidth="2.5"
+                  />
+                );
+              })}
+
+              {hourlyData.map((d, i) => {
+                const x = i * (2000 / (hourlyData.length - 1));
+                const yDeltaT = 400 - normalize(d.deltaT, maxDeltaT) * 3.6;
+                const color = d.deltaT >= 2 && d.deltaT <= 8 ? '#22c55e' :
+                             d.deltaT > 8 && d.deltaT <= 10 ? '#eab308' : '#ef4444';
+                return (
+                  <circle
+                    key={`delta-${i}`}
+                    cx={x}
+                    cy={yDeltaT}
+                    r="4"
+                    fill={color}
+                    stroke="#1e293b"
+                    strokeWidth="2"
                   />
                 );
               })}
