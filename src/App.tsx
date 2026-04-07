@@ -18,6 +18,7 @@ import { PremiumTeaser } from './components/PremiumTeaser';
 import { WeatherEffects } from './components/WeatherEffects';
 import { AlertBanner } from './components/AlertBanner';
 import FarmerJoe from './components/FarmerJoe';
+import { PromoBanner } from './components/PromoBanner';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import { getFavoriteLocation } from './utils/savedLocations';
@@ -697,6 +698,14 @@ function App() {
             isUsingCurrentLocation={isUsingCurrentLocation}
           />
         </div>
+
+        <PromoBanner
+          onSignUp={() => {
+            setAuthMode('signup');
+            setShowAuthModal(true);
+          }}
+          isLoggedIn={!!user}
+        />
 
         {showAdminPanel && isAdmin && (
           <div className="mb-6">
