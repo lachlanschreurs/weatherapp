@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2.100.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +33,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiKey = Deno.env.get("FARMCAST_OPENWEATHER_STARTUP_KEY");
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    const { data: configData } = await supabase.from("app_config").select("value").eq("key", "openweather_api_key").maybeSingle();
+    const apiKey = configData?.value || Deno.env.get("FARMCAST_OPENWEATHER_STARTUP_KEY") || Deno.env.get("FARMCAST_OPENWEATHER_NEW_KEY") || Deno.env.get("OPENWEATHER_API_KEY") || Deno.env.get("API_KEY_FARMCAST");
 
     const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
     const oneCallResponse = await fetch(oneCallUrl);
