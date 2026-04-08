@@ -12,7 +12,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const weatherApiKey = Deno.env.get('FARMCAST_OPENWEATHER_NEW_KEY') || Deno.env.get('OPENWEATHER_API_KEY');
+    const weatherApiKey = Deno.env.get('FARMCAST_OPENWEATHER_STARTUP_KEY');
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
     const results: any = {
