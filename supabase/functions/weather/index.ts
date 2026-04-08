@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const apiKey = Deno.env.get("OPENWEATHER_API_KEY") || "205a644e0f57ecf98260a957076e46db";
+    const apiKey = Deno.env.get("FARMCAST_OPENWEATHER_NEW_KEY");
 
     const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
     const oneCallResponse = await fetch(oneCallUrl);

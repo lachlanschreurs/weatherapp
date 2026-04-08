@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
       throw new Error('RESEND_API_KEY not configured');
     }
 
-    const weatherApiKey = Deno.env.get('FARMCAST_OPENWEATHER_NEW_KEY') || Deno.env.get('OPENWEATHER_API_KEY');
+    const weatherApiKey = Deno.env.get('FARMCAST_OPENWEATHER_NEW_KEY');
     if (!weatherApiKey) {
       throw new Error('Weather API key not configured');
     }
