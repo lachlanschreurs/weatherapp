@@ -38,7 +38,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
     const { data: configData } = await supabase.from("app_config").select("value").eq("key", "openweather_api_key").maybeSingle();
-    const apiKey = configData?.value || Deno.env.get("FARMCAST_OPENWEATHER_STARTUP_KEY") || Deno.env.get("FARMCAST_OPENWEATHER_NEW_KEY") || Deno.env.get("OPENWEATHER_API_KEY") || Deno.env.get("API_KEY_FARMCAST");
+    const apiKey = configData?.value || Deno.env.get("FARMCAST_OPENWEATHER_NEW_KEY") || Deno.env.get("FARMCAST_OPENWEATHER_STARTUP_KEY") || Deno.env.get("OPENWEATHER_API_KEY") || Deno.env.get("API_KEY_FARMCAST");
 
     const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`;
     const oneCallResponse = await fetch(oneCallUrl);
