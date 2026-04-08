@@ -69,10 +69,9 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Starting to process ${eligibleSubscribers.length} eligible subscribers`);
 
-    // Process emails asynchronously in the background
-    processEmailsInBackground(eligibleSubscribers, resendApiKey, weatherApiKey, supabaseAdmin);
+    const backgroundTask = processEmailsInBackground(eligibleSubscribers, resendApiKey, weatherApiKey, supabaseAdmin);
+    EdgeRuntime.waitUntil(backgroundTask);
 
-    // Return immediately
     return new Response(
       JSON.stringify({
         message: `Processing ${eligibleSubscribers.length} daily forecast emails`,
