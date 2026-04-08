@@ -149,27 +149,42 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const { lat, lon, name, country } = geoData[0];
 
-        const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`;
-        const oneCallResponse = await fetch(oneCallUrl);
+        const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`;
+        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=40`;
 
-        if (!oneCallResponse.ok) {
-          const errorText = await oneCallResponse.text();
-          const errorMsg = `Failed to fetch weather data for ${subscriber.email}: ${oneCallResponse.status} - ${errorText}`;
+        const [currentResponse, forecastResponse] = await Promise.all([
+          fetch(currentUrl),
+          fetch(forecastUrl),
+        ]);
+
+        if (!currentResponse.ok) {
+          const errorText = await currentResponse.text();
+          const errorMsg = `Failed to fetch current weather for ${subscriber.email}: ${currentResponse.status} - ${errorText}`;
           console.error(errorMsg);
           errors.push(errorMsg);
           continue;
         }
 
-        const oneCallData = await oneCallResponse.json();
+        if (!forecastResponse.ok) {
+          const errorText = await forecastResponse.text();
+          const errorMsg = `Failed to fetch forecast for ${subscriber.email}: ${forecastResponse.status} - ${errorText}`;
+          console.error(errorMsg);
+          errors.push(errorMsg);
+          continue;
+        }
 
-        const weatherData = transformWeatherDataFromOneCall(oneCallData, name, country);
+        const currentData = await currentResponse.json();
+        const forecastData = await forecastResponse.json();
+
+        const weatherData = transformWeatherDataFromForecast(currentData, forecastData, name, country);
+        const hourlyForecast = buildHourlyFromForecast(forecastData);
 
         let probeReport = '';
         if (subscriber.user_id) {
-          probeReport = await generateProbeReport(subscriber.user_id, supabaseAdmin, weatherData, oneCallData.daily);
+          probeReport = await generateProbeReport(subscriber.user_id, supabaseAdmin, weatherData, weatherData.forecast.forecastday);
         }
 
-        const emailHtml = buildDailyForecastEmail(weatherData, oneCallData.hourly, probeReport);
+        const emailHtml = buildDailyForecastEmail(weatherData, hourlyForecast, probeReport);
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(subscriber.email)) {
@@ -190,7 +205,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
-            text: buildDailyForecastEmailText(weatherData, oneCallData.hourly, name, country),
+            text: buildDailyForecastEmailText(weatherData, hourlyForecast, name, country),
             headers: {
               'X-Entity-Ref-ID': `daily-forecast-${Date.now()}`,
               'List-Unsubscribe': '<https://farmcastweather.com/unsubscribe>',
@@ -225,6 +240,67 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
   } catch (error) {
     console.error('Error in background email processing:', error);
   }
+}
+
+function buildHourlyFromForecast(forecastData: any): any[] {
+  return (forecastData.list || []).slice(0, 24).map((item: any) => ({
+    dt: item.dt,
+    temp: item.main.temp,
+    feels_like: item.main.feels_like,
+    humidity: item.main.humidity,
+    wind_speed: item.wind.speed,
+    wind_deg: item.wind.deg,
+    pop: item.pop || 0,
+    weather: item.weather,
+  }));
+}
+
+function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string) {
+  const list = forecastData.list || [];
+
+  const dayMap: Record<string, any[]> = {};
+  for (const item of list) {
+    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
+    if (!dayMap[date]) dayMap[date] = [];
+    dayMap[date].push(item);
+  }
+
+  const forecastDays = Object.entries(dayMap).slice(0, 8).map(([date, items]) => {
+    const temps = items.map((i: any) => i.main.temp);
+    const maxtemp_c = Math.max(...temps);
+    const mintemp_c = Math.min(...temps);
+    const rain = items.reduce((sum: number, i: any) => sum + (i.rain?.['3h'] || 0), 0);
+    const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
+    const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
+    const midItem = items[Math.floor(items.length / 2)] || items[0];
+
+    return {
+      date,
+      hour: items.map((i: any) => ({ humidity: i.main.humidity, wind_deg: i.wind?.deg || 0 })),
+      day: {
+        maxtemp_c,
+        mintemp_c,
+        condition: { text: midItem.weather[0].description },
+        daily_chance_of_rain: Math.round(maxPop * 100),
+        totalprecip_mm: rain,
+        maxwind_kph: maxWind,
+      },
+    };
+  });
+
+  return {
+    location: { name: cityName, country },
+    current: {
+      temp_c: currentData.main.temp,
+      feelslike_c: currentData.main.feels_like,
+      humidity: currentData.main.humidity,
+      wind_kph: (currentData.wind?.speed || 0) * 3.6,
+      wind_degree: currentData.wind?.deg || 0,
+      wind_dir: degreesToDirection(currentData.wind?.deg || 0),
+      condition: { text: currentData.weather[0].description },
+    },
+    forecast: { forecastday: forecastDays },
+  };
 }
 
 function transformWeatherDataFromOneCall(oneCallData: any, cityName: string, country: string) {
@@ -376,12 +452,12 @@ CURRENT WEATHER CONDITIONS:
 
 UPCOMING 3-DAY FORECAST:
 ${dailyForecast.slice(0, 3).map((day: any, i: number) => {
-  const date = new Date(day.dt * 1000).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' });
+  const date = new Date(day.date).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' });
   return `Day ${i + 1} (${date}):
-  - Temp: ${day.temp.min}°C to ${day.temp.max}°C
-  - Rain chance: ${Math.round((day.pop || 0) * 100)}%
-  - Expected rainfall: ${((day.rain || 0) + (day.snow || 0)).toFixed(1)}mm
-  - Conditions: ${day.weather[0].description}`;
+  - Temp: ${day.day.mintemp_c}°C to ${day.day.maxtemp_c}°C
+  - Rain chance: ${day.day.daily_chance_of_rain}%
+  - Expected rainfall: ${day.day.totalprecip_mm.toFixed(1)}mm
+  - Conditions: ${day.day.condition.text}`;
 }).join('\n')}
 ` : '';
 
