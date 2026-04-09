@@ -105,6 +105,8 @@ function App() {
   const [hasLoadedInitialLocation, setHasLoadedInitialLocation] = useState(false);
   const [isUsingCurrentLocation, setIsUsingCurrentLocation] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [probeReading, setProbeReading] = useState<{ soil_temp_c: number | null; moisture_percent: number | null } | null>(null);
+  const [hasActiveProbe, setHasActiveProbe] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -216,6 +218,38 @@ function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setProbeReading(null);
+      setHasActiveProbe(false);
+      return;
+    }
+    const loadProbeReading = async () => {
+      const { data: connections } = await supabase
+        .from('probe_connections')
+        .select('id')
+        .eq('is_active', true)
+        .limit(1);
+
+      if (!connections || connections.length === 0) {
+        setHasActiveProbe(false);
+        setProbeReading(null);
+        return;
+      }
+
+      setHasActiveProbe(true);
+
+      const { data: reading } = await supabase
+        .from('probe_readings_latest')
+        .select('soil_temp_c, moisture_percent')
+        .eq('connection_id', connections[0].id)
+        .maybeSingle();
+
+      setProbeReading(reading ?? null);
+    };
+    loadProbeReading();
+  }, [user]);
 
   const loadUserLocation = async (userId: string) => {
     try {
@@ -763,13 +797,49 @@ function App() {
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-700/50">
                 <div className="text-center">
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Soil Temp</div>
-                  <div className="text-lg font-bold text-amber-300">{soilTempC}°C</div>
-                  <div className="text-xs text-slate-500">estimated</div>
+                  {hasActiveProbe && probeReading?.soil_temp_c != null ? (
+                    <>
+                      <div className="text-lg font-bold text-amber-300">{probeReading.soil_temp_c.toFixed(1)}°C</div>
+                      <div className="text-xs text-green-400 font-medium">live probe</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-lg font-bold text-amber-300/70">{soilTempC}°C</div>
+                      {user ? (
+                        <button
+                          onClick={() => document.getElementById('probe-section')?.scrollIntoView({ behavior: 'smooth' })}
+                          className="text-xs text-amber-400/80 hover:text-amber-300 underline underline-offset-2 transition-colors"
+                        >
+                          connect probe
+                        </button>
+                      ) : (
+                        <div className="text-xs text-slate-500">estimated</div>
+                      )}
+                    </>
+                  )}
                 </div>
                 <div className="text-center border-x border-slate-700/50">
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Soil Moisture</div>
-                  <div className="text-lg font-bold text-cyan-300">{soilMoisture}%</div>
-                  <div className="text-xs text-slate-500">estimated</div>
+                  {hasActiveProbe && probeReading?.moisture_percent != null ? (
+                    <>
+                      <div className="text-lg font-bold text-cyan-300">{probeReading.moisture_percent.toFixed(1)}%</div>
+                      <div className="text-xs text-green-400 font-medium">live probe</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-lg font-bold text-cyan-300/70">{soilMoisture}%</div>
+                      {user ? (
+                        <button
+                          onClick={() => document.getElementById('probe-section')?.scrollIntoView({ behavior: 'smooth' })}
+                          className="text-xs text-cyan-400/80 hover:text-cyan-300 underline underline-offset-2 transition-colors"
+                        >
+                          connect probe
+                        </button>
+                      ) : (
+                        <div className="text-xs text-slate-500">estimated</div>
+                      )}
+                    </>
+                  )}
                 </div>
                 <div className="text-center">
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">GDD Today</div>
@@ -1023,7 +1093,7 @@ function App() {
 
         {/* PROBE + PREMIUM */}
         {user && (
-          <div className="mt-5 mb-5">
+          <div id="probe-section" className="mt-5 mb-5">
             <ProbeConnectionManager />
           </div>
         )}
