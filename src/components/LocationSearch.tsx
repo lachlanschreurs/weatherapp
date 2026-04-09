@@ -172,7 +172,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
       {!isExpanded ? (
         <button
           onClick={() => setIsExpanded(true)}
-          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg bg-white shadow-sm hover:border-green-500 transition-colors flex items-center gap-3 text-left"
+          className="w-full px-4 py-3 border-2 border-green-300 rounded-lg bg-white text-gray-900 shadow-sm hover:border-green-500 transition-colors flex items-center gap-3 text-left"
         >
           {isUsingCurrentLocation ? (
             <Navigation className="w-5 h-5 text-blue-600" />
@@ -205,7 +205,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
                 }
               }}
               placeholder="Search location or postcode..."
-              className="w-full pl-10 pr-10 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 bg-white shadow-sm"
+              className="w-full pl-10 pr-10 py-3 border-2 border-green-300 rounded-lg focus:outline-none focus:border-green-500 bg-white text-gray-900 placeholder-gray-400 shadow-sm"
               autoFocus
             />
             {isSearching && (
