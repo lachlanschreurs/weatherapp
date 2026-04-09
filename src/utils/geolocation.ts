@@ -33,7 +33,7 @@ export async function getCurrentPosition(): Promise<GeolocationPosition> {
 }
 
 export async function reverseGeocode(lat: number, lon: number): Promise<Location> {
-  const apiKey = '205a644e0f57ecf98260a957076e46db';
+  const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY || import.meta.env.OPENWEATHER_API_KEY;
   const response = await fetch(
     `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`
   );
