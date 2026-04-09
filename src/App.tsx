@@ -1063,6 +1063,132 @@ function App() {
           </div>
         </div>
 
+        {/* TODAY'S FARM SUMMARY STRIP */}
+        {(() => {
+          const summaryItems: { label: string; icon: string; status: 'ok' | 'warn' | 'info' }[] = [];
+
+          const sprayHour = todayBestWindow ? parseInt(todayBestWindow.startTime.replace(/[^0-9]/g, '').substring(0, 2)) : null;
+          if (todayBestWindow && sprayHour !== null && sprayHour >= 12) {
+            summaryItems.push({ label: `Spray after ${todayBestWindow.startTime}`, icon: '✓', status: 'ok' });
+          } else if (todayBestWindow) {
+            summaryItems.push({ label: `Spray window ${todayBestWindow.startTime}–${todayBestWindow.endTime}`, icon: '✓', status: 'ok' });
+          } else {
+            summaryItems.push({ label: 'No spray window today', icon: '✕', status: 'warn' });
+          }
+
+          if (todayExpectedRain >= 10) {
+            summaryItems.push({ label: `${todayExpectedRain.toFixed(0)}mm rain — skip irrigation`, icon: '✓', status: 'ok' });
+          } else if (todayExpectedRain >= 3) {
+            summaryItems.push({ label: 'Light irrigation only', icon: '~', status: 'info' });
+          } else {
+            summaryItems.push({ label: 'Irrigation may be needed', icon: '~', status: 'info' });
+          }
+
+          const tonightRain = hourlyList.slice(12, 24).reduce((sum: number, h: any) => sum + (h.rain?.['1h'] || 0), 0);
+          if (tonightRain >= 5) {
+            summaryItems.push({ label: `Heavy rain tonight (${tonightRain.toFixed(0)}mm)`, icon: '!', status: 'warn' });
+          } else if (todayRainChance > 60) {
+            summaryItems.push({ label: 'Rain possible tonight', icon: '~', status: 'info' });
+          } else {
+            summaryItems.push({ label: 'Dry evening forecast', icon: '✓', status: 'ok' });
+          }
+
+          const afternoonWindKmh = hourlyList.slice(14, 18).length > 0
+            ? Math.min(...hourlyList.slice(14, 18).map((h: any) => h.wind_speed * 3.6))
+            : windSpeedKmh;
+          if (windSpeedKmh > 20 && afternoonWindKmh < windSpeedKmh * 0.75) {
+            summaryItems.push({ label: 'Wind easing late afternoon', icon: '✓', status: 'ok' });
+          } else if (windSpeedKmh > 25) {
+            summaryItems.push({ label: `Strong winds ${Math.round(windSpeedKmh)} km/h`, icon: '!', status: 'warn' });
+          } else {
+            summaryItems.push({ label: `Light winds ${Math.round(windSpeedKmh)} km/h ${windDirection}`, icon: '✓', status: 'ok' });
+          }
+
+          const statusStyle = {
+            ok: 'text-green-300',
+            warn: 'text-amber-300',
+            info: 'text-sky-300',
+          };
+          const iconStyle = {
+            ok: 'text-green-400',
+            warn: 'text-amber-400',
+            info: 'text-sky-400',
+          };
+          const dotStyle = {
+            ok: 'bg-green-500/20 border-green-500/25',
+            warn: 'bg-amber-500/20 border-amber-500/25',
+            info: 'bg-sky-500/20 border-sky-500/25',
+          };
+
+          return (
+            <div className="mb-5 rounded-xl border border-slate-700/50 bg-slate-900/60 backdrop-blur-sm overflow-hidden">
+              <div className="px-5 py-2.5 border-b border-slate-700/40 flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Today's Farm Summary</span>
+                <span className="text-xs text-slate-600">{new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-700/40">
+                {summaryItems.map((item, i) => (
+                  <div key={i} className="px-5 py-3 flex items-center gap-3">
+                    <div className={`w-6 h-6 rounded-md border flex items-center justify-center flex-shrink-0 text-xs font-bold ${dotStyle[item.status]}`}>
+                      <span className={iconStyle[item.status]}>{item.icon}</span>
+                    </div>
+                    <span className={`text-sm font-medium ${statusStyle[item.status]}`}>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* FORECAST CONFIDENCE STRIP */}
+        {(() => {
+          const rainHour = hourlyList.findIndex((h: any) => (h.rain?.['1h'] || 0) > 0.1 || h.pop > 0.6);
+          const rainStartTime = rainHour >= 0
+            ? new Date((hourlyList[rainHour].dt) * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })
+            : null;
+
+          const windEaseHour = hourlyList.findIndex((h: any, i: number) =>
+            i > 2 && h.wind_speed * 3.6 < windSpeedKmh * 0.7 && windSpeedKmh > 15
+          );
+          const windEaseTime = windEaseHour >= 0
+            ? new Date((hourlyList[windEaseHour].dt) * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })
+            : null;
+
+          const confidenceLevel = todayRainChance > 60 ? 'High' : todayRainChance > 30 ? 'Moderate' : 'High';
+          const confidenceColor = confidenceLevel === 'High' ? 'text-green-300' : 'text-amber-300';
+          const confidenceDot = confidenceLevel === 'High' ? 'bg-green-400' : 'bg-amber-400';
+
+          if (!rainStartTime && !windEaseTime) return null;
+
+          return (
+            <div className="mb-5 rounded-xl border border-slate-700/40 bg-slate-900/40 backdrop-blur-sm px-5 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${confidenceDot}`} />
+                <span className="text-xs text-slate-500 uppercase tracking-wider">Forecast Confidence</span>
+                <span className={`text-xs font-bold ${confidenceColor}`}>{confidenceLevel}</span>
+              </div>
+              {rainStartTime && (
+                <>
+                  <div className="w-px h-3 bg-slate-700 hidden sm:block" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Rain starts approx</span>
+                    <span className="text-xs font-semibold text-sky-300">{rainStartTime}</span>
+                  </div>
+                </>
+              )}
+              {windEaseTime && (
+                <>
+                  <div className="w-px h-3 bg-slate-700 hidden sm:block" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Wind eases after</span>
+                    <span className="text-xs font-semibold text-slate-300">{windEaseTime}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ACTIONABLE RECOMMENDATIONS */}
         <div className="mb-5">
           <ActionableRecommendations
