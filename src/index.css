@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 .farmcast-bg {
-  background-color: #111f14;
+  background-color: #1a2820;
   background-image:
     url("https://images.pexels.com/photos/1282310/pexels-photo-1282310.jpeg?auto=compress&cs=tinysrgb&w=1920&q=60");
   background-size: cover;
@@ -16,9 +16,9 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(8, 24, 12, 0.60) 0%,
-    rgba(10, 26, 13, 0.52) 40%,
-    rgba(8, 20, 10, 0.65) 100%
+    rgba(12, 30, 18, 0.55) 0%,
+    rgba(14, 32, 20, 0.44) 40%,
+    rgba(10, 26, 15, 0.58) 100%
   );
   pointer-events: none;
   z-index: 0;
@@ -26,71 +26,71 @@
 
 /* ── Global readability tweaks ────────────────────────────────── */
 
-/* Card backgrounds — nudge slate-900/70 slightly lighter */
+/* Card backgrounds — graphite-slate feel, clearly separate from page */
 .bg-slate-900\/70 {
-  background-color: rgba(22, 34, 26, 0.78) !important;
+  background-color: rgba(34, 50, 40, 0.82) !important;
 }
 
 /* Hover state for interactive cards */
 .bg-slate-800\/70,
 .hover\:bg-slate-800\/70:hover {
-  background-color: rgba(30, 44, 35, 0.80) !important;
+  background-color: rgba(44, 62, 50, 0.85) !important;
 }
 
 /* Inner sub-cards / list items */
 .bg-slate-800\/60 {
-  background-color: rgba(30, 44, 35, 0.72) !important;
+  background-color: rgba(44, 62, 50, 0.76) !important;
 }
 .hover\:bg-slate-700\/60:hover {
-  background-color: rgba(38, 54, 43, 0.76) !important;
+  background-color: rgba(54, 74, 60, 0.80) !important;
 }
 
-/* Card borders — slightly more visible so cards separate cleanly */
+/* Card borders — crisp separation without harshness */
 .border-slate-700\/60 {
-  border-color: rgba(80, 100, 88, 0.55) !important;
+  border-color: rgba(95, 120, 105, 0.60) !important;
 }
 .border-slate-700\/50 {
-  border-color: rgba(80, 100, 88, 0.45) !important;
+  border-color: rgba(95, 120, 105, 0.50) !important;
 }
 .border-slate-700\/40 {
-  border-color: rgba(80, 100, 88, 0.36) !important;
+  border-color: rgba(95, 120, 105, 0.40) !important;
 }
 
-/* Secondary / muted text — one step brighter for readability */
+/* Secondary / muted text — comfortable to read */
 .text-slate-400 {
   --tw-text-opacity: 1;
-  color: rgba(168, 190, 176, var(--tw-text-opacity)) !important;
+  color: rgba(182, 204, 190, var(--tw-text-opacity)) !important;
 }
 .text-slate-500 {
   --tw-text-opacity: 1;
-  color: rgba(130, 155, 140, var(--tw-text-opacity)) !important;
+  color: rgba(148, 172, 158, var(--tw-text-opacity)) !important;
 }
 
 /* Primary readable text */
 .text-slate-200 {
   --tw-text-opacity: 1;
-  color: rgba(230, 240, 234, var(--tw-text-opacity)) !important;
+  color: rgba(236, 245, 240, var(--tw-text-opacity)) !important;
 }
 .text-slate-300 {
   --tw-text-opacity: 1;
-  color: rgba(210, 225, 216, var(--tw-text-opacity)) !important;
+  color: rgba(218, 232, 224, var(--tw-text-opacity)) !important;
 }
 
 /* Solid full-opacity backgrounds used in loading/error screens */
 .bg-slate-900 {
-  background-color: #14211a !important;
+  background-color: #1e2e24 !important;
 }
 .bg-slate-800 {
-  background-color: #1c2e22 !important;
+  background-color: #263c2e !important;
 }
 .border-slate-700 {
-  border-color: #3a5242 !important;
+  border-color: #456050 !important;
 }
 .border-slate-600 {
-  border-color: #4a6254 !important;
+  border-color: #567860 !important;
 }
 .hover\:bg-slate-700:hover {
-  background-color: #243620 !important;
+  background-color: #2e4838 !important;
 }
 
 @keyframes rain {
