@@ -265,10 +265,25 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
     dayMap[date].push(item);
   }
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const forecastDays = Object.entries(dayMap).slice(0, 8).map(([date, items]) => {
     const temps = items.map((i: any) => i.main.temp);
-    const maxtemp_c = Math.max(...temps);
-    const mintemp_c = Math.min(...temps);
+    const tempMaxValues = items.map((i: any) => i.main.temp_max);
+    const tempMinValues = items.map((i: any) => i.main.temp_min);
+
+    let maxtemp_c = Math.max(...temps, ...tempMaxValues);
+    let mintemp_c = Math.min(...temps, ...tempMinValues);
+
+    if (date === todayStr) {
+      if (currentData.main?.temp_max != null) {
+        maxtemp_c = Math.max(maxtemp_c, currentData.main.temp_max);
+      }
+      if (currentData.main?.temp_min != null) {
+        mintemp_c = Math.min(mintemp_c, currentData.main.temp_min);
+      }
+    }
+
     const rain = items.reduce((sum: number, i: any) => sum + (i.rain?.['3h'] || 0), 0);
     const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
     const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
