@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 .farmcast-bg {
-  background-color: #0c1a0f;
+  background-color: #111f14;
   background-image:
     url("https://images.pexels.com/photos/1282310/pexels-photo-1282310.jpeg?auto=compress&cs=tinysrgb&w=1920&q=60");
   background-size: cover;
@@ -16,12 +16,81 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(5, 18, 8, 0.52) 0%,
-    rgba(8, 22, 10, 0.45) 40%,
-    rgba(5, 15, 8, 0.58) 100%
+    rgba(8, 24, 12, 0.60) 0%,
+    rgba(10, 26, 13, 0.52) 40%,
+    rgba(8, 20, 10, 0.65) 100%
   );
   pointer-events: none;
   z-index: 0;
+}
+
+/* ── Global readability tweaks ────────────────────────────────── */
+
+/* Card backgrounds — nudge slate-900/70 slightly lighter */
+.bg-slate-900\/70 {
+  background-color: rgba(22, 34, 26, 0.78) !important;
+}
+
+/* Hover state for interactive cards */
+.bg-slate-800\/70,
+.hover\:bg-slate-800\/70:hover {
+  background-color: rgba(30, 44, 35, 0.80) !important;
+}
+
+/* Inner sub-cards / list items */
+.bg-slate-800\/60 {
+  background-color: rgba(30, 44, 35, 0.72) !important;
+}
+.hover\:bg-slate-700\/60:hover {
+  background-color: rgba(38, 54, 43, 0.76) !important;
+}
+
+/* Card borders — slightly more visible so cards separate cleanly */
+.border-slate-700\/60 {
+  border-color: rgba(80, 100, 88, 0.55) !important;
+}
+.border-slate-700\/50 {
+  border-color: rgba(80, 100, 88, 0.45) !important;
+}
+.border-slate-700\/40 {
+  border-color: rgba(80, 100, 88, 0.36) !important;
+}
+
+/* Secondary / muted text — one step brighter for readability */
+.text-slate-400 {
+  --tw-text-opacity: 1;
+  color: rgba(168, 190, 176, var(--tw-text-opacity)) !important;
+}
+.text-slate-500 {
+  --tw-text-opacity: 1;
+  color: rgba(130, 155, 140, var(--tw-text-opacity)) !important;
+}
+
+/* Primary readable text */
+.text-slate-200 {
+  --tw-text-opacity: 1;
+  color: rgba(230, 240, 234, var(--tw-text-opacity)) !important;
+}
+.text-slate-300 {
+  --tw-text-opacity: 1;
+  color: rgba(210, 225, 216, var(--tw-text-opacity)) !important;
+}
+
+/* Solid full-opacity backgrounds used in loading/error screens */
+.bg-slate-900 {
+  background-color: #14211a !important;
+}
+.bg-slate-800 {
+  background-color: #1c2e22 !important;
+}
+.border-slate-700 {
+  border-color: #3a5242 !important;
+}
+.border-slate-600 {
+  border-color: #4a6254 !important;
+}
+.hover\:bg-slate-700:hover {
+  background-color: #243620 !important;
 }
 
 @keyframes rain {
