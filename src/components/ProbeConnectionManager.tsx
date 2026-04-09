@@ -62,29 +62,29 @@ function getBatteryStatus(mV: number) {
   if (voltage >= 3.2) {
     return {
       label: 'Healthy',
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200',
-      textColor: 'text-green-900',
-      labelColor: 'text-green-700',
-      statusColor: 'text-green-600',
+      bgColor: 'bg-green-900/30',
+      borderColor: 'border-green-700/40',
+      textColor: 'text-green-300',
+      labelColor: 'text-green-400',
+      statusColor: 'text-green-400',
     };
   } else if (voltage >= 2.8) {
     return {
       label: 'Fair',
-      bgColor: 'bg-yellow-50',
-      borderColor: 'border-yellow-200',
-      textColor: 'text-yellow-900',
-      labelColor: 'text-yellow-700',
-      statusColor: 'text-yellow-600',
+      bgColor: 'bg-yellow-900/30',
+      borderColor: 'border-yellow-700/40',
+      textColor: 'text-yellow-300',
+      labelColor: 'text-yellow-400',
+      statusColor: 'text-yellow-400',
     };
   } else {
     return {
       label: 'Low',
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200',
-      textColor: 'text-red-900',
-      labelColor: 'text-red-700',
-      statusColor: 'text-red-600',
+      bgColor: 'bg-red-900/30',
+      borderColor: 'border-red-700/40',
+      textColor: 'text-red-300',
+      labelColor: 'text-red-400',
+      statusColor: 'text-red-400',
     };
   }
 }
@@ -425,10 +425,10 @@ export function ProbeConnectionManager() {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8">
+      <div className="bg-slate-900/70 rounded-xl shadow-lg p-8 border border-slate-700/60">
         <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading probe connections...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          <span className="ml-3 text-slate-400">Loading probe connections...</span>
         </div>
       </div>
     );
@@ -436,16 +436,16 @@ export function ProbeConnectionManager() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6">
+      <div className="bg-slate-900/70 rounded-xl shadow-lg overflow-hidden border border-slate-700/60">
+        <div className="bg-slate-800/80 border-b border-slate-700/60 p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
-                <Gauge className="w-6 h-6 text-white" />
+              <div className="bg-green-500/20 rounded-lg p-2">
+                <Gauge className="w-6 h-6 text-green-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Moisture Probe Sources</h2>
-                <p className="text-sm text-green-100">Connect any probe provider or import data</p>
+                <h2 className="text-xl font-bold text-slate-200">Moisture Probe Sources</h2>
+                <p className="text-sm text-slate-400">Connect any probe provider or import data</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -453,7 +453,7 @@ export function ProbeConnectionManager() {
                 <button
                   onClick={handleSyncAll}
                   disabled={isSyncing}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-700/60 hover:bg-slate-600/60 text-slate-300 border border-slate-600/50 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
                   Sync All
@@ -462,28 +462,28 @@ export function ProbeConnectionManager() {
               <div className="relative">
                 <button
                   onClick={() => setShowAddMenu(!showAddMenu)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white text-green-600 hover:bg-green-50 rounded-lg transition-colors font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   Add Source
                 </button>
 
                 {showAddMenu && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
+                  <div className="absolute right-0 mt-2 w-72 bg-slate-800 rounded-lg shadow-xl border border-slate-700/60 z-10">
                     {CONNECTION_METHODS.map((method) => {
                       const Icon = method.icon;
                       return (
                         <button
                           key={method.id}
                           onClick={() => handleSelectConnectionMethod(method.id)}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-start gap-3 border-b border-gray-100 last:border-0"
+                          className="w-full px-4 py-3 text-left hover:bg-slate-700/60 transition-colors flex items-start gap-3 border-b border-slate-700/40 last:border-0"
                         >
                           <div className="mt-0.5">
-                            <Icon className="w-5 h-5 text-green-600" />
+                            <Icon className="w-5 h-5 text-green-400" />
                           </div>
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900">{method.name}</div>
-                            <div className="text-sm text-gray-600">{method.description}</div>
+                            <div className="font-medium text-slate-200">{method.name}</div>
+                            <div className="text-sm text-slate-400">{method.description}</div>
                           </div>
                         </button>
                       );
@@ -496,44 +496,44 @@ export function ProbeConnectionManager() {
         </div>
 
         {error && (
-          <div className="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="mx-6 mt-6 p-4 bg-red-900/30 border border-red-700/40 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800">Error</p>
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm font-medium text-red-300">Error</p>
+              <p className="text-sm text-red-400">{error}</p>
             </div>
           </div>
         )}
 
         {successMessage && (
-          <div className="mx-6 mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="mx-6 mt-6 p-4 bg-green-900/30 border border-green-700/40 rounded-lg flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-green-800">{successMessage}</p>
+              <p className="text-sm font-medium text-green-300">{successMessage}</p>
             </div>
           </div>
         )}
 
         {showAPIForm && (
-          <div className="p-6 bg-gray-50 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Connect Provider API</h3>
+          <div className="p-6 bg-slate-800/60 border-t border-slate-700/50">
+            <h3 className="text-lg font-semibold text-slate-200 mb-4">Connect Provider API</h3>
             <form onSubmit={handleAddAPIConnection} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Connection Name (optional)
                   </label>
                   <input
                     type="text"
                     value={formData.friendly_name}
                     onChange={(e) => setFormData({ ...formData, friendly_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                     placeholder="e.g., North Field Probe"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Provider *
                   </label>
                   <select
@@ -547,7 +547,7 @@ export function ProbeConnectionManager() {
                         connection_method: provider.authMethods[0] || 'api_key'
                       });
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     {PROVIDERS.map(provider => (
                       <option key={provider.id} value={provider.id}>{provider.name}</option>
@@ -557,13 +557,13 @@ export function ProbeConnectionManager() {
 
                 {selectedProvider.authMethods.length > 1 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-300 mb-1">
                       Authentication Method *
                     </label>
                     <select
                       value={formData.connection_method}
                       onChange={(e) => setFormData({ ...formData, connection_method: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     >
                       {selectedProvider.authMethods.includes('api_key') && (
                         <option value="api_key">API Key</option>
@@ -581,7 +581,7 @@ export function ProbeConnectionManager() {
                 {formData.connection_method === 'api_key' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         API Key / Public Key *
                       </label>
                       <div className="relative">
@@ -590,13 +590,13 @@ export function ProbeConnectionManager() {
                           required
                           value={formData.api_key}
                           onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                          className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          className="w-full px-3 py-2 pr-10 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                           placeholder="Your API key"
                         />
                         <button
                           type="button"
                           onClick={() => setShowSecrets(!showSecrets)}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                         >
                           {showSecrets ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -604,7 +604,7 @@ export function ProbeConnectionManager() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         API Secret / Private Key {formData.provider === 'fieldclimate' ? '*' : '(if required)'}
                       </label>
                       <input
@@ -612,7 +612,7 @@ export function ProbeConnectionManager() {
                         required={formData.provider === 'fieldclimate'}
                         value={formData.api_secret}
                         onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                         placeholder="Your API secret"
                       />
                     </div>
@@ -622,7 +622,7 @@ export function ProbeConnectionManager() {
                 {formData.connection_method === 'username_password' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         Username *
                       </label>
                       <input
@@ -630,13 +630,13 @@ export function ProbeConnectionManager() {
                         required
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                         placeholder="Your username"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-slate-300 mb-1">
                         Password *
                       </label>
                       <input
@@ -644,7 +644,7 @@ export function ProbeConnectionManager() {
                         required
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                         placeholder="Your password"
                       />
                     </div>
@@ -652,7 +652,7 @@ export function ProbeConnectionManager() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Station ID / Device ID *
                   </label>
                   <input
@@ -660,33 +660,33 @@ export function ProbeConnectionManager() {
                     required
                     value={formData.station_id}
                     onChange={(e) => setFormData({ ...formData, station_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                     placeholder="e.g., 12345678"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Sub-Device ID (optional)
                   </label>
                   <input
                     type="text"
                     value={formData.device_id}
                     onChange={(e) => setFormData({ ...formData, device_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent placeholder-slate-500"
                     placeholder="Leave empty if not required"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Sensor Mapping (optional JSON)
                   </label>
                   <input
                     type="text"
                     value={formData.sensor_mapping}
                     onChange={(e) => setFormData({ ...formData, sensor_mapping: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm"
+                    className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-mono text-sm placeholder-slate-500"
                     placeholder='{"moisture": "sm1", "soil_temp": "st1"}'
                   />
                 </div>
@@ -699,14 +699,14 @@ export function ProbeConnectionManager() {
                     setShowAPIForm(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={testingConnection}
-                  className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
                 >
                   {testingConnection ? (
                     <>
@@ -728,12 +728,12 @@ export function ProbeConnectionManager() {
         <div className="p-6">
           {connections.length === 0 ? (
             <div className="text-center py-12">
-              <Gauge className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No probe connections</h3>
-              <p className="text-gray-600 mb-4">Connect any moisture probe provider or import your data</p>
+              <Gauge className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-300 mb-2">No probe connections</h3>
+              <p className="text-slate-500 mb-4">Connect any moisture probe provider or import your data</p>
               <button
                 onClick={() => setShowAddMenu(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus className="w-5 h-5" />
                 Add Your First Source
@@ -744,23 +744,16 @@ export function ProbeConnectionManager() {
               {connections.map((connection, index) => {
                 const reading = readings.get(connection.id);
 
-                const bgColors = [
-                  'bg-gradient-to-br from-blue-100 via-blue-50 to-cyan-100',
-                  'bg-gradient-to-br from-emerald-100 via-green-50 to-teal-100',
-                  'bg-gradient-to-br from-amber-100 via-orange-50 to-yellow-100',
-                  'bg-gradient-to-br from-teal-100 via-cyan-50 to-sky-100',
+                const accentColors = [
+                  'border-blue-700/40',
+                  'border-green-700/40',
+                  'border-amber-700/40',
+                  'border-cyan-700/40',
                 ];
-                const borderColors = [
-                  'border-2 border-blue-300',
-                  'border-2 border-emerald-300',
-                  'border-2 border-amber-300',
-                  'border-2 border-teal-300',
-                ];
-
-                const colorIndex = index % bgColors.length;
+                const colorIndex = index % accentColors.length;
 
                 return (
-                  <div key={connection.id} className={`${bgColors[colorIndex]} border ${borderColors[colorIndex]} rounded-lg p-4`}>
+                  <div key={connection.id} className={`bg-slate-800/60 border ${accentColors[colorIndex]} border rounded-lg p-4`}>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -774,20 +767,20 @@ export function ProbeConnectionManager() {
                                   if (e.key === 'Enter') handleSaveEditName(connection.id);
                                   if (e.key === 'Escape') handleCancelEditName();
                                 }}
-                                className="px-3 py-1.5 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-semibold text-gray-900"
+                                className="px-3 py-1.5 bg-slate-900/60 border border-slate-600/50 text-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent font-semibold"
                                 placeholder="e.g., North Field Probe"
                                 autoFocus
                               />
                               <button
                                 onClick={() => handleSaveEditName(connection.id)}
-                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                className="p-1.5 text-green-400 hover:bg-green-900/30 rounded-lg transition-colors"
                                 title="Save name"
                               >
                                 <Check className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={handleCancelEditName}
-                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                className="p-1.5 text-slate-400 hover:bg-slate-700/60 rounded-lg transition-colors"
                                 title="Cancel"
                               >
                                 <X className="w-4 h-4" />
@@ -795,29 +788,29 @@ export function ProbeConnectionManager() {
                             </div>
                           ) : (
                             <>
-                              <h4 className="font-semibold text-gray-900">
+                              <h4 className="font-semibold text-slate-200">
                                 {connection.friendly_name || getProviderDisplayName(connection.provider)}
                               </h4>
                               <button
                                 onClick={() => handleStartEditName(connection)}
-                                className="p-1 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                className="p-1 text-slate-500 hover:text-green-400 hover:bg-green-900/20 rounded transition-colors"
                                 title="Rename probe"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               {connection.friendly_name && (
-                                <span className="text-sm text-gray-500">
+                                <span className="text-sm text-slate-500">
                                   ({getProviderDisplayName(connection.provider)})
                                 </span>
                               )}
                             </>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-4 text-sm text-slate-400">
                           <span>Station: {connection.station_id}</span>
                           <span>Last sync: {formatTimestamp(connection.last_sync_at)}</span>
                           {connection.last_error && (
-                            <span className="text-red-600 flex items-center gap-1">
+                            <span className="text-red-400 flex items-center gap-1">
                               <AlertCircle className="w-4 h-4" />
                               {connection.last_error.substring(0, 50)}
                             </span>
@@ -829,7 +822,7 @@ export function ProbeConnectionManager() {
                           <button
                             onClick={() => handleSyncConnection(connection.id)}
                             disabled={isSyncing}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors disabled:opacity-50"
                             title="Sync now"
                           >
                             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -837,14 +830,14 @@ export function ProbeConnectionManager() {
                         )}
                         <button
                           onClick={() => setShowRawData(showRawData === connection.id ? null : connection.id)}
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:bg-slate-700/60 rounded-lg transition-colors"
                           title="View raw data"
                         >
                           <Settings className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteConnection(connection.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"
                           title="Remove connection"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -854,44 +847,44 @@ export function ProbeConnectionManager() {
 
                     {reading ? (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-blue-50 rounded-lg p-3">
-                          <div className="text-xs text-blue-700 font-medium mb-1">Soil Moisture</div>
-                          <div className="text-2xl font-bold text-blue-900">
+                        <div className="bg-blue-900/30 border border-blue-700/40 rounded-lg p-3">
+                          <div className="text-xs text-blue-400 font-medium mb-1">Soil Moisture</div>
+                          <div className="text-2xl font-bold text-blue-300">
                             {reading.moisture_percent !== null ? `${reading.moisture_percent.toFixed(1)}%` : 'N/A'}
                           </div>
                           {reading.moisture_depths?.depths && reading.moisture_depths.depths.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-blue-200 space-y-1">
+                            <div className="mt-2 pt-2 border-t border-blue-700/30 space-y-1">
                               {reading.moisture_depths.depths.map((depth, idx) => (
                                 <div key={idx} className="flex justify-between text-xs">
-                                  <span className="text-blue-600 font-medium">{depth.depth_cm}cm:</span>
-                                  <span className="text-blue-900 font-semibold">{depth.value.toFixed(1)}%</span>
+                                  <span className="text-blue-400 font-medium">{depth.depth_cm}cm:</span>
+                                  <span className="text-blue-300 font-semibold">{depth.value.toFixed(1)}%</span>
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
-                        <div className="bg-orange-50 rounded-lg p-3">
-                          <div className="text-xs text-orange-700 font-medium mb-1">Soil Temp</div>
-                          <div className="text-2xl font-bold text-orange-900">
+                        <div className="bg-orange-900/30 border border-orange-700/40 rounded-lg p-3">
+                          <div className="text-xs text-orange-400 font-medium mb-1">Soil Temp</div>
+                          <div className="text-2xl font-bold text-orange-300">
                             {reading.soil_temp_c !== null ? `${reading.soil_temp_c.toFixed(1)}°C` : 'N/A'}
                           </div>
                           {reading.soil_temp_depths?.depths && reading.soil_temp_depths.depths.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-orange-200 space-y-1">
+                            <div className="mt-2 pt-2 border-t border-orange-700/30 space-y-1">
                               {reading.soil_temp_depths.depths.map((depth, idx) => (
                                 <div key={idx} className="flex justify-between text-xs">
-                                  <span className="text-orange-600 font-medium">{depth.depth_cm}cm:</span>
-                                  <span className="text-orange-900 font-semibold">{depth.value.toFixed(1)}°C</span>
+                                  <span className="text-orange-400 font-medium">{depth.depth_cm}cm:</span>
+                                  <span className="text-orange-300 font-semibold">{depth.value.toFixed(1)}°C</span>
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
-                        <div className="bg-cyan-50 rounded-lg p-3">
-                          <div className="text-xs text-cyan-700 font-medium mb-1">Rainfall</div>
-                          <div className="text-2xl font-bold text-cyan-900">
+                        <div className="bg-cyan-900/30 border border-cyan-700/40 rounded-lg p-3">
+                          <div className="text-xs text-cyan-400 font-medium mb-1">Rainfall</div>
+                          <div className="text-2xl font-bold text-cyan-300">
                             {reading.rainfall_mm !== null ? `${reading.rainfall_mm.toFixed(1)}mm` : 'N/A'}
                           </div>
-                          <div className="text-xs text-cyan-600 font-semibold mt-1">Total</div>
+                          <div className="text-xs text-cyan-400 font-semibold mt-1">Total</div>
                         </div>
                         {reading.battery_level !== null && (() => {
                           const batteryStatus = getBatteryStatus(reading.battery_level);
@@ -909,14 +902,14 @@ export function ProbeConnectionManager() {
                         })()}
                       </div>
                     ) : (
-                      <div className="text-center py-4 text-gray-500">
+                      <div className="text-center py-4 text-slate-500">
                         No data available. Click sync to fetch latest readings.
                       </div>
                     )}
 
                     {showRawData === connection.id && reading?.raw_payload && (
-                      <div className="mt-4 p-4 bg-gray-900 rounded-lg overflow-auto max-h-96">
-                        <div className="text-xs text-gray-400 mb-2">Raw API Response (for debugging)</div>
+                      <div className="mt-4 p-4 bg-slate-950 rounded-lg overflow-auto max-h-96">
+                        <div className="text-xs text-slate-500 mb-2">Raw API Response (for debugging)</div>
                         <pre className="text-xs text-green-400 font-mono">
                           {JSON.stringify(reading.raw_payload, null, 2)}
                         </pre>

@@ -716,7 +716,6 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
   const lowTemp = todayForecast?.mintemp_c || 0;
   const rainToday = todayForecast?.totalprecip_mm || 0;
   const rainChance = todayForecast?.daily_chance_of_rain || 0;
-  const sprayCond = getSprayCondition(current.wind_kph, rainToday);
 
   const windDir = degreesToDirection(current.wind_degree);
 
@@ -770,6 +769,9 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
     };
   });
 
+  const sprayBadgeColor = bestSprayWindow === 'Ideal' ? '#16a34a' : '#64748b';
+  const deltaTBg = deltaTCond.color;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -780,371 +782,380 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
-      padding: 20px;
+      background-color: #0f172a;
+      padding: 24px 16px;
       line-height: 1.5;
     }
     .container {
       max-width: 600px;
       margin: 0 auto;
-      background: white;
-      border-radius: 12px;
+      background: #1e293b;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+      border: 1px solid #334155;
     }
     .header {
-      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
-      color: white;
-      padding: 24px 24px 20px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-bottom: 1px solid #334155;
+      padding: 28px 28px 24px;
       text-align: center;
     }
-    .brand {
+    .logo-row {
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-    .brand-name {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-      color: white;
+      gap: 10px;
+      margin-bottom: 16px;
     }
     .logo-icon {
-      width: 48px;
-      height: 48px;
-      background: #047857;
-      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-size: 22px;
     }
-    .location-title {
-      font-size: 18px;
+    .brand-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #f1f5f9;
+      letter-spacing: -0.5px;
+    }
+    .brand-tag {
+      font-size: 11px;
       font-weight: 600;
-      margin-top: 8px;
-      opacity: 0.95;
+      color: #4ade80;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
     }
-    .date-subtitle {
-      font-size: 13px;
-      opacity: 0.85;
-      margin-top: 4px;
+    .location-pill {
+      display: inline-block;
+      background: rgba(74,222,128,0.12);
+      border: 1px solid rgba(74,222,128,0.25);
+      border-radius: 999px;
+      padding: 6px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #86efac;
+      margin-bottom: 6px;
+    }
+    .date-line {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
     }
 
-    .content {
-      padding: 24px;
+    .content { padding: 24px; }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #4ade80;
+      margin-bottom: 12px;
     }
 
-    .current-conditions {
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      border-radius: 10px;
+    .card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
       padding: 20px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
-    .conditions-grid {
+    .stat-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      margin-top: 16px;
+      gap: 12px;
     }
 
-    .condition-item {
+    .stat-cell {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 14px;
       text-align: center;
     }
 
-    .condition-icon {
-      font-size: 32px;
-      margin-bottom: 6px;
-    }
+    .stat-icon { font-size: 22px; margin-bottom: 6px; }
 
-    .condition-label {
-      font-size: 11px;
-      color: #065f46;
+    .stat-label {
+      font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
+      color: #64748b;
       margin-bottom: 4px;
     }
 
-    .condition-value {
-      font-size: 24px;
+    .stat-value {
+      font-size: 26px;
       font-weight: 800;
-      color: #047857;
-      line-height: 1.2;
+      color: #f1f5f9;
+      line-height: 1.1;
     }
 
-    .condition-sub {
-      font-size: 12px;
-      color: #059669;
-      margin-top: 2px;
-      font-weight: 600;
+    .stat-sub {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 3px;
+      font-weight: 500;
     }
 
-    .section-header {
-      font-size: 16px;
-      font-weight: 800;
-      color: #047857;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 3px solid #047857;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .spray-analysis {
-      margin-bottom: 20px;
-    }
-
-    .spray-metrics {
-      display: grid;
-      gap: 10px;
-    }
-
-    .spray-metric {
-      background: white;
-      border: 2px solid #e5e7eb;
+    .ops-row {
+      background: #0f172a;
+      border: 1px solid #334155;
       border-radius: 8px;
       padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 8px;
     }
 
-    .metric-label {
+    .ops-label {
       font-size: 13px;
-      font-weight: 700;
-      color: #374151;
+      font-weight: 600;
+      color: #cbd5e1;
     }
 
-    .metric-badge {
-      font-size: 12px;
+    .badge {
+      font-size: 11px;
       font-weight: 800;
-      padding: 6px 12px;
+      padding: 5px 12px;
       border-radius: 6px;
       color: white;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
-    .forecast-section {
-      margin-bottom: 20px;
+    .rain-card {
+      background: linear-gradient(135deg, #0c1a2e 0%, #0f172a 100%);
+      border: 1px solid #1d4ed8;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
     }
 
-    .forecast-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
-
-    .forecast-card {
-      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-      border: 2px solid #047857;
-      border-radius: 8px;
-      padding: 12px 8px;
-      text-align: center;
-    }
-
-    .forecast-time {
-      font-size: 11px;
-      color: #065f46;
-      font-weight: 800;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-    }
-
-    .forecast-icon {
-      font-size: 28px;
-      margin: 6px 0;
-    }
-
-    .forecast-temp {
-      font-size: 18px;
-      font-weight: 800;
-      color: #047857;
-      margin: 4px 0;
-    }
-
-    .forecast-rain {
+    .rain-label {
       font-size: 10px;
-      color: #059669;
-      font-weight: 700;
-      margin-top: 4px;
-    }
-
-    .footer {
-      background: #111827;
-      color: #9ca3af;
-      padding: 20px 24px;
-      text-align: center;
-      font-size: 12px;
-    }
-
-    .footer-brand {
-      font-size: 16px;
-      font-weight: 700;
-      color: #10b981;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #60a5fa;
       margin-bottom: 6px;
     }
 
-    .footer a {
-      color: #10b981;
-      text-decoration: none;
+    .rain-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #93c5fd;
+      margin-bottom: 4px;
+    }
+
+    .rain-timing {
+      font-size: 12px;
+      color: #60a5fa;
       font-weight: 600;
     }
 
+    .forecast-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    .forecast-table thead tr {
+      background: #0f172a;
+    }
+
+    .forecast-table th {
+      padding: 10px 8px;
+      text-align: center;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #4ade80;
+      font-size: 10px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .forecast-table th:first-child { text-align: left; padding-left: 14px; }
+
+    .forecast-table td {
+      padding: 11px 8px;
+      border-bottom: 1px solid #1e293b;
+      vertical-align: middle;
+    }
+
+    .forecast-table td:first-child { padding-left: 14px; }
+
+    .forecast-table tr:last-child td { border-bottom: none; }
+
+    .forecast-table tr:nth-child(odd) { background: #1e293b; }
+    .forecast-table tr:nth-child(even) { background: #172033; }
+
+    .footer {
+      background: #0a0f1a;
+      border-top: 1px solid #1e293b;
+      color: #475569;
+      padding: 20px 24px;
+      text-align: center;
+      font-size: 11px;
+    }
+
+    .footer-brand {
+      font-size: 15px;
+      font-weight: 800;
+      color: #4ade80;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+
+    .footer a { color: #4ade80; text-decoration: none; font-weight: 600; }
+
     @media only screen and (max-width: 600px) {
-      .conditions-grid { grid-template-columns: 1fr; gap: 12px; }
-      .forecast-grid { grid-template-columns: repeat(2, 1fr); }
+      .stat-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
   <div class="container">
+
     <div class="header">
-      <div class="brand">
-        <div class="brand-name">FarmCast</div>
+      <div class="logo-row">
         <div class="logo-icon">🌱</div>
+        <span class="brand-name">FarmCast</span>
       </div>
-      <div class="location-title">${location}, ${country}</div>
-      <div class="date-subtitle">${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      <div class="brand-tag">Daily Farm Intelligence</div>
+      <div class="location-pill">${location}, ${country}</div>
+      <div class="date-line" style="margin-top:8px;">${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
     </div>
 
     <div class="content">
-      <div class="current-conditions">
-        <div class="section-header">Today's Forecast</div>
-        <div class="conditions-grid">
-          <div class="condition-item">
-            <div class="condition-icon">🌡️</div>
-            <div class="condition-label">Actual High</div>
-            <div class="condition-value">${Math.round(highTemp)}°C</div>
-            <div class="condition-sub">Maximum</div>
-          </div>
 
-          <div class="condition-item">
-            <div class="condition-icon">🌡️</div>
-            <div class="condition-label">Actual Low</div>
-            <div class="condition-value">${Math.round(lowTemp)}°C</div>
-            <div class="condition-sub">Minimum</div>
+      <div class="section-label">Today's Forecast</div>
+      <div class="card" style="padding:16px;">
+        <div class="stat-grid">
+          <div class="stat-cell">
+            <div class="stat-icon">🌡️</div>
+            <div class="stat-label">High</div>
+            <div class="stat-value" style="color:#fca5a5;">${Math.round(highTemp)}°C</div>
+            <div class="stat-sub">Maximum</div>
           </div>
-
-          <div class="condition-item">
-            <div class="condition-icon">💧</div>
-            <div class="condition-label">Rain Expected</div>
-            <div class="condition-value">${rainToday.toFixed(1)}mm</div>
-            <div class="condition-sub">${rainChance}% Chance</div>
+          <div class="stat-cell">
+            <div class="stat-icon">🌡️</div>
+            <div class="stat-label">Low</div>
+            <div class="stat-value" style="color:#93c5fd;">${Math.round(lowTemp)}°C</div>
+            <div class="stat-sub">Minimum</div>
           </div>
-
-          <div class="condition-item">
-            <div class="condition-icon">💨</div>
-            <div class="condition-label">Wind</div>
-            <div class="condition-value">${Math.round(current.wind_kph)} km/h</div>
-            <div class="condition-sub">${windDir}</div>
+          <div class="stat-cell">
+            <div class="stat-icon">💧</div>
+            <div class="stat-label">Rain Expected</div>
+            <div class="stat-value" style="color:#7dd3fc;">${rainToday.toFixed(1)}mm</div>
+            <div class="stat-sub">${rainChance}% chance</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-icon">💨</div>
+            <div class="stat-label">Wind</div>
+            <div class="stat-value" style="color:#86efac;">${Math.round(current.wind_kph)}</div>
+            <div class="stat-sub">km/h ${windDir}</div>
           </div>
         </div>
       </div>
 
-      <div class="spray-analysis">
-        <div class="section-header">Farm Operations Analysis</div>
-        <div class="spray-metrics">
-          <div class="spray-metric">
-            <span class="metric-label">🌾 Best Spray Window</span>
-            <span class="metric-badge" style="background: ${bestSprayWindow === 'Ideal' ? '#047857' : '#6b7280'};">
-              ${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor'}
-            </span>
-          </div>
-          <div class="spray-metric">
-            <span class="metric-label">Delta T</span>
-            <span class="metric-badge" style="background: ${deltaTCond.color};">${deltaT.toFixed(1)}°C - ${deltaTCond.rating}</span>
-          </div>
-          ${getPlantingConditions(weatherData, next24Hours)}
-          ${getIrrigationAdvice(rainToday, rainChance, current.temp_c, current.humidity)}
-        </div>
+      <div class="rain-card">
+        <div class="rain-label">Rainfall Timing</div>
+        <div class="rain-value">${rainToday.toFixed(1)}mm</div>
+        <div class="rain-timing">${rainTimingText}</div>
       </div>
 
-      <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: 10px; padding: 16px; margin-top: 20px;">
-        <div style="font-size: 11px; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 4px;">
-          💧 Total Rainfall Expected
+      <div class="section-label">Farm Operations</div>
+      <div style="margin-bottom:16px;">
+        <div class="ops-row">
+          <span class="ops-label">Best Spray Window</span>
+          <span class="badge" style="background:${sprayBadgeColor};">${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor'}</span>
         </div>
-        <div style="font-size: 20px; font-weight: 800; color: #1e3a8a; margin-bottom: 6px;">
-          ${rainToday.toFixed(1)}mm
+        <div class="ops-row">
+          <span class="ops-label">Delta T Index</span>
+          <span class="badge" style="background:${deltaTBg};">${deltaT.toFixed(1)}°C &mdash; ${deltaTCond.rating}</span>
         </div>
-        <div style="font-size: 12px; color: #1e40af; font-weight: 600;">
-          ⏰ ${rainTimingText}
-        </div>
+        ${getPlantingConditions(weatherData, next24Hours)}
+        ${getIrrigationAdvice(rainToday, rainChance, current.temp_c, current.humidity)}
       </div>
 
       ${probeReport}
 
-      <div style="margin-top: 24px;">
-        <div class="section-header">5-Day Forecast</div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px; background: #f9fafb; border-radius: 8px; overflow: hidden;">
-          <thead>
-            <tr style="background: linear-gradient(135deg, #047857 0%, #065f46 100%); color: white;">
-              <th style="padding: 10px 8px; text-align: left; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Day</th>
-              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Temps</th>
-              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Rain</th>
-              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Wind</th>
-              <th style="padding: 10px 8px; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">Spray</th>
+      <div class="section-label" style="margin-top:8px;">5-Day Forecast</div>
+      <table class="forecast-table">
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Temp</th>
+            <th>Rain</th>
+            <th>Wind</th>
+            <th>Spray</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fiveDayForecast.map((day: any) => `
+            <tr>
+              <td>
+                <div style="font-size:13px;font-weight:800;color:#e2e8f0;">${day.dayName}</div>
+                <div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px;">${day.date}</div>
+              </td>
+              <td style="text-align:center;">
+                <div style="font-size:14px;font-weight:800;color:#fca5a5;">${day.high}°</div>
+                <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-top:2px;">${day.low}°</div>
+              </td>
+              <td style="text-align:center;">
+                <div style="font-size:13px;font-weight:800;color:#7dd3fc;">${day.rain}mm</div>
+                <div style="font-size:10px;font-weight:600;color:#64748b;margin-top:2px;">${day.rainChance}%</div>
+              </td>
+              <td style="text-align:center;">
+                <div style="font-size:12px;font-weight:700;color:#86efac;">${day.wind} km/h</div>
+                <div style="font-size:10px;font-weight:600;color:#64748b;margin-top:2px;">${day.windDir}</div>
+              </td>
+              <td style="text-align:center;font-size:18px;">${day.sprayWindow}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${fiveDayForecast.map((day: any, index: number) => `
-              <tr style="background: ${index % 2 === 0 ? 'white' : '#f9fafb'}; border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 12px 8px; font-weight: 700; color: #047857;">
-                  <div style="font-size: 12px; font-weight: 800;">${day.dayName}</div>
-                  <div style="font-size: 10px; color: #059669; font-weight: 600; margin-top: 2px;">${day.date}</div>
-                </td>
-                <td style="padding: 12px 8px; text-align: center;">
-                  <div style="font-size: 15px; font-weight: 800; color: #dc2626;">${day.high}°</div>
-                  <div style="font-size: 11px; font-weight: 700; color: #3b82f6; margin-top: 2px;">${day.low}°</div>
-                </td>
-                <td style="padding: 12px 8px; text-align: center;">
-                  <div style="font-size: 13px; font-weight: 800; color: #1e40af;">${day.rain}mm</div>
-                  <div style="font-size: 10px; font-weight: 700; color: #3b82f6; margin-top: 2px;">${day.rainChance}%</div>
-                </td>
-                <td style="padding: 12px 8px; text-align: center;">
-                  <div style="font-size: 13px; font-weight: 800; color: #047857;">${day.wind} km/h</div>
-                  <div style="font-size: 10px; font-weight: 700; color: #059669; margin-top: 2px;">${day.windDir}</div>
-                </td>
-                <td style="padding: 12px 8px; text-align: center; font-size: 18px;">${day.sprayWindow}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        <div style="margin-top: 8px; font-size: 10px; color: #6b7280; text-align: center; font-weight: 600;">
-          Spray Window: ✅ Ideal · ✓ Good · ⚠️ Marginal · ❌ Poor
-        </div>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:8px;font-size:10px;color:#475569;text-align:center;font-weight:600;">
+        Spray: ✅ Ideal &nbsp;·&nbsp; ✓ Good &nbsp;·&nbsp; ⚠️ Marginal &nbsp;·&nbsp; ❌ Poor
       </div>
+
     </div>
 
     <div class="footer">
       <div class="footer-brand">FarmCast Weather</div>
-      <p>Agricultural Weather Intelligence</p>
-      <p style="margin-top: 10px; font-size: 11px;">
-        <a href="https://farmcastweather.com">Visit Dashboard</a> ·
-        <a href="https://farmcastweather.com/settings">Manage Preferences</a> ·
+      <p style="margin-bottom:10px;">Agricultural Weather Intelligence</p>
+      <p>
+        <a href="https://farmcastweather.com">Dashboard</a> &nbsp;·&nbsp;
+        <a href="https://farmcastweather.com/settings">Preferences</a> &nbsp;·&nbsp;
         <a href="https://farmcastweather.com/unsubscribe">Unsubscribe</a>
       </p>
-      <p style="margin-top: 10px; font-size: 10px;">
-        FarmCast Weather Services<br>
-        Sent to subscribers of daily weather forecasts
-      </p>
-      <p style="margin-top: 12px; font-size: 9px; color: #6b7280; line-height: 1.3; opacity: 0.6;">
-        Your subscription: $2.99/month, billed monthly. Cancel anytime in settings.
+      <p style="margin-top:12px;font-size:10px;color:#334155;">
+        FarmCast Weather Services &mdash; Sent to daily forecast subscribers<br>
+        $2.99/month, billed monthly. Cancel anytime in settings.
       </p>
     </div>
+
   </div>
 </body>
 </html>
   `.trim();
 }
 
-function getPlantingConditions(weatherData: any, hourlyForecast: any[]): string {
+function getPlantingConditions(weatherData: any, _hourlyForecast: any[]): string {
   const todayForecast = weatherData.forecast.forecastday[0].day;
   const highTemp = todayForecast?.maxtemp_c || 0;
   const lowTemp = todayForecast?.mintemp_c || 0;
@@ -1152,54 +1163,47 @@ function getPlantingConditions(weatherData: any, hourlyForecast: any[]): string 
   const windSpeed = weatherData.current.wind_kph;
 
   let rating = 'Good';
-  let color = '#059669';
-  let bgColor = '#d1fae5';
+  let color = '#16a34a';
 
   if (rainToday > 5 || windSpeed > 25) {
     rating = 'Poor';
     color = '#dc2626';
-    bgColor = '#fee2e2';
   } else if (highTemp > 35 || lowTemp < 5 || rainToday > 2) {
     rating = 'Moderate';
-    color = '#f59e0b';
-    bgColor = '#fef3c7';
+    color = '#d97706';
   } else if (highTemp >= 15 && highTemp <= 28 && rainToday < 2 && windSpeed < 15) {
     rating = 'Excellent';
-    color = '#059669';
-    bgColor = '#d1fae5';
+    color = '#16a34a';
   }
 
   return `
-    <div class="spray-metric">
-      <span class="metric-label">🌱 Planting Conditions</span>
-      <span class="metric-badge" style="background: ${color};">${rating}</span>
+    <div class="ops-row">
+      <span class="ops-label">🌱 Planting Conditions</span>
+      <span class="badge" style="background:${color};">${rating}</span>
     </div>
   `;
 }
 
 function getIrrigationAdvice(rainToday: number, rainChance: number, temp: number, humidity: number): string {
   let advice = 'Not Needed';
-  let color = '#6b7280';
-  let bgColor = '#f3f4f6';
+  let color = '#475569';
 
   const evapotranspiration = temp > 25 && humidity < 60;
 
   if (rainToday < 5 && rainChance < 30) {
     if (evapotranspiration) {
       advice = 'Recommended';
-      color = '#2563eb';
-      bgColor = '#dbeafe';
+      color = '#1d4ed8';
     } else if (rainToday < 2) {
       advice = 'Consider';
-      color = '#f59e0b';
-      bgColor = '#fef3c7';
+      color = '#d97706';
     }
   }
 
   return `
-    <div class="spray-metric">
-      <span class="metric-label">💧 Irrigation</span>
-      <span class="metric-badge" style="background: ${color};">${advice}</span>
+    <div class="ops-row">
+      <span class="ops-label">💧 Irrigation</span>
+      <span class="badge" style="background:${color};">${advice}</span>
     </div>
   `;
 }

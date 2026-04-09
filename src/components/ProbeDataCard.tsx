@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Gauge, RefreshCw, AlertCircle, Droplets, Thermometer, CloudRain, Battery } from 'lucide-react';
+import { Gauge, RefreshCw, AlertCircle, Droplets, CloudRain, Battery } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface MoistureDepth {
@@ -159,41 +159,41 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  function getBatteryStatus(batteryVoltage: number | null): { label: string; color: string; bgColor: string; borderColor: string; textColor: string; labelColor: string; statusColor: string } {
+  function getBatteryStatus(batteryVoltage: number | null) {
     if (batteryVoltage === null) {
-      return { label: 'Unknown', color: 'gray', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', textColor: 'text-gray-900', labelColor: 'text-gray-700', statusColor: 'text-gray-700' };
+      return { label: 'Unknown', bg: 'bg-slate-800/60', border: 'border-slate-700/50', text: 'text-slate-400', status: 'text-slate-500' };
     }
     if (batteryVoltage >= 3000) {
-      return { label: 'Healthy', color: 'green', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-900', labelColor: 'text-green-700', statusColor: 'text-green-700' };
+      return { label: 'Healthy', bg: 'bg-green-900/30', border: 'border-green-700/40', text: 'text-green-300', status: 'text-green-400' };
     } else if (batteryVoltage >= 2500) {
-      return { label: 'Monitor', color: 'yellow', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', textColor: 'text-yellow-900', labelColor: 'text-yellow-700', statusColor: 'text-yellow-700' };
+      return { label: 'Monitor', bg: 'bg-yellow-900/30', border: 'border-yellow-700/40', text: 'text-yellow-300', status: 'text-yellow-400' };
     } else {
-      return { label: 'Replace', color: 'red', bgColor: 'bg-red-50', borderColor: 'border-red-200', textColor: 'text-red-900', labelColor: 'text-red-700', statusColor: 'text-red-700' };
+      return { label: 'Replace', bg: 'bg-red-900/30', border: 'border-red-700/40', text: 'text-red-300', status: 'text-red-400' };
     }
   }
 
-  function getMoistureStatus(moisturePercent: number | null): { status: string; color: string; bgColor: string; borderColor: string; textColor: string } {
+  function getMoistureStatus(moisturePercent: number | null) {
     if (moisturePercent === null) {
-      return { status: 'Unknown', color: '#6b7280', bgColor: '#f9fafb', borderColor: '#d1d5db', textColor: '#374151' };
+      return { status: 'Unknown', bg: 'bg-slate-800/60', border: 'border-slate-700/50', text: 'text-slate-400', accent: 'text-slate-500' };
     }
     if (moisturePercent < 15) {
-      return { status: 'Very Dry', color: '#dc2626', bgColor: '#fee2e2', borderColor: '#fca5a5', textColor: '#991b1b' };
-    } else if (moisturePercent >= 15 && moisturePercent < 25) {
-      return { status: 'Dry', color: '#f59e0b', bgColor: '#fef3c7', borderColor: '#fcd34d', textColor: '#92400e' };
-    } else if (moisturePercent >= 25 && moisturePercent <= 40) {
-      return { status: 'Ideal', color: '#059669', bgColor: '#d1fae5', borderColor: '#6ee7b7', textColor: '#065f46' };
-    } else if (moisturePercent > 40 && moisturePercent <= 55) {
-      return { status: 'Moist', color: '#3b82f6', bgColor: '#dbeafe', borderColor: '#93c5fd', textColor: '#1e40af' };
+      return { status: 'Very Dry', bg: 'bg-red-900/30', border: 'border-red-700/40', text: 'text-red-300', accent: 'text-red-400' };
+    } else if (moisturePercent < 25) {
+      return { status: 'Dry', bg: 'bg-yellow-900/30', border: 'border-yellow-700/40', text: 'text-yellow-300', accent: 'text-yellow-400' };
+    } else if (moisturePercent <= 40) {
+      return { status: 'Ideal', bg: 'bg-green-900/30', border: 'border-green-700/40', text: 'text-green-300', accent: 'text-green-400' };
+    } else if (moisturePercent <= 55) {
+      return { status: 'Moist', bg: 'bg-blue-900/30', border: 'border-blue-700/40', text: 'text-blue-300', accent: 'text-blue-400' };
     } else {
-      return { status: 'Saturated', color: '#6366f1', bgColor: '#e0e7ff', borderColor: '#a5b4fc', textColor: '#4338ca' };
+      return { status: 'Saturated', bg: 'bg-cyan-900/30', border: 'border-cyan-700/40', text: 'text-cyan-300', accent: 'text-cyan-400' };
     }
   }
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="bg-slate-900/70 rounded-xl shadow-lg p-6 border border-slate-700/60">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
         </div>
       </div>
     );
@@ -201,26 +201,26 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
 
   if (stations.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4">
+      <div className="bg-slate-900/70 rounded-xl shadow-lg overflow-hidden border border-slate-700/60">
+        <div className="bg-slate-800/80 border-b border-slate-700/60 p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
-              <Gauge className="w-6 h-6 text-white" />
+            <div className="bg-green-500/20 rounded-lg p-2">
+              <Gauge className="w-6 h-6 text-green-400" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Soil Moisture Probes</h3>
-              <p className="text-sm text-green-100">Live sensor data</p>
+              <h3 className="text-lg font-bold text-slate-200">Soil Moisture Probes</h3>
+              <p className="text-sm text-slate-400">Live sensor data</p>
             </div>
           </div>
         </div>
         <div className="p-6 text-center">
-          <Gauge className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h4 className="text-lg font-medium text-gray-900 mb-2">No probe connected</h4>
-          <p className="text-gray-600 mb-4">Connect your moisture probe to see live soil data</p>
+          <Gauge className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+          <h4 className="text-lg font-medium text-slate-300 mb-2">No probe connected</h4>
+          <p className="text-slate-500 mb-4">Connect your moisture probe to see live soil data</p>
           {onManageProbes && (
             <button
               onClick={onManageProbes}
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+              className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors font-medium"
             >
               Connect Probe
             </button>
@@ -233,33 +233,31 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm text-red-800">{error}</p>
-          </div>
+        <div className="p-3 bg-red-900/30 border border-red-700/40 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-300">{error}</p>
         </div>
       )}
 
       {stations.map(({ connection, reading }) => (
-        <div key={connection.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-4">
+        <div key={connection.id} className="bg-slate-900/70 rounded-xl shadow-lg overflow-hidden border border-slate-700/60">
+          <div className="bg-slate-800/80 border-b border-slate-700/60 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-white/20 backdrop-blur-sm rounded-lg p-2">
-                  <Gauge className="w-6 h-6 text-white" />
+                <div className="bg-green-500/20 rounded-lg p-2">
+                  <Gauge className="w-6 h-6 text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-lg font-bold text-slate-200">
                     {connection.friendly_name || `Station ${connection.station_id}`}
                   </h3>
-                  <p className="text-sm text-green-100">{connection.station_id}</p>
+                  <p className="text-sm text-slate-400">{connection.station_id}</p>
                 </div>
               </div>
               <button
                 onClick={() => handleSync(connection.id)}
                 disabled={isSyncing}
-                className="p-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="p-2 bg-slate-700/60 hover:bg-slate-600/60 text-slate-300 rounded-lg transition-colors disabled:opacity-50"
                 title="Refresh data"
               >
                 <RefreshCw className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -269,11 +267,9 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
 
           <div className="p-6">
             {connection.last_error && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm text-yellow-800">Could not refresh probe data</p>
-                </div>
+              <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700/40 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-yellow-300">Could not refresh probe data</p>
               </div>
             )}
 
@@ -281,40 +277,18 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
               <>
                 {reading.moisture_depths && reading.moisture_depths.depths && reading.moisture_depths.depths.length > 0 && (
                   <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <Droplets className="w-4 h-4" />
+                    <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                      <Droplets className="w-4 h-4 text-blue-400" />
                       Soil Moisture by Depth
                     </h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {reading.moisture_depths.depths.map((depth, idx) => {
-                        const moistStatus = getMoistureStatus(depth.value);
+                        const s = getMoistureStatus(depth.value);
                         return (
-                          <div
-                            key={idx}
-                            className="rounded-lg p-3 border"
-                            style={{
-                              backgroundColor: moistStatus.bgColor,
-                              borderColor: moistStatus.borderColor
-                            }}
-                          >
-                            <div
-                              className="text-xs font-medium mb-1"
-                              style={{ color: moistStatus.textColor }}
-                            >
-                              {depth.depth_cm}cm depth
-                            </div>
-                            <div
-                              className="text-2xl font-bold"
-                              style={{ color: moistStatus.textColor }}
-                            >
-                              {depth.value.toFixed(1)}%
-                            </div>
-                            <div
-                              className="text-xs font-semibold mt-1"
-                              style={{ color: moistStatus.color }}
-                            >
-                              {moistStatus.status}
-                            </div>
+                          <div key={idx} className={`rounded-lg p-3 border ${s.bg} ${s.border}`}>
+                            <div className={`text-xs font-medium mb-1 ${s.accent}`}>{depth.depth_cm}cm depth</div>
+                            <div className={`text-2xl font-bold ${s.text}`}>{depth.value.toFixed(1)}%</div>
+                            <div className={`text-xs font-semibold mt-1 ${s.accent}`}>{s.status}</div>
                           </div>
                         );
                       })}
@@ -324,49 +298,42 @@ export function ProbeDataCard({ onManageProbes }: ProbeDataCardProps) {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                   {reading.rainfall_mm !== null && (
-                    <div className="bg-cyan-50 rounded-lg p-3 border border-cyan-200">
-                      <div className="text-xs font-medium text-cyan-700 mb-1">
-                        Rainfall
+                    <div className="bg-blue-900/30 rounded-lg p-3 border border-blue-700/40">
+                      <div className="text-xs font-medium text-blue-400 mb-1 flex items-center gap-1">
+                        <CloudRain className="w-3 h-3" /> Rainfall
                       </div>
-                      <div className="text-2xl font-bold text-cyan-900">
-                        {reading.rainfall_mm.toFixed(1)}mm
-                      </div>
-                      <div className="text-xs font-semibold text-cyan-600 mt-1">
-                        Total
-                      </div>
+                      <div className="text-2xl font-bold text-blue-300">{reading.rainfall_mm.toFixed(1)}mm</div>
+                      <div className="text-xs font-semibold text-blue-400 mt-1">Total</div>
                     </div>
                   )}
 
                   {reading.battery_level !== null && (() => {
-                    const batteryStatus = getBatteryStatus(reading.battery_level);
-
+                    const b = getBatteryStatus(reading.battery_level);
                     return (
-                      <div className={`${batteryStatus.bgColor} rounded-lg p-3 border ${batteryStatus.borderColor}`}>
-                        <div className={`text-xs font-medium ${batteryStatus.labelColor} mb-1`}>
-                          Battery
+                      <div className={`${b.bg} rounded-lg p-3 border ${b.border}`}>
+                        <div className={`text-xs font-medium mb-1 flex items-center gap-1 ${b.status}`}>
+                          <Battery className="w-3 h-3" /> Battery
                         </div>
-                        <div className={`text-2xl font-bold ${batteryStatus.textColor}`}>
+                        <div className={`text-2xl font-bold ${b.text}`}>
                           {(reading.battery_level / 1000).toFixed(2)}V
                         </div>
-                        <div className={`text-xs font-semibold ${batteryStatus.statusColor} mt-1`}>
-                          {batteryStatus.label}
-                        </div>
+                        <div className={`text-xs font-semibold mt-1 ${b.status}`}>{b.label}</div>
                       </div>
                     );
                   })()}
                 </div>
 
-                <div className="text-center text-sm text-gray-500 pt-3 border-t border-gray-200">
+                <div className="text-center text-sm text-slate-500 pt-3 border-t border-slate-700/50">
                   Last updated: {formatTimestamp(reading.synced_at)}
                 </div>
               </>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">No data available</p>
+                <p className="text-slate-500 mb-4">No data available</p>
                 <button
                   onClick={() => handleSync(connection.id)}
                   disabled={isSyncing}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
+                  className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
                 >
                   {isSyncing ? 'Syncing...' : 'Fetch Data'}
                 </button>
