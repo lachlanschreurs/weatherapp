@@ -1,4 +1,4 @@
-import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor } from 'lucide-react';
+import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor, Lock } from 'lucide-react';
 
 interface RecommendationProps {
   locationName: string;
@@ -14,6 +14,8 @@ interface RecommendationProps {
   humidity: number;
   sprayWindowStart?: string;
   sprayWindowEnd?: string;
+  isAuthenticated?: boolean;
+  onSignUpClick?: () => void;
 }
 
 interface Recommendation {
@@ -174,7 +176,30 @@ const statusConfig = {
   },
 };
 
+function RecommendationCard({ rec, index }: { rec: Recommendation; index: number }) {
+  const cfg = statusConfig[rec.status];
+  return (
+    <div
+      className={`rounded-xl border ${cfg.border} ${cfg.bg} p-4 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg group`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 flex-shrink-0 ${cfg.icon}`}>
+          {rec.icon}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className={`text-xs font-bold uppercase tracking-wider ${cfg.category}`}>{rec.category}</span>
+            <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot} ${rec.status === 'risk' ? 'animate-pulse' : ''}`} />
+          </div>
+          <p className="text-sm text-slate-300 leading-relaxed">{rec.text}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ActionableRecommendations(props: RecommendationProps) {
+  const { isAuthenticated = false, onSignUpClick } = props;
   const recommendations = getRecommendations(props);
   const hasRisk = recommendations.some(r => r.status === 'risk');
   const hasCaution = recommendations.some(r => r.status === 'caution');
@@ -185,6 +210,9 @@ export function ActionableRecommendations(props: RecommendationProps) {
     caution: 'text-amber-400 border-amber-500/30',
     risk: 'text-red-400 border-red-500/30',
   };
+
+  const visibleRecs = isAuthenticated ? recommendations : recommendations.slice(0, 1);
+  const lockedRecs = isAuthenticated ? [] : recommendations.slice(1);
 
   return (
     <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl overflow-hidden farmcast-card-glow">
@@ -205,29 +233,54 @@ export function ActionableRecommendations(props: RecommendationProps) {
         </div>
       </div>
 
-      <div className="p-5 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-        {recommendations.map((rec, i) => {
-          const cfg = statusConfig[rec.status];
-          return (
-            <div
-              key={i}
-              className={`rounded-xl border ${cfg.border} ${cfg.bg} p-4 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg group`}
-            >
-              <div className="flex items-start gap-3">
-                <div className={`mt-0.5 flex-shrink-0 ${cfg.icon}`}>
-                  {rec.icon}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className={`text-xs font-bold uppercase tracking-wider ${cfg.category}`}>{rec.category}</span>
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot} ${rec.status === 'risk' ? 'animate-pulse' : ''}`} />
+      <div className="p-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+          {visibleRecs.map((rec, i) => (
+            <RecommendationCard key={i} rec={rec} index={i} />
+          ))}
+        </div>
+
+        {!isAuthenticated && lockedRecs.length > 0 && (
+          <div className="relative mt-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 select-none pointer-events-none" aria-hidden="true">
+              {lockedRecs.map((rec, i) => (
+                <div key={i} className="rounded-xl border border-slate-700/30 bg-slate-800/20 p-4 blur-[3px]">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex-shrink-0 text-slate-500">{rec.icon}</div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{rec.category}</span>
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-slate-500" />
+                      </div>
+                      <p className="text-sm text-slate-500 leading-relaxed">{rec.text}</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed">{rec.text}</p>
                 </div>
+              ))}
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative z-10 bg-slate-900/95 border border-slate-600/60 rounded-2xl p-6 shadow-2xl backdrop-blur-sm max-w-sm w-full mx-4 text-center">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-green-400" />
+                  </div>
+                </div>
+                <h3 className="text-white font-bold text-base mb-1">Unlock All Recommendations</h3>
+                <p className="text-slate-400 text-xs mb-4 leading-relaxed">
+                  Sign up free to access irrigation, livestock, cropping, and general farm recommendations tailored to your conditions.
+                </p>
+                <button
+                  onClick={onSignUpClick}
+                  className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-green-900/30 hover:shadow-green-900/50"
+                >
+                  Sign Up Free
+                </button>
+                <p className="text-slate-600 text-xs mt-2">No credit card required</p>
               </div>
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
     </div>
   );

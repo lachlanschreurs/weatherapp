@@ -1079,6 +1079,8 @@ function App() {
             humidity={humidity}
             sprayWindowStart={todayBestWindow?.startTime}
             sprayWindowEnd={todayBestWindow?.endTime}
+            isAuthenticated={!!user}
+            onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
           />
         </div>
 
