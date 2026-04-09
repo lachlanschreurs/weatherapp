@@ -18,6 +18,14 @@ interface RecommendationProps {
   onSignUpClick?: () => void;
 }
 
+function heatIndex(tempC: number, humidity: number): number {
+  if (tempC < 27) return tempC;
+  const T = tempC, R = humidity;
+  return -8.78469 + 1.61139 * T + 2.33855 * R - 0.14612 * T * R
+    - 0.01231 * T * T - 0.01642 * R * R + 0.00221 * T * T * R
+    + 0.00073 * T * R * R - 0.00000358 * T * T * R * R;
+}
+
 interface Recommendation {
   icon: React.ReactNode;
   category: string;
@@ -43,22 +51,29 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
 
   const recs: Recommendation[] = [];
 
-  const highGust = windGustKmh && windGustKmh > 40;
-  const heavyRain = todayRainChance > 70 || todayExpectedRain >= 15;
+  const dangerousGust = windGustKmh !== null && windGustKmh > 40;
+  const moderateGust = windGustKmh !== null && windGustKmh > 25 && windGustKmh <= 40;
+  const heavyRain = todayRainChance > 70 && todayExpectedRain >= 10;
+  const rainLikely = todayRainChance > 70 || todayExpectedRain >= 15;
   const excellentDeltaT = deltaTRating === 'Excellent' || deltaTRating === 'Good';
+  const apparentTemp = heatIndex(tempC, humidity);
 
   let sprayStatus: 'good' | 'caution' | 'risk' = 'good';
   let sprayStatusLabel = '';
   let sprayReason = '';
 
-  if (heavyRain) {
+  if (rainLikely) {
     sprayStatus = 'risk';
-    sprayStatusLabel = `Avoid before midday`;
-    sprayReason = `Rain likely to wash product off`;
-  } else if (highGust) {
+    sprayStatusLabel = todayRainChance > 70 ? 'Avoid spraying — rain likely' : 'High washoff risk today';
+    sprayReason = `${todayRainChance}% rain chance, ${todayExpectedRain.toFixed(1)}mm forecast`;
+  } else if (dangerousGust) {
+    sprayStatus = 'risk';
+    sprayStatusLabel = 'Do not spray — dangerous gusts';
+    sprayReason = `${windDirection} gusts ${Math.round(windGustKmh!)} km/h — unacceptable drift risk`;
+  } else if (moderateGust) {
     sprayStatus = 'caution';
-    sprayStatusLabel = sprayWindowStart ? `Best window ${sprayWindowStart}–${sprayWindowEnd}` : 'Delay — gusts too strong';
-    sprayReason = `${windDirection} gusts ${Math.round(windGustKmh!)} km/h — drift risk`;
+    sprayStatusLabel = sprayWindowStart ? `Best window ${sprayWindowStart}–${sprayWindowEnd}` : 'Delay — gusts elevated';
+    sprayReason = `${windDirection} gusts ${Math.round(windGustKmh!)} km/h — use low-drift nozzles`;
   } else if (excellentDeltaT) {
     sprayStatus = 'good';
     sprayStatusLabel = sprayWindowStart ? `Go ${sprayWindowStart}–${sprayWindowEnd}` : 'Conditions clear — proceed';
@@ -115,10 +130,12 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     livestockStatus = 'caution';
     livestockStatusLabel = 'Shelter advised tonight';
     livestockReason = 'Heavy rain and wet paddocks expected';
-  } else if (tempC > 32) {
+  } else if (apparentTemp > 32 || (tempC > 28 && humidity > 70)) {
     livestockStatus = 'caution';
     livestockStatusLabel = 'Shade and water essential';
-    livestockReason = `Hot day ${Math.round(tempC)}°C — heat stress risk for cattle`;
+    livestockReason = apparentTemp > 32
+      ? `Apparent temp ${Math.round(apparentTemp)}°C — heat stress risk for cattle`
+      : `${Math.round(tempC)}°C at ${humidity}% humidity — heat stress conditions`;
   } else {
     livestockStatus = 'good';
     livestockStatusLabel = 'Good grazing conditions';
@@ -137,15 +154,15 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   let croppingStatusLabel = '';
   let croppingReason = '';
 
-  if (heavyRain && highGust) {
+  if (heavyRain && dangerousGust) {
     croppingStatus = 'risk';
     croppingStatusLabel = 'Avoid all fieldwork today';
-    croppingReason = 'Heavy rain and strong gusts — check drainage';
+    croppingReason = 'Heavy rain and dangerous gusts — check drainage channels';
   } else if (heavyRain) {
     croppingStatus = 'caution';
     croppingStatusLabel = 'Delay cultivation and harvest';
     croppingReason = `${todayExpectedRain.toFixed(0)}mm expected — good for winter cereals`;
-  } else if (highGust) {
+  } else if (dangerousGust || moderateGust) {
     croppingStatus = 'caution';
     croppingStatusLabel = 'Delay seedbed preparation';
     croppingReason = `Gusts ${Math.round(windGustKmh!)} km/h — peak risk this afternoon`;
@@ -163,11 +180,16 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     reason: croppingReason,
   });
 
-  const generalStatus: 'good' | 'caution' | 'risk' = uvIndex >= 8 ? 'caution' : 'good';
-  const generalStatusLabel = uvIndex >= 8 ? 'Sun protection essential' : uvIndex >= 3 ? 'Some protection advised' : 'Low UV — no concerns';
-  const generalReason = uvIndex >= 6
+  const generalStatus: 'good' | 'caution' | 'risk' = uvIndex >= 11 ? 'risk' : uvIndex >= 6 ? 'caution' : 'good';
+  const generalStatusLabel = uvIndex >= 11 ? 'Extreme UV — limit outdoor exposure'
+    : uvIndex >= 8 ? 'Sun protection essential'
+    : uvIndex >= 3 ? 'Some protection advised'
+    : 'Low UV — no concerns';
+  const generalReason = uvIndex >= 11
+    ? `UV ${Math.round(uvIndex)} (Extreme) — cover up, limit midday work`
+    : uvIndex >= 6
     ? `UV ${Math.round(uvIndex)} (${uvIndex >= 8 ? 'Very High' : 'High'}) for outdoor workers`
-    : windSpeedKmh > 20 ? `UV ${Math.round(uvIndex)} low — watch for wind shifts` : `UV ${Math.round(uvIndex)} — clear day, routine conditions`;
+    : windSpeedKmh > 20 ? `UV ${Math.round(uvIndex)} — watch for wind shifts` : `UV ${Math.round(uvIndex)} — routine conditions`;
 
   recs.push({
     icon: <Sun className="w-4 h-4 flex-shrink-0 mt-0.5" />,

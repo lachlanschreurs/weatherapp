@@ -61,15 +61,15 @@ Deno.serve(async (req: Request) => {
           const baseHumidity = lastRealDay.humidity;
           const baseWind = lastRealDay.wind_speed;
 
-          const seasonalVariation = Math.sin((i - realDailyData.length) / 30 * Math.PI) * 3;
-          const randomVariation = (Math.random() - 0.5) * 4;
+          const daysOut = i - realDailyData.length + 1;
+          const seasonalVariation = Math.sin(daysOut / 30 * Math.PI) * 2;
 
-          const estimatedTemp = baseTemp + seasonalVariation + randomVariation;
-          const tempVariation = 5 + Math.random() * 3;
+          const estimatedTemp = baseTemp + seasonalVariation;
+          const tempVariation = 5;
 
-          const estimatedHumidity = Math.max(30, Math.min(90, baseHumidity + (Math.random() - 0.5) * 15));
-          const estimatedWind = Math.max(0, baseWind + (Math.random() - 0.5) * 3);
-          const estimatedPop = Math.random() * 0.6;
+          const estimatedHumidity = Math.max(30, Math.min(90, baseHumidity));
+          const estimatedWind = Math.max(0, baseWind);
+          const estimatedPop = lastRealDay.pop ?? 0.3;
 
           const baseDt = lastRealDay.dt;
           const daysFromLast = i - realDailyData.length + 1;
@@ -243,15 +243,14 @@ Deno.serve(async (req: Request) => {
           const baseHumidity = lastRealDay.main.humidity;
           const baseWind = lastRealDay.wind.speed;
 
-          const seasonalVariation = Math.sin((i - 5) / 30 * Math.PI) * 3;
-          const randomVariation = (Math.random() - 0.5) * 4;
+          const seasonalVariation = Math.sin((i - 4) / 30 * Math.PI) * 2;
 
-          const estimatedTemp = baseTemp + seasonalVariation + randomVariation;
-          const tempVariation = 5 + Math.random() * 3;
+          const estimatedTemp = baseTemp + seasonalVariation;
+          const tempVariation = 5;
 
-          const estimatedHumidity = Math.max(30, Math.min(90, baseHumidity + (Math.random() - 0.5) * 15));
-          const estimatedWind = Math.max(0, baseWind + (Math.random() - 0.5) * 3);
-          const estimatedPop = Math.random() * 0.6;
+          const estimatedHumidity = Math.max(30, Math.min(90, baseHumidity));
+          const estimatedWind = Math.max(0, baseWind);
+          const estimatedPop = lastRealDay.pop ?? 0.3;
 
           const now = new Date();
           const futureDate = new Date(now.getTime() + (i + 1) * 24 * 60 * 60 * 1000);
@@ -274,7 +273,7 @@ Deno.serve(async (req: Request) => {
       }).filter(Boolean),
       alerts: [],
       timezone: currentData.timezone,
-      timezone_offset: currentData.timezone,
+      timezone_offset: currentData.timezone_offset ?? 0,
     };
 
     return new Response(JSON.stringify(weatherData), {

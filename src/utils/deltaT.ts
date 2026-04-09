@@ -21,7 +21,7 @@ export function getDeltaTCondition(deltaT: number): {
       rating: 'Poor',
       color: 'text-red-700',
       bgColor: 'bg-red-100',
-      reason: 'High inversion risk',
+      reason: 'Temperature inversion — spray drift danger',
     };
   }
 
@@ -43,12 +43,12 @@ export function getDeltaTCondition(deltaT: number): {
     };
   }
 
-  if (deltaT > 10 && deltaT <= 14) {
+  if (deltaT > 10 && deltaT <= 12) {
     return {
       rating: 'Marginal',
       color: 'text-yellow-700',
       bgColor: 'bg-yellow-100',
-      reason: 'Caution - evaporation',
+      reason: 'High evaporation — product loss risk',
     };
   }
 
@@ -56,7 +56,7 @@ export function getDeltaTCondition(deltaT: number): {
     rating: 'Poor',
     color: 'text-red-700',
     bgColor: 'bg-red-100',
-    reason: 'Too dry - high evaporation',
+    reason: 'Too dry — avoid spraying',
   };
 }
 

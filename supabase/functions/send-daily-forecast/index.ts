@@ -742,16 +742,18 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
   for (const hour of next24Hours) {
     const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
     const hourWindSpeed = hour.wind_speed * 3.6;
-    if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
+    const hourRainLikely = (hour.pop || 0) > 0.5;
+    if (!hourRainLikely &&
+        hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
         hourDeltaT >= 2 && hourDeltaT <= 8 &&
-        hour.temp >= 8 && hour.temp <= 30) {
+        hour.temp >= 10 && hour.temp <= 28) {
       const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
       bestSprayWindow = 'Ideal';
       bestWindowTime = time;
       break;
     }
 
-    if ((hour.pop || 0) > 0.3) {
+    if ((hour.pop || 0) > 0.5) {
       const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
       const prob = Math.round((hour.pop || 0) * 100);
       rainPeriods.push(`${time} (${prob}%)`);
@@ -1247,16 +1249,18 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
   for (const hour of next24Hours) {
     const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
     const hourWindSpeed = hour.wind_speed * 3.6;
-    if (hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
+    const hourRainLikely = (hour.pop || 0) > 0.5;
+    if (!hourRainLikely &&
+        hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
         hourDeltaT >= 2 && hourDeltaT <= 8 &&
-        hour.temp >= 8 && hour.temp <= 30) {
+        hour.temp >= 10 && hour.temp <= 28) {
       const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
       bestSprayWindow = 'Ideal';
       bestWindowTime = time;
       break;
     }
 
-    if ((hour.pop || 0) > 0.3) {
+    if ((hour.pop || 0) > 0.5) {
       const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
       const prob = Math.round((hour.pop || 0) * 100);
       rainPeriods.push(`${time} (${prob}%)`);

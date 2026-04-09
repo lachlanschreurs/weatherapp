@@ -61,13 +61,13 @@ export function generateWeatherAlerts(
     }
     return sum;
   }, 0);
-  const rainForecast = next24Hours.find(item => (item.pop || 0) > 0.3);
+  const rainForecast = next24Hours.find(item => (item.pop || 0) > 0.5);
 
   const next30Min = forecast.find(item => {
     const time = new Date(item.dt * 1000);
     const now = new Date();
     const minutesDiff = (time.getTime() - now.getTime()) / (1000 * 60);
-    return minutesDiff <= 30 && minutesDiff >= 0 && (item.pop || 0) > 0.3;
+    return minutesDiff <= 30 && minutesDiff >= 0 && (item.pop || 0) > 0.5;
   });
 
   if (next30Min) {
@@ -86,7 +86,7 @@ export function generateWeatherAlerts(
       minute: '2-digit'
     });
 
-    if (totalRain24h > 25) {
+    if (totalRain24h > 40) {
       alerts.push({
         id: 'heavy-rain',
         severity: 'warning',
@@ -110,7 +110,7 @@ export function generateWeatherAlerts(
         message: `Light rain possible within 24 hours: ${totalRain24h.toFixed(1)}mm forecast. Starting around ${rainTime}.`,
         icon: 'cloud-rain'
       });
-    } else if (totalRain24h === 0 && rainForecast.pop > 0.5) {
+    } else if (totalRain24h === 0 && rainForecast.pop > 0.6) {
       alerts.push({
         id: 'rain-chance',
         severity: 'info',
@@ -122,20 +122,20 @@ export function generateWeatherAlerts(
   }
 
   const windSpeedKmh = currentWindSpeed * 3.6;
-  if (windSpeedKmh > 15) {
+  if (windSpeedKmh > 25) {
     alerts.push({
       id: 'strong-wind',
       severity: 'warning',
       title: 'Strong Wind Alert',
-      message: `Strong winds detected: ${Math.round(windSpeedKmh)} km/h. Spraying and field work not recommended.`,
+      message: `Strong winds: ${Math.round(windSpeedKmh)} km/h. Avoid all spraying — high drift risk. Delay field operations.`,
       icon: 'wind'
     });
-  } else if (windSpeedKmh >= 10) {
+  } else if (windSpeedKmh >= 15) {
     alerts.push({
       id: 'wind',
       severity: 'caution',
-      title: 'Wind Alert',
-      message: `Moderate winds: ${Math.round(windSpeedKmh)} km/h. Exercise caution with spraying operations.`,
+      title: 'Moderate Wind',
+      message: `Winds ${Math.round(windSpeedKmh)} km/h. Use low-drift nozzles and monitor Delta T before spraying.`,
       icon: 'wind'
     });
   }
@@ -200,7 +200,15 @@ export function generateWeatherAlerts(
   }
 
   const minTemp24h = next24Hours.length > 0 ? Math.min(...next24Hours.map(item => item.temp)) : currentTemp;
-  if (minTemp24h < 2) {
+  if (minTemp24h <= 0) {
+    alerts.push({
+      id: 'frost',
+      severity: 'warning',
+      title: 'Hard Frost Alert',
+      message: `Hard frost risk: Minimum ${Math.round(minTemp24h)}°C forecast. Protect all crops — ice formation likely. Move stock to shelter.`,
+      icon: 'thermometer'
+    });
+  } else if (minTemp24h < 2) {
     alerts.push({
       id: 'frost',
       severity: 'warning',
@@ -208,19 +216,26 @@ export function generateWeatherAlerts(
       message: `Frost risk: Temperature forecast to drop to ${Math.round(minTemp24h)}°C. Protect sensitive crops and livestock.`,
       icon: 'thermometer'
     });
-  } else if (minTemp24h < 5) {
+  } else if (minTemp24h < 4) {
+    alerts.push({
+      id: 'cold-morning',
+      severity: 'caution',
+      title: 'Near-Frost Warning',
+      message: `Near-frost conditions: Minimum ${Math.round(minTemp24h)}°C expected. Tender crops, seedlings, and young stock at risk.`,
+      icon: 'thermometer'
+    });
+  } else if (minTemp24h < 6) {
     const morningForecasts = next24Hours.filter(item => {
       const hour = new Date(item.dt * 1000).getHours();
       return hour >= 4 && hour <= 8;
     });
-
-    const coldMorning = morningForecasts.some(item => item.temp < 5);
+    const coldMorning = morningForecasts.some(item => item.temp < 6);
     if (coldMorning) {
       alerts.push({
         id: 'cold-morning',
         severity: 'caution',
-        title: 'Cold Morning Warning',
-        message: `Cold morning expected: Temperature near ${Math.round(minTemp24h)}°C before sunrise.`,
+        title: 'Cold Morning',
+        message: `Cool morning expected: Temperature near ${Math.round(minTemp24h)}°C before sunrise. Monitor frost-sensitive crops.`,
         icon: 'thermometer'
       });
     }
@@ -249,50 +264,56 @@ export function generateWeatherAlerts(
     ? next24Hours.reduce((sum, item) => sum + item.humidity, 0) / next24Hours.length
     : currentHumidity;
 
-  const dampDays = [];
-  let consecutiveDampDays = 0;
-  for (let i = 0; i < Math.min(10, next10Days.length / 8); i++) {
+  let consecutiveDampDiseaseDays = 0;
+  let maxConsecutiveDampDiseaseDays = 0;
+  for (let i = 0; i < Math.min(10, Math.floor(next10Days.length / 8)); i++) {
     const dayStart = i * 8;
     const dayEnd = Math.min((i + 1) * 8, next10Days.length);
     const dayForecasts = next10Days.slice(dayStart, dayEnd);
+    if (dayForecasts.length === 0) break;
 
     const avgDayHumidity = dayForecasts.reduce((sum, item) => sum + item.humidity, 0) / dayForecasts.length;
-    const hasRain = dayForecasts.some(item => (item.pop || 0) > 0.3);
+    const hasRain = dayForecasts.some(item => (item.pop || 0) > 0.5);
     const avgDayTemp = dayForecasts.reduce((sum, item) => sum + item.temp, 0) / dayForecasts.length;
+    const inDiseaseRange = avgDayTemp >= 14 && avgDayTemp <= 26;
 
-    if (avgDayHumidity > 75 || hasRain) {
-      dampDays.push({ day: i, humidity: avgDayHumidity, temp: avgDayTemp });
-      consecutiveDampDays++;
+    if ((avgDayHumidity > 75 || hasRain) && inDiseaseRange) {
+      consecutiveDampDiseaseDays++;
+      maxConsecutiveDampDiseaseDays = Math.max(maxConsecutiveDampDiseaseDays, consecutiveDampDiseaseDays);
     } else {
-      consecutiveDampDays = 0;
+      consecutiveDampDiseaseDays = 0;
     }
   }
 
-  const highHumidityPeriods = next24Hours.filter(item => item.humidity > 85);
-  const tempInDiseaseRange = next24Hours.filter(item => item.temp >= 15 && item.temp <= 25);
-
-  if (consecutiveDampDays >= 3 && tempInDiseaseRange.length > 4 && highHumidityPeriods.length > 4) {
+  if (maxConsecutiveDampDiseaseDays >= 3) {
     alerts.push({
       id: 'disease-pressure',
       severity: 'warning',
       title: 'High Disease Pressure Alert',
-      message: `Disease risk elevated: ${consecutiveDampDays} consecutive damp days, prolonged leaf wetness, high humidity (${Math.round(avgHumidity)}%), and ideal temperatures (15-25°C). Monitor crops closely for disease symptoms.`,
+      message: `Disease risk elevated: ${maxConsecutiveDampDiseaseDays} consecutive days of damp conditions and temperatures in the 14–26°C disease-susceptible range. Inspect crops for fungal and bacterial disease symptoms — consider preventative treatment.`,
       icon: 'alert-triangle'
     });
   }
 
-  const minTempNext10Days = next10Days.length > 0 ? Math.min(...next10Days.map(item => item.temp)) : currentTemp;
-  if (minTempNext10Days >= 15) {
+  const dailyMinsNext10Days: number[] = [];
+  for (let i = 0; i < Math.min(10, Math.floor(next10Days.length / 8)); i++) {
+    const daySlice = next10Days.slice(i * 8, (i + 1) * 8);
+    if (daySlice.length > 0) {
+      dailyMinsNext10Days.push(Math.min(...daySlice.map(item => item.temp)));
+    }
+  }
+  const allDaysWarm = dailyMinsNext10Days.length >= 7 && dailyMinsNext10Days.every(t => t >= 15);
+  if (allDaysWarm) {
     alerts.push({
       id: 'sheep-graziers',
       severity: 'caution',
       title: 'Sheep Graziers Alert',
-      message: '10+ days forecast without temperatures dropping below 15°C. Ideal conditions for internal parasite development. Consider strategic drenching programs.',
+      message: `${dailyMinsNext10Days.length}+ days forecast without overnight temperatures dropping below 15°C. Ideal conditions for internal parasite development. Consider strategic drenching programs.`,
       icon: 'alert-circle'
     });
   }
 
-  if (windSpeedKmh >= 10 && (currentRain > 0 || rainForecast)) {
+  if (windSpeedKmh >= 15 && (currentRain > 0 || rainForecast)) {
     alerts.push({
       id: 'wind-rain-combo',
       severity: 'warning',
@@ -304,8 +325,8 @@ export function generateWeatherAlerts(
 
   const goodSprayWindows = next24Hours.filter(item => {
     const windKmh = item.wind_speed * 3.6;
-    const hasRain = (item.pop || 0) > 0.3;
-    return windKmh < 15 && !hasRain && item.temp >= 8 && item.temp <= 28;
+    const hasRain = (item.pop || 0) > 0.5;
+    return windKmh >= 3 && windKmh <= 15 && !hasRain && item.temp >= 10 && item.temp <= 28;
   });
 
   if (goodSprayWindows.length >= 3) {
