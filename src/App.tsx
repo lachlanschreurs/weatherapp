@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Gauge, Sun, CloudDrizzle, Zap, Clock, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
-import { analyzePlantingDays, analyzeIrrigationNeeds, PlantingDay, IrrigationDay } from './utils/farmingRecommendations';
+import { analyzePlantingDays, analyzeIrrigationNeeds } from './utils/farmingRecommendations';
 import { getSprayAdvice } from './utils/sprayAdvice';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
@@ -15,15 +15,13 @@ import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
 import { PremiumTeaser } from './components/PremiumTeaser';
-import { WeatherEffects } from './components/WeatherEffects';
-import { AlertBanner } from './components/AlertBanner';
 import FarmerJoe from './components/FarmerJoe';
 import { PromoBanner } from './components/PromoBanner';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import { getFavoriteLocation } from './utils/savedLocations';
 import { getUserLocation } from './utils/geolocation';
-import { isNightTime, getWeatherBackground, getTextColor } from './utils/weatherEffects';
+import { isNightTime } from './utils/weatherEffects';
 import type { User } from '@supabase/supabase-js';
 
 interface WeatherData {
@@ -106,6 +104,12 @@ function App() {
   const [appError, setAppError] = useState<string | null>(null);
   const [hasLoadedInitialLocation, setHasLoadedInitialLocation] = useState(false);
   const [isUsingCurrentLocation, setIsUsingCurrentLocation] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -136,7 +140,6 @@ function App() {
 
   useEffect(() => {
     const initAuth = async () => {
-      console.log('[App] === Initializing Auth ===');
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) {
@@ -144,38 +147,25 @@ function App() {
       }
 
       if (session?.user) {
-        console.log('[App] ✓ Session found');
-        console.log('[App] User ID:', session.user.id);
-        console.log('[App] Email:', session.user.email);
-
         setUser(session.user);
         await checkAdminStatus(session.user.id);
 
         if (!hasLoadedInitialLocation) {
           await loadUserLocation(session.user.id);
         }
-
-        console.log('[App] ✓ App ready for authenticated user');
       } else {
-        console.log('[App] No session found - guest mode');
         setUser(null);
 
         if (!hasLoadedInitialLocation) {
           await loadGuestLocation();
         }
-
-        console.log('[App] ✓ App ready for guest user');
       }
-
-      console.log('[App] === Auth Initialization Complete ===');
     };
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
-        console.log('[App] Auth state change:', event);
-
         if (event === 'PASSWORD_RECOVERY') {
           const newPassword = prompt('Enter your new password:');
           if (newPassword && newPassword.length >= 6) {
@@ -193,10 +183,7 @@ function App() {
         }
 
         if (session?.user) {
-          console.log('[App] User signed in:', session.user.id);
-
           if (event === 'SIGNED_IN') {
-            console.log('[App] Loading user location...');
             await loadUserLocation(session.user.id);
           }
 
@@ -206,11 +193,7 @@ function App() {
           if (event === 'SIGNED_IN' && weather) {
             processWeatherNotifications(weather);
           }
-
-          console.log('[App] ✓ User session established');
         } else {
-          console.log('[App] User signed out');
-
           if (event === 'SIGNED_OUT') {
             loadGuestLocation();
           }
@@ -222,12 +205,9 @@ function App() {
       })();
     });
 
-    // Handle redirect cleanup
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
     if (subscriptionStatus) {
-      console.log('Redirect detected:', subscriptionStatus);
-      // Clean up URL without reloading
       window.history.replaceState({}, '', window.location.pathname);
     }
 
@@ -258,7 +238,6 @@ function App() {
   };
 
   const checkAdminStatus = async (userId: string) => {
-    console.log('[App] Checking admin status for user:', userId);
     const { data, error } = await supabase
       .from('profiles')
       .select('role')
@@ -266,16 +245,13 @@ function App() {
       .maybeSingle();
 
     if (error) {
-      console.error('[App] Error checking admin status:', error);
       setIsAdmin(false);
       return;
     }
 
     if (data) {
-      console.log('[App] Profile found, role:', data.role);
       setIsAdmin(data.role === 'admin');
     } else {
-      console.warn('[App] No profile found for user');
       setIsAdmin(false);
     }
   };
@@ -350,7 +326,6 @@ function App() {
       }
 
       const weatherUrl = `${supabaseUrl}/functions/v1/weather?lat=${location.lat}&lon=${location.lon}`;
-      console.log('Fetching weather from:', weatherUrl);
 
       const response = await fetch(weatherUrl, {
         method: 'GET',
@@ -362,7 +337,6 @@ function App() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Weather API error:', response.status, errorText);
         let errorData;
         try {
           errorData = JSON.parse(errorText);
@@ -373,8 +347,6 @@ function App() {
       }
 
       const weatherData = await response.json();
-      console.log('Weather data received:', weatherData);
-
       setWeather(weatherData);
       setLastUpdated(new Date());
 
@@ -384,7 +356,6 @@ function App() {
         });
       }
     } catch (err) {
-      console.error('Weather fetch error:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
       setAppError(errorMessage);
@@ -393,38 +364,37 @@ function App() {
     }
   }
 
-  function getWeatherIcon(weatherCode: string, size: string = 'w-16 h-16') {
+  function getWeatherIcon(weatherCode: string, size: string = 'w-16 h-16', className: string = '') {
     const code = weatherCode?.toLowerCase() || '';
 
     if (code.includes('thunder') || code.includes('storm')) {
-      return <Zap className={`${size} text-yellow-500`} />;
+      return <Zap className={`${size} ${className || 'text-yellow-400'}`} />;
     }
     if (code.includes('rain') || code.includes('shower')) {
-      return <CloudRain className={`${size} text-blue-500`} />;
+      return <CloudRain className={`${size} ${className || 'text-blue-400'}`} />;
     }
     if (code.includes('drizzle')) {
-      return <CloudDrizzle className={`${size} text-blue-400`} />;
+      return <CloudDrizzle className={`${size} ${className || 'text-blue-300'}`} />;
     }
     if (code.includes('cloud') || code.includes('overcast')) {
-      return <Cloud className={`${size} text-gray-500`} />;
+      return <Cloud className={`${size} ${className || 'text-slate-300'}`} />;
     }
-    return <Sun className={`${size} text-yellow-400`} />;
+    return <Sun className={`${size} ${className || 'text-amber-400'}`} />;
   }
-
 
   if (appError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#8FA88E' }}>
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Application Error</h2>
-          <p className="text-black mb-4">{appError}</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-lg p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Application Error</h2>
+          <p className="text-slate-300 mb-4">{appError}</p>
           <button
             onClick={() => {
               setAppError(null);
               setError(null);
               fetchWeather();
             }}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
           >
             Try Again
           </button>
@@ -435,11 +405,16 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto"></div>
-          <p className="mt-4 text-white text-lg font-semibold">Loading FarmCast...</p>
-          <p className="mt-2 text-white text-sm">Fetching weather data for {location.name}</p>
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-slate-700 border-t-green-500 absolute inset-0"></div>
+            <div className="flex items-center justify-center h-20 w-20">
+              <Sprout className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+          <p className="text-white text-xl font-bold tracking-wide">FarmCast</p>
+          <p className="mt-2 text-slate-400 text-sm">Loading weather data for {location.name}</p>
         </div>
       </div>
     );
@@ -447,13 +422,13 @@ function App() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#8FA88E' }}>
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
-          <p className="text-black">{error}</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
+        <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-lg p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Error</h2>
+          <p className="text-slate-300">{error}</p>
           <button
             onClick={fetchWeather}
-            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
           >
             Try Again
           </button>
@@ -468,12 +443,12 @@ function App() {
 
   if (!current || !current.weather || current.weather.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#8FA88E' }}>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="text-center">
-          <p className="text-white text-lg">No weather data available</p>
+          <p className="text-slate-300 text-lg">No weather data available</p>
           <button
             onClick={fetchWeather}
-            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="mt-4 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
           >
             Load Weather
           </button>
@@ -487,8 +462,6 @@ function App() {
   const weatherCode = current.weather[0]?.main || 'clear';
   const weatherDescription = current.weather[0]?.description || 'clear';
   const isNight = isNightTime(weather?.timezone_offset);
-  const bgGradient = getWeatherBackground(weatherCode, isNight);
-  const textColor = getTextColor(weatherCode, isNight);
 
   const windSpeedKmh = (current.wind_speed || 0) * 3.6;
   const windGustKmh = current.wind_gust ? current.wind_gust * 3.6 : null;
@@ -506,8 +479,6 @@ function App() {
   };
 
   const rainfall = current.rain?.['1h'] || 0;
-  const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
-  const sprayAdvice = getSprayAdvice(windSpeedKmh, rainfall, hourlyList);
 
   const dewpointC = tempC - ((100 - humidity) / 5);
   const deltaT = calculateDeltaT(tempC, humidity);
@@ -564,11 +535,12 @@ function App() {
       rainCount: day.pop > 0.3 ? 1 : 0,
       totalForecasts: 1,
       forecastItems: dayHourlyData.length > 0 ? dayHourlyData : hourlyList.slice(0, 8),
+      pop: day.pop,
     };
   });
 
   const todayForecast = dailyForecasts[0];
-  const todayRainChance = todayForecast ? Math.round((todayForecast.rainCount / todayForecast.totalForecasts) * 100) : 0;
+  const todayRainChance = todayForecast ? Math.round(todayForecast.pop * 100) : 0;
   const todayExpectedRain = todayForecast ? todayForecast.rain : 0;
 
   const alerts = generateWeatherAlerts(
@@ -593,104 +565,121 @@ function App() {
   const plantingDays = analyzePlantingDays(dailyData);
   const irrigationDays = analyzeIrrigationNeeds(dailyData);
 
-  const dailyForecastData = dailyForecasts.map((day: any) => {
-    const date = new Date(day.dt * 1000);
-    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    const windDeg = day.forecastItems[0]?.wind?.deg || 0;
-    const windDir = directions[Math.round(windDeg / 45) % 8];
+  const uvIndex = current.uvi || 0;
+  const getUVLevel = (uvi: number) => {
+    if (uvi <= 2) return { label: 'Low', color: 'text-green-400' };
+    if (uvi <= 5) return { label: 'Moderate', color: 'text-yellow-400' };
+    if (uvi <= 7) return { label: 'High', color: 'text-orange-400' };
+    if (uvi <= 10) return { label: 'Very High', color: 'text-red-400' };
+    return { label: 'Extreme', color: 'text-red-600' };
+  };
+  const uvLevel = getUVLevel(uvIndex);
 
-    return {
-      date: date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }),
-      dayName: date.toLocaleDateString('en-AU', { weekday: 'short' }),
-      tempHigh: day.tempMax,
-      tempLow: day.tempMin,
-      rainChance: Math.round((day.rainCount / day.totalForecasts) * 100),
-      windSpeed: day.windSpeed,
-      windDirection: windDir,
-    };
-  });
+  const gdd = Math.max(0, ((todayHighTemp + todayLowTemp) / 2) - 10);
+  const eto = ((0.0023 * (tempC + 17.8) * Math.sqrt(Math.abs(todayHighTemp - todayLowTemp)) * (uvIndex * 2.5 + 5)) / 24).toFixed(1);
+
+  const soilTempC = (tempC - 3 + (rainfall > 0 ? -1 : 0)).toFixed(1);
+  const soilMoisture = Math.min(100, Math.max(0, 40 + (todayRainChance * 0.4) - (tempC - 15) * 0.8)).toFixed(0);
+
+  const minTempNext24h = Math.min(...hourlyList.slice(0, 24).map((h: any) => h.temp));
+  const frostRisk = minTempNext24h <= 2;
+  const frostWarning = minTempNext24h <= 4;
+
+  const todayBestWindow = findBestSprayWindow(todayHours);
+
+  const getWindColor = (speed: number) => {
+    if (speed < 15) return 'text-green-400';
+    if (speed < 25) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getDeltaTCardColors = (rating: string) => {
+    if (rating === 'Excellent' || rating === 'Good') return { border: 'border-green-500/40', bg: 'bg-green-500/10', badge: 'bg-green-500/20 text-green-300 border-green-500/40' };
+    if (rating === 'Marginal') return { border: 'border-yellow-500/40', bg: 'bg-yellow-500/10', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' };
+    return { border: 'border-red-500/40', bg: 'bg-red-500/10', badge: 'bg-red-500/20 text-red-300 border-red-500/40' };
+  };
+  const deltaTColors = getDeltaTCardColors(deltaTCondition.rating);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#8FA88E' }}>
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="mb-8">
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-center">
-                  <span className="text-sm font-semibold text-green-800 mb-1">FarmCast</span>
-                  <div className="flex items-center justify-center w-12 h-12 bg-green-700 rounded-xl shadow-lg">
-                    <Sprout className="w-7 h-7 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-5xl font-bold text-green-900 mb-1">
+    <div className="min-h-screen farmcast-bg text-slate-100">
+      <div className="farmcast-bg-overlay" />
+
+      <div className="relative z-10 max-w-screen-2xl mx-auto px-4 xl:px-8 py-4">
+
+        {/* HEADER */}
+        <header className="mb-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-xl shadow-lg shadow-green-900/50 flex-shrink-0">
+                <Sprout className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl xl:text-4xl font-black text-white tracking-tight leading-none">
                     {location.name}
-                    {location.state && `, ${location.state}`}
+                    {location.state && <span className="text-slate-400 font-normal">, {location.state}</span>}
                   </h1>
-                  <p className="text-sm text-green-700 font-medium mb-1">
-                    Agriculture-focused weather intelligence
-                  </p>
+                </div>
+                <div className="flex items-center gap-4 mt-1">
+                  <span className="text-xs font-bold text-green-400 tracking-widest uppercase">FarmCast</span>
+                  <span className="text-slate-500 text-xs">•</span>
+                  <span className="text-slate-400 text-sm">
+                    {currentTime.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </span>
+                  <span className="text-slate-500 text-xs">•</span>
+                  <span className="text-slate-400 text-sm font-mono">
+                    {currentTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </span>
                   {lastUpdated && (
-                    <p className="text-sm text-green-900">
-                      Last updated: {lastUpdated.toLocaleTimeString('en-AU', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      })}
-                    </p>
+                    <>
+                      <span className="text-slate-500 text-xs">•</span>
+                      <span className="text-slate-500 text-xs">Updated {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                    </>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {user ? (
-                  <>
-                    <NotificationCenter userId={user.id} alerts={alerts} />
-                    <UserMenu
-                      user={user}
-                      onSignOut={handleSignOut}
-                      isAdmin={isAdmin}
-                      onAdminPanelToggle={() => setShowAdminPanel(!showAdminPanel)}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setAuthMode('login');
-                        setShowAuthModal(true);
-                      }}
-                      className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-shadow border-2 border-green-700"
-                    >
-                      <LogIn className="w-5 h-5 text-green-700" />
-                      <span className="font-semibold text-green-700">Sign In</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setAuthMode('signup');
-                        setShowAuthModal(true);
-                      }}
-                      className="flex items-center gap-2 bg-green-700 px-4 py-2 rounded-lg shadow-md hover:shadow-lg hover:bg-green-800 transition-colors"
-                    >
-                      <span className="font-semibold text-white">Sign Up</span>
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={fetchWeather}
-                  className="p-3 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors shadow-md"
-                  title="Refresh weather data"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                </button>
-              </div>
             </div>
 
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {user ? (
+                <>
+                  <NotificationCenter userId={user.id} alerts={alerts} />
+                  <UserMenu
+                    user={user}
+                    onSignOut={handleSignOut}
+                    isAdmin={isAdmin}
+                    onAdminPanelToggle={() => setShowAdminPanel(!showAdminPanel)}
+                  />
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}
+                    className="flex items-center gap-2 bg-slate-800 border border-slate-600 px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors text-sm font-semibold text-slate-200"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
+                    className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded-lg hover:bg-green-500 transition-colors text-sm font-semibold text-white shadow-lg shadow-green-900/40"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
+              <button
+                onClick={fetchWeather}
+                className="p-2.5 bg-slate-800 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 transition-colors"
+                title="Refresh weather data"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </header>
 
-
-        <div className="mb-6">
+        <div className="mb-5">
           <LocationSearch
             onLocationSelect={handleLocationSelect}
             currentLocation={location.name}
@@ -700,10 +689,7 @@ function App() {
         </div>
 
         <PromoBanner
-          onSignUp={() => {
-            setAuthMode('signup');
-            setShowAuthModal(true);
-          }}
+          onSignUp={() => { setAuthMode('signup'); setShowAuthModal(true); }}
           isLoggedIn={!!user}
         />
 
@@ -713,250 +699,345 @@ function App() {
           </div>
         )}
 
-        <div className={`relative overflow-hidden bg-gradient-to-br ${bgGradient} rounded-2xl shadow-2xl p-8 mb-6 ${textColor}`}>
-          <WeatherEffects weatherCode={weatherCode} isNight={isNight} />
-          <div className="relative z-10">
-            <div className="flex items-start justify-between gap-6 mb-6">
-              <div className="flex items-center gap-6">
-                {getWeatherIcon(weatherCode, 'w-24 h-24')}
-                <div className="flex flex-col gap-1">
-                  <span className="text-red-600 font-semibold text-lg">H: {Math.round(todayHighTemp)}°</span>
-                  <span className="text-blue-600 font-semibold text-lg">L: {Math.round(todayLowTemp)}°</span>
+        {/* FROST ALERT BANNER */}
+        {(frostRisk || frostWarning) && (
+          <div className={`mb-5 rounded-xl border px-5 py-3 flex items-center gap-3 ${frostRisk ? 'bg-blue-950/80 border-blue-400/50' : 'bg-blue-950/50 border-blue-500/30'}`}>
+            <Snowflake className={`w-5 h-5 flex-shrink-0 ${frostRisk ? 'text-blue-300 animate-pulse' : 'text-blue-400'}`} />
+            <div>
+              <span className={`font-bold ${frostRisk ? 'text-blue-200' : 'text-blue-300'}`}>
+                {frostRisk ? 'FROST RISK — ' : 'FROST WARNING — '}
+              </span>
+              <span className="text-slate-300 text-sm">
+                Minimum temperature of {Math.round(minTempNext24h)}°C expected in next 24 hours.
+                {frostRisk ? ' Protect sensitive crops immediately.' : ' Monitor crops overnight.'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* HERO CURRENT CONDITIONS */}
+        <div className="mb-5 grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+          {/* Main Temp Card */}
+          <div className="xl:col-span-2 relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-800/40 via-transparent to-green-950/30" />
+            <div className="relative z-10 p-6 xl:p-8">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    {getWeatherIcon(weatherCode, 'w-20 h-20 xl:w-28 xl:h-28')}
+                    {isNight && <div className="absolute -top-1 -right-1 w-4 h-4 bg-slate-700 rounded-full border border-slate-500" />}
+                  </div>
+                  <div>
+                    <div className="text-8xl xl:text-9xl font-black text-white leading-none tracking-tighter">
+                      {Math.round(tempC)}<span className="text-5xl xl:text-6xl text-slate-400">°C</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-4">
+                      <span className="text-slate-400 text-lg">Feels like <span className="text-white font-semibold">{Math.round(feelsLike)}°C</span></span>
+                    </div>
+                    <div className="mt-1 text-xl text-slate-300 capitalize font-medium">{weatherDescription}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-7xl font-bold mb-2">
-                    {Math.round(tempC)}°C
+
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 text-right">
+                    <span className="text-slate-400 text-sm">H</span>
+                    <span className="text-red-400 font-bold text-xl">{Math.round(todayHighTemp)}°</span>
                   </div>
-                  <div className="flex items-center gap-4 text-lg mb-2">
-                    <span className="opacity-80">Feels like {Math.round(feelsLike)}°C</span>
+                  <div className="flex items-center gap-2 text-right">
+                    <span className="text-slate-400 text-sm">L</span>
+                    <span className="text-blue-400 font-bold text-xl">{Math.round(todayLowTemp)}°</span>
                   </div>
-                  <div className="text-2xl capitalize opacity-90">
-                    {weatherDescription}
+                  <div className="mt-2 text-right">
+                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">UV Index</div>
+                    <div className={`text-lg font-bold ${uvLevel.color}`}>{Math.round(uvIndex)} <span className="text-sm font-normal">{uvLevel.label}</span></div>
+                  </div>
+                  <div className="mt-1 text-right">
+                    <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Pressure</div>
+                    <div className="text-lg font-bold text-slate-300">{current.pressure} <span className="text-sm font-normal text-slate-500">hPa</span></div>
                   </div>
                 </div>
               </div>
 
-              {(() => {
-                const todayBestWindow = findBestSprayWindow(todayHours);
-                if (todayBestWindow) {
-                  return (
-                    <div className={`${todayBestWindow.rating === 'Good' ? 'bg-green-50' : 'bg-yellow-50'} rounded-lg border-2 ${todayBestWindow.rating === 'Good' ? 'border-green-400' : 'border-yellow-400'} px-4 py-3 shadow-md min-w-[320px] max-w-[360px]`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className={`w-5 h-5 ${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'}`} />
-                        <div className={`font-bold ${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'} text-sm`}>
-                          Best Spray Window Today
-                        </div>
-                      </div>
-                      <div className={`${todayBestWindow.rating === 'Good' ? 'text-green-800' : 'text-yellow-800'} text-sm font-semibold mb-1`}>
-                        {todayBestWindow.startTime} - {todayBestWindow.endTime}
-                      </div>
-                      <div className={`${todayBestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'} text-xs`}>
-                        {todayBestWindow.duration.toFixed(1)}h window • {todayBestWindow.conditions}
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div className="bg-red-50 rounded-lg border-2 border-red-400 px-4 py-3 shadow-md min-w-[320px] max-w-[360px]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="w-5 h-5 text-red-700" />
-                      <div className="font-bold text-red-700 text-sm">
-                        No Spray Window Today
-                      </div>
-                    </div>
-                    <div className="text-red-800 text-xs">
-                      Conditions not suitable for spraying today
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Mini stat row */}
+              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-700/50">
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Soil Temp</div>
+                  <div className="text-lg font-bold text-amber-300">{soilTempC}°C</div>
+                  <div className="text-xs text-slate-500">estimated</div>
+                </div>
+                <div className="text-center border-x border-slate-700/50">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Soil Moisture</div>
+                  <div className="text-lg font-bold text-cyan-300">{soilMoisture}%</div>
+                  <div className="text-xs text-slate-500">estimated</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">GDD Today</div>
+                  <div className="text-lg font-bold text-green-300">{gdd.toFixed(1)}</div>
+                  <div className="text-xs text-slate-500">base 10°C</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/30">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Wind className="w-6 h-6" />
-                <span className="font-semibold">Wind Speed</span>
+          {/* Spray Window + Alerts Panel */}
+          <div className="flex flex-col gap-4">
+            {/* Best Spray Window */}
+            {todayBestWindow ? (
+              <div className={`rounded-2xl border p-5 flex-1 flex flex-col justify-between ${todayBestWindow.rating === 'Good' ? 'bg-green-950/70 border-green-500/40' : 'bg-yellow-950/70 border-yellow-500/40'} backdrop-blur-sm shadow-xl`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${todayBestWindow.rating === 'Good' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                  <span className={`text-xs font-bold uppercase tracking-widest ${todayBestWindow.rating === 'Good' ? 'text-green-400' : 'text-yellow-400'}`}>
+                    Best Spray Window
+                  </span>
+                </div>
+                <div>
+                  <div className={`text-3xl xl:text-4xl font-black leading-tight ${todayBestWindow.rating === 'Good' ? 'text-green-200' : 'text-yellow-200'}`}>
+                    {todayBestWindow.startTime}
+                  </div>
+                  <div className={`text-xl font-semibold ${todayBestWindow.rating === 'Good' ? 'text-green-400' : 'text-yellow-400'}`}>
+                    to {todayBestWindow.endTime}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className={`text-sm ${todayBestWindow.rating === 'Good' ? 'text-green-300' : 'text-yellow-300'}`}>
+                    {todayBestWindow.duration.toFixed(1)}h window
+                  </span>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full border ${todayBestWindow.rating === 'Good' ? 'bg-green-500/20 text-green-300 border-green-500/40' : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'}`}>
+                    {todayBestWindow.conditions}
+                  </span>
+                </div>
               </div>
-              <div className="text-3xl font-bold">
-                {Math.round(windSpeedKmh)} km/h
+            ) : (
+              <div className="rounded-2xl border border-red-500/40 bg-red-950/70 backdrop-blur-sm p-5 flex-1 flex flex-col justify-center shadow-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-red-400">No Spray Window</span>
+                </div>
+                <p className="text-red-200 text-sm">Conditions not suitable for spraying today</p>
               </div>
-              <div className="text-sm opacity-80 mt-1">
-                {windDirection}
-                {windGustKmh && ` • Gusts: ${Math.round(windGustKmh)} km/h`}
+            )}
+
+            {/* Active Alerts */}
+            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Active Alerts</span>
+              </div>
+              <div className="space-y-2">
+                {windGustKmh && windGustKmh > 50 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                    <span className="text-red-300">Wind gusts {Math.round(windGustKmh)} km/h — Spray risk</span>
+                  </div>
+                )}
+                {todayRainChance > 70 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
+                    <span className="text-blue-300">Heavy rain likely — {todayExpectedRain.toFixed(1)} mm expected</span>
+                  </div>
+                )}
+                {frostWarning && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0" />
+                    <span className="text-blue-200">Frost risk — min {Math.round(minTempNext24h)}°C overnight</span>
+                  </div>
+                )}
+                {deltaTCondition.rating === 'Excellent' && !frostWarning && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+                    <span className="text-green-300">Delta T ideal — excellent spray conditions</span>
+                  </div>
+                )}
+                {!windGustKmh || windGustKmh <= 50 && todayRainChance <= 70 && !frostWarning && deltaTCondition.rating !== 'Excellent' && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
+                    <span className="text-slate-400">No critical alerts at this time</span>
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <CloudRain className="w-6 h-6" />
-                <span className="font-semibold">Rain Today</span>
-              </div>
-              <div className="text-3xl font-bold">
-                {todayRainChance}%
-              </div>
-              <div className="text-sm opacity-80 mt-1">
-                Expected: {todayExpectedRain.toFixed(1)} mm
-              </div>
-            </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Activity className="w-6 h-6" />
-                <span className="font-semibold">Delta T</span>
-              </div>
-              <div className="text-3xl font-bold">{deltaT.toFixed(1)}°C</div>
-              <div className="text-sm opacity-80 mt-1">
-                {deltaTCondition.rating} - {deltaTCondition.reason}
-              </div>
-            </div>
-
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <Droplets className="w-6 h-6" />
-                <span className="font-semibold">Humidity</span>
-              </div>
-              <div className="text-3xl font-bold">
-                {humidity}%
-              </div>
-              <div className="text-sm opacity-80 mt-1">
-                Dew Point: {Math.round(dewpointC)}°C
-              </div>
-            </div>
-
           </div>
         </div>
 
-        <div className="mb-8">
+        {/* BIG METRIC CARDS ROW */}
+        <div className="mb-5 grid grid-cols-2 lg:grid-cols-5 gap-4">
+
+          {/* Wind */}
+          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors ${windSpeedKmh > 25 ? 'border-red-500/40' : windSpeedKmh > 15 ? 'border-yellow-500/40' : 'border-slate-700/60'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <Wind className={`w-6 h-6 ${getWindColor(windSpeedKmh)}`} />
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${windSpeedKmh > 25 ? 'bg-red-500/20 text-red-300 border-red-500/40' : windSpeedKmh > 15 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' : 'bg-green-500/20 text-green-300 border-green-500/40'}`}>
+                {windSpeedKmh > 25 ? 'HIGH' : windSpeedKmh > 15 ? 'MODERATE' : 'CALM'}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Wind Speed</div>
+            <div className={`text-4xl font-black leading-none ${getWindColor(windSpeedKmh)}`}>
+              {Math.round(windSpeedKmh)}
+            </div>
+            <div className="text-sm text-slate-400 mt-1">km/h {windDirection}</div>
+            {windGustKmh && (
+              <div className="text-xs text-slate-500 mt-1">Gusts {Math.round(windGustKmh)} km/h</div>
+            )}
+          </div>
+
+          {/* Rain */}
+          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors ${todayRainChance > 70 ? 'border-blue-500/40' : todayRainChance > 40 ? 'border-sky-500/30' : 'border-slate-700/60'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <CloudRain className={`w-6 h-6 ${todayRainChance > 70 ? 'text-blue-400' : todayRainChance > 40 ? 'text-sky-400' : 'text-slate-500'}`} />
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${todayRainChance > 70 ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : todayRainChance > 40 ? 'bg-sky-500/20 text-sky-300 border-sky-500/30' : 'bg-slate-700/40 text-slate-400 border-slate-600/40'}`}>
+                {todayRainChance > 70 ? 'LIKELY' : todayRainChance > 40 ? 'POSSIBLE' : 'LOW'}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Rain Today</div>
+            <div className={`text-4xl font-black leading-none ${todayRainChance > 70 ? 'text-blue-400' : todayRainChance > 40 ? 'text-sky-400' : 'text-slate-300'}`}>
+              {todayRainChance}%
+            </div>
+            <div className="text-sm text-slate-400 mt-1">{todayExpectedRain.toFixed(1)} mm expected</div>
+          </div>
+
+          {/* Delta T */}
+          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors ${deltaTColors.border}`}>
+            <div className="flex items-center justify-between mb-3">
+              <Activity className={`w-6 h-6 ${deltaTCondition.rating === 'Excellent' || deltaTCondition.rating === 'Good' ? 'text-green-400' : deltaTCondition.rating === 'Marginal' ? 'text-yellow-400' : 'text-red-400'}`} />
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${deltaTColors.badge}`}>
+                {deltaTCondition.rating.toUpperCase()}
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Delta T</div>
+            <div className={`text-4xl font-black leading-none ${deltaTCondition.rating === 'Excellent' || deltaTCondition.rating === 'Good' ? 'text-green-400' : deltaTCondition.rating === 'Marginal' ? 'text-yellow-400' : 'text-red-400'}`}>
+              {deltaT.toFixed(1)}°
+            </div>
+            <div className="text-sm text-slate-400 mt-1">{deltaTCondition.reason}</div>
+          </div>
+
+          {/* Humidity */}
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors">
+            <div className="flex items-center justify-between mb-3">
+              <Droplets className="w-6 h-6 text-cyan-400" />
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-slate-700/40 text-slate-400 border-slate-600/40">
+                HUMIDITY
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Relative Humidity</div>
+            <div className="text-4xl font-black leading-none text-cyan-400">
+              {humidity}%
+            </div>
+            <div className="text-sm text-slate-400 mt-1">Dew point {Math.round(dewpointC)}°C</div>
+          </div>
+
+          {/* ETo */}
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors">
+            <div className="flex items-center justify-between mb-3">
+              <Leaf className="w-6 h-6 text-emerald-400" />
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-900/30 text-emerald-300 border-emerald-500/30">
+                CROP
+              </span>
+            </div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">ETo Today</div>
+            <div className="text-4xl font-black leading-none text-emerald-400">
+              {eto}
+            </div>
+            <div className="text-sm text-slate-400 mt-1">mm evapotranspiration</div>
+            <div className="text-xs text-slate-500 mt-1">GDD {gdd.toFixed(1)} (base 10°C)</div>
+          </div>
+        </div>
+
+        {/* HOURLY FORECAST */}
+        <div className="mb-5">
           <HourlyForecast forecastList={hourlyList} currentWeather={current} />
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-green-900 mb-6">5-Day Forecast</h2>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        {/* 7-DAY FORECAST */}
+        <div className="mb-5 rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white tracking-tight">7-Day Forecast</h2>
+            <span className="text-xs text-slate-500 uppercase tracking-wider">Spray windows & conditions</span>
+          </div>
+
+          <div className="p-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
             {dailyForecasts.map((day: any, index: number) => {
               const date = new Date(day.dt * 1000);
-              const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
+              const dayName = index === 0 ? 'Today' : date.toLocaleDateString('en-AU', { weekday: 'short' });
               const dayDate = date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-              const forecastSpray = getSprayCondition(day.windSpeed, day.rain);
               const bestWindow = findBestSprayWindow(day.forecastItems);
+              const rainPct = Math.round(day.pop * 100);
 
               return (
                 <div
                   key={index}
-                  className="bg-white rounded-xl p-5 border-2 border-green-100 shadow-md hover:shadow-xl transition-all"
+                  className="rounded-xl bg-slate-800/60 border border-slate-700/40 p-4 hover:bg-slate-700/60 hover:border-slate-600/60 transition-all group"
                 >
-                  <div className="text-center">
-                    <div className="font-bold text-lg text-green-900">{dayName}</div>
-                    <div className="text-sm text-green-900 mb-3">{dayDate}</div>
-
-                    <div className="flex justify-center mb-3">
-                      {getWeatherIcon(day.weather || 'clear', 'w-12 h-12')}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="font-bold text-white">{dayName}</div>
+                      <div className="text-xs text-slate-500">{dayDate}</div>
                     </div>
-
-                    <div className="text-3xl font-bold text-gray-800 mb-1">
-                      {Math.round(day.tempMax)}°
-                    </div>
-                    <div className="text-lg text-gray-600 mb-3">
-                      {Math.round(day.tempMin)}°
-                    </div>
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Wind:</span>
-                        <span className="font-semibold">{Math.round(day.windSpeed)} km/h</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Rain:</span>
-                        <span className="font-semibold">{day.rain.toFixed(1)} mm</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Humidity:</span>
-                        <span className="font-semibold">{day.humidity}%</span>
-                      </div>
-                    </div>
-
-                    {bestWindow ? (
-                      <div className={`mt-4 py-3 px-3 rounded-lg ${bestWindow.rating === 'Good' ? 'bg-green-100' : 'bg-yellow-100'} border-2 ${bestWindow.rating === 'Good' ? 'border-green-300' : 'border-yellow-300'}`}>
-                        <div className="flex items-center justify-center gap-1 mb-2">
-                          <Clock className="w-4 h-4 text-gray-600" />
-                          <div className="text-xs font-semibold text-gray-600">Best Spray Window</div>
-                        </div>
-                        <div className={`font-bold text-sm mb-1 ${bestWindow.rating === 'Good' ? 'text-green-700' : 'text-yellow-700'}`}>
-                          {bestWindow.startTime} - {bestWindow.endTime}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {bestWindow.duration.toFixed(0)}h window
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={`mt-4 py-2 px-3 rounded-lg bg-red-100 border-2 border-red-300`}>
-                        <div className="text-xs font-semibold text-gray-600 mb-1">Spray</div>
-                        <div className="font-bold text-red-700 text-sm">
-                          Not Recommended
-                        </div>
-                      </div>
-                    )}
+                    {getWeatherIcon(day.weather || 'clear', 'w-8 h-8')}
                   </div>
+
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <span className="text-2xl font-black text-white">{Math.round(day.tempMax)}°</span>
+                    <span className="text-lg text-slate-500">{Math.round(day.tempMin)}°</span>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs mb-3">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Rain</span>
+                      <span className={`font-semibold ${rainPct > 70 ? 'text-blue-400' : rainPct > 40 ? 'text-sky-400' : 'text-slate-400'}`}>{rainPct}% / {day.rain.toFixed(1)}mm</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Wind</span>
+                      <span className={`font-semibold ${getWindColor(day.windSpeed)}`}>{Math.round(day.windSpeed)} km/h</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Humidity</span>
+                      <span className="text-slate-300 font-semibold">{day.humidity}%</span>
+                    </div>
+                  </div>
+
+                  {bestWindow ? (
+                    <div className={`rounded-lg px-2.5 py-2 text-center ${bestWindow.rating === 'Good' ? 'bg-green-900/50 border border-green-600/30' : 'bg-yellow-900/50 border border-yellow-600/30'}`}>
+                      <div className="text-xs font-bold text-slate-400 mb-0.5">Spray</div>
+                      <div className={`text-xs font-bold ${bestWindow.rating === 'Good' ? 'text-green-300' : 'text-yellow-300'}`}>
+                        {bestWindow.startTime}–{bestWindow.endTime}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg px-2.5 py-2 text-center bg-red-950/50 border border-red-800/30">
+                      <div className="text-xs font-bold text-red-400">No Spray Window</div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          <div className="pt-6 border-t-2 border-green-100">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-5 border-2 border-green-200">
-              <div className="flex items-start gap-3">
-                <Droplets className="w-5 h-5 text-green-700 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-green-900 mb-3">Spray Conditions Key</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 bg-green-600 rounded flex-shrink-0"></div>
-                      <div>
-                        <span className="font-semibold text-green-800">Good:</span>
-                        <span className="text-gray-700"> Wind &lt;15 km/h, no rain</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 bg-yellow-600 rounded flex-shrink-0"></div>
-                      <div>
-                        <span className="font-semibold text-yellow-800">Moderate:</span>
-                        <span className="text-gray-700"> Wind 15-25 km/h</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 bg-red-600 rounded flex-shrink-0"></div>
-                      <div>
-                        <span className="font-semibold text-red-800">Poor:</span>
-                        <span className="text-gray-700"> Wind &gt;25 km/h or rain</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Spray conditions legend */}
+          <div className="px-6 py-3 border-t border-slate-700/50 flex items-center gap-6 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-green-500" /><span>Good: wind &lt;15 km/h, no rain</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-yellow-500" /><span>Moderate: wind 15–25 km/h</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-red-500" /><span>Poor: wind &gt;25 km/h or rain</span></div>
           </div>
         </div>
 
+        {/* PROBE + PREMIUM */}
         {user && (
-          <div className="mt-8 mb-8">
+          <div className="mt-5 mb-5">
             <ProbeConnectionManager />
           </div>
         )}
 
         {!user && (
-          <div className="mb-8">
+          <div className="mb-5">
             <PremiumTeaser
-              onSignUpClick={() => {
-                setAuthMode('signup');
-                setShowAuthModal(true);
-              }}
+              onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
             />
           </div>
         )}
 
-        <div className="mb-8">
+        {/* RADAR */}
+        <div className="mb-5">
           <RainRadar
             lat={location.lat}
             lon={location.lon}
@@ -965,127 +1046,92 @@ function App() {
         </div>
 
         {user && (
-          <div className="mb-8">
+          <div className="mb-5">
             <ExtendedForecast location={location} />
           </div>
         )}
 
+        {/* PLANTING + IRRIGATION */}
         {user && (
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white rounded-xl shadow-xl p-6 border-2 border-green-300 relative">
-              <div className="flex items-center gap-2 mb-4">
-                <Sprout className="w-6 h-6 text-green-900" />
-                <h3 className="text-xl font-bold text-green-900">Best Planting Days</h3>
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
+                <Sprout className="w-5 h-5 text-green-400" />
+                <h3 className="text-base font-bold text-white">Best Planting Days</h3>
               </div>
-
-              {plantingDays.length > 0 ? (
-                <div className="space-y-3">
-                  {plantingDays.map((day, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-lg border-2 ${
-                        day.rating === 'Excellent'
-                          ? 'bg-green-50 border-green-400'
-                          : day.rating === 'Good'
-                          ? 'bg-emerald-50 border-emerald-300'
-                          : 'bg-lime-50 border-lime-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-1">
-                          <Calendar className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                          <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
-                          <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
-                        </div>
-                        <span className={`text-xs font-bold px-2 py-1 rounded ${
-                          day.rating === 'Excellent'
-                            ? 'bg-green-600 text-white'
-                            : day.rating === 'Good'
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-lime-600 text-white'
-                        }`}>
-                          {day.rating}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        {day.reasons.map((reason, i) => (
-                          <div key={i} className="text-sm text-gray-700 flex items-start gap-1">
-                            <span className="text-green-600 mt-0.5">•</span>
-                            <span>{reason}</span>
+              <div className="p-4">
+                {plantingDays.length > 0 ? (
+                  <div className="space-y-3">
+                    {plantingDays.map((day, idx) => (
+                      <div key={idx} className={`p-4 rounded-xl border ${day.rating === 'Excellent' ? 'bg-green-950/60 border-green-600/30' : day.rating === 'Good' ? 'bg-emerald-950/60 border-emerald-600/30' : 'bg-lime-950/60 border-lime-600/30'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-slate-500" />
+                            <span className="font-bold text-white">{day.dayName}</span>
+                            <span className="text-sm text-slate-400">{day.date}</span>
                           </div>
-                        ))}
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${day.rating === 'Excellent' ? 'bg-green-600 text-white' : day.rating === 'Good' ? 'bg-emerald-600 text-white' : 'bg-lime-600 text-white'}`}>
+                            {day.rating}
+                          </span>
+                        </div>
+                        <div className="space-y-0.5">
+                          {day.reasons.map((reason, i) => (
+                            <div key={i} className="text-sm text-slate-400 flex items-start gap-1.5">
+                              <span className="text-green-500 mt-0.5">•</span>
+                              <span>{reason}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-center py-6">No favorable planting days in forecast</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
+                <Droplets className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-base font-bold text-white">Irrigation Schedule</h3>
+              </div>
+              <div className="p-4">
+                <div className="space-y-3">
+                  {irrigationDays.map((day, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border ${day.level === 'High' ? 'bg-red-950/60 border-red-600/30' : day.level === 'Medium' ? 'bg-yellow-950/60 border-yellow-600/30' : day.level === 'Low' ? 'bg-blue-950/60 border-blue-600/30' : 'bg-slate-800/60 border-slate-600/30'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-slate-500" />
+                          <span className="font-bold text-white">{day.dayName}</span>
+                          <span className="text-sm text-slate-400">{day.date}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {day.rainAmount > 0 && <span className="text-xs text-slate-500">{day.rainAmount.toFixed(1)}mm</span>}
+                          <span className={`text-xs font-bold px-2 py-1 rounded-full ${day.level === 'High' ? 'bg-red-600 text-white' : day.level === 'Medium' ? 'bg-yellow-600 text-white' : day.level === 'Low' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-white'}`}>
+                            {day.level}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-sm text-slate-400">{day.recommendation}</p>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-gray-600 text-center py-4">No favorable planting days in forecast</p>
-              )}
-            </div>
-
-            <div className="bg-white rounded-xl shadow-xl p-6 border-2 border-blue-300 relative">
-              <div className="flex items-center gap-2 mb-4">
-                <Droplets className="w-6 h-6 text-green-900" />
-                <h3 className="text-xl font-bold text-green-900">Irrigation Schedule</h3>
-              </div>
-
-              <div className="space-y-3">
-                {irrigationDays.map((day, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-4 rounded-lg border-2 ${
-                      day.level === 'High'
-                        ? 'bg-red-50 border-red-300'
-                        : day.level === 'Medium'
-                        ? 'bg-yellow-50 border-yellow-300'
-                        : day.level === 'Low'
-                        ? 'bg-blue-50 border-blue-300'
-                        : 'bg-gray-50 border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2 flex-1">
-                        <Calendar className="w-4 h-4 text-gray-600 flex-shrink-0" />
-                        <span className="font-bold text-gray-800 whitespace-nowrap">{day.dayName}</span>
-                        <span className="text-sm text-gray-600 whitespace-nowrap">{day.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {day.rainAmount > 0 && (
-                          <span className="text-xs text-gray-600">{day.rainAmount.toFixed(1)}mm</span>
-                        )}
-                        <span className={`text-xs font-bold px-2 py-1 rounded ${
-                          day.level === 'High'
-                            ? 'bg-red-600 text-white'
-                            : day.level === 'Medium'
-                            ? 'bg-yellow-600 text-white'
-                            : day.level === 'Low'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-600 text-white'
-                        }`}>
-                          {day.level}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-700">{day.recommendation}</p>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
         )}
 
-        <footer className="mt-8 text-center text-sm text-gray-600 pb-6">
-          <div className="mb-1">Data updates every hour. Powered by OpenWeather.</div>
-          <div className="font-semibold text-green-700">FarmCast for Agricultural Planning</div>
+        <footer className="mt-8 pb-6 text-center">
+          <div className="text-xs text-slate-600">Data updates every hour • Powered by OpenWeather</div>
+          <div className="text-xs font-semibold text-slate-500 mt-1">FarmCast — Agricultural Weather Intelligence</div>
         </footer>
       </div>
 
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          setShowAuthModal(false);
-        }}
+        onSuccess={() => setShowAuthModal(false)}
         initialMode={authMode}
       />
 
