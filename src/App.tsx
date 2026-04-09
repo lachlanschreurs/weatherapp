@@ -18,7 +18,6 @@ import { PremiumTeaser } from './components/PremiumTeaser';
 import FarmerJoe from './components/FarmerJoe';
 import { PromoBanner } from './components/PromoBanner';
 import { ActionableRecommendations } from './components/ActionableRecommendations';
-import { FieldNotes } from './components/FieldNotes';
 import { Sparkline } from './components/Sparkline';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
@@ -110,8 +109,6 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [probeReading, setProbeReading] = useState<{ soil_temp_c: number | null; moisture_percent: number | null } | null>(null);
   const [hasActiveProbe, setHasActiveProbe] = useState(false);
-  const [selectedPaddock, setSelectedPaddock] = useState('Home Paddock');
-  const paddocks = ['Home Paddock', 'Paddock A', 'Paddock B', 'Paddock C'];
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -658,19 +655,6 @@ function App() {
                     {location.name}
                     {location.state && <span className="text-slate-400 font-normal">, {location.state}</span>}
                   </h1>
-                  <div className="relative flex items-center">
-                    <span className="text-slate-600 mr-2">•</span>
-                    <div className="relative">
-                      <select
-                        value={selectedPaddock}
-                        onChange={e => setSelectedPaddock(e.target.value)}
-                        className="appearance-none bg-slate-800/60 border border-slate-600/50 rounded-lg pl-3 pr-8 py-1 text-sm font-semibold text-green-300 focus:outline-none focus:border-green-500/50 transition-colors cursor-pointer hover:bg-slate-700/60"
-                      >
-                        {paddocks.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
-                    </div>
-                  </div>
                 </div>
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <span className="text-xs font-bold text-green-400 tracking-widest uppercase">FarmCast</span>
@@ -693,11 +677,6 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-              <FieldNotes
-                userId={user?.id}
-                locationName={`${location.name}${location.state ? ', ' + location.state : ''}`}
-                paddocks={[selectedPaddock, ...paddocks.filter(p => p !== selectedPaddock)]}
-              />
               <button
                 onClick={() => document.getElementById('radar-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-slate-600/50 text-slate-300 hover:bg-slate-700/80 hover:text-white transition-all duration-200 text-sm font-semibold shadow-lg"
