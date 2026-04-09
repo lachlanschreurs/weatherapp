@@ -45,6 +45,7 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     todayExpectedRain,
     tempC,
     uvIndex,
+    humidity,
     sprayWindowStart,
     sprayWindowEnd,
   } = props;
