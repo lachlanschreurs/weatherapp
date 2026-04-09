@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, ChevronDown } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -17,6 +17,9 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { PremiumTeaser } from './components/PremiumTeaser';
 import FarmerJoe from './components/FarmerJoe';
 import { PromoBanner } from './components/PromoBanner';
+import { ActionableRecommendations } from './components/ActionableRecommendations';
+import { FieldNotes } from './components/FieldNotes';
+import { Sparkline } from './components/Sparkline';
 import { checkAndCreateWeatherAlerts, createWeatherUpdateNotification, getUserNotifications } from './utils/notificationService';
 import { supabase } from './lib/supabase';
 import { getFavoriteLocation } from './utils/savedLocations';
@@ -107,6 +110,9 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [probeReading, setProbeReading] = useState<{ soil_temp_c: number | null; moisture_percent: number | null } | null>(null);
   const [hasActiveProbe, setHasActiveProbe] = useState(false);
+  const [selectedPaddock, setSelectedPaddock] = useState('Home Paddock');
+  const [showRadarModal, setShowRadarModal] = useState(false);
+  const paddocks = ['Home Paddock', 'Paddock A', 'Paddock B', 'Paddock C'];
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -642,39 +648,64 @@ function App() {
 
         {/* HEADER */}
         <header className="mb-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-xl shadow-lg shadow-green-900/50 flex-shrink-0">
+              <div className="flex items-center justify-center w-12 h-12 bg-green-600 rounded-xl shadow-lg shadow-green-900/50 flex-shrink-0 farmcast-logo-glow">
                 <Sprout className="w-7 h-7 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl xl:text-4xl font-black text-white tracking-tight leading-none">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-none">
                     {location.name}
                     {location.state && <span className="text-slate-400 font-normal">, {location.state}</span>}
                   </h1>
+                  <div className="relative flex items-center">
+                    <span className="text-slate-600 mr-2">•</span>
+                    <div className="relative">
+                      <select
+                        value={selectedPaddock}
+                        onChange={e => setSelectedPaddock(e.target.value)}
+                        className="appearance-none bg-slate-800/60 border border-slate-600/50 rounded-lg pl-3 pr-8 py-1 text-sm font-semibold text-green-300 focus:outline-none focus:border-green-500/50 transition-colors cursor-pointer hover:bg-slate-700/60"
+                      >
+                        {paddocks.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 mt-1">
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <span className="text-xs font-bold text-green-400 tracking-widest uppercase">FarmCast</span>
-                  <span className="text-slate-500 text-xs">•</span>
+                  <span className="text-slate-600 text-xs">•</span>
                   <span className="text-slate-400 text-sm">
                     {currentTime.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
                   </span>
-                  <span className="text-slate-500 text-xs">•</span>
+                  <span className="text-slate-600 text-xs">•</span>
                   <span className="text-slate-400 text-sm font-mono">
                     {currentTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}
                   </span>
                   {lastUpdated && (
                     <>
-                      <span className="text-slate-500 text-xs">•</span>
-                      <span className="text-slate-500 text-xs">Updated {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                      <span className="text-slate-600 text-xs">•</span>
+                      <span className="text-slate-600 text-xs">Updated {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+              <FieldNotes
+                userId={user?.id}
+                locationName={`${location.name}${location.state ? ', ' + location.state : ''}`}
+                paddocks={[selectedPaddock, ...paddocks.filter(p => p !== selectedPaddock)]}
+              />
+              <button
+                onClick={() => setShowRadarModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-slate-600/50 text-slate-300 hover:bg-slate-700/80 hover:text-white transition-all duration-200 text-sm font-semibold shadow-lg"
+              >
+                <Map className="w-4 h-4 text-blue-400" />
+                Radar
+              </button>
               {user ? (
                 <>
                   <NotificationCenter userId={user.id} alerts={alerts} />
@@ -753,7 +784,7 @@ function App() {
         <div className="mb-5 grid grid-cols-1 xl:grid-cols-3 gap-5">
 
           {/* Main Temp Card */}
-          <div className="xl:col-span-2 relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl">
+          <div className="xl:col-span-2 relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl farmcast-hero-glow hover:border-slate-600/80 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-800/40 via-transparent to-green-950/30" />
             <div className="relative z-10 p-6 xl:p-8">
               <div className="flex items-start justify-between gap-4 mb-6">
@@ -822,12 +853,28 @@ function App() {
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Soil Moisture</div>
                   {hasActiveProbe && probeReading?.moisture_percent != null ? (
                     <>
-                      <div className="text-lg font-bold text-cyan-300">{probeReading.moisture_percent.toFixed(1)}%</div>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="text-lg font-bold text-cyan-300">{probeReading.moisture_percent.toFixed(1)}%</div>
+                        <Sparkline
+                          values={[26, 27, 28, 29, probeReading.moisture_percent]}
+                          color="#67e8f9"
+                          width={48}
+                          height={20}
+                        />
+                      </div>
                       <div className="text-xs text-green-400 font-medium">live probe</div>
                     </>
                   ) : (
                     <>
-                      <div className="text-lg font-bold text-cyan-300/70">{soilMoisture}%</div>
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="text-lg font-bold text-cyan-300/70">{soilMoisture}%</div>
+                        <Sparkline
+                          values={[28, 30, 29, 31, Number(soilMoisture)]}
+                          color="#67e8f9"
+                          width={48}
+                          height={20}
+                        />
+                      </div>
                       {user ? (
                         <button
                           onClick={() => document.getElementById('probe-section')?.scrollIntoView({ behavior: 'smooth' })}
@@ -843,7 +890,15 @@ function App() {
                 </div>
                 <div className="text-center">
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">GDD Today</div>
-                  <div className="text-lg font-bold text-green-300">{gdd.toFixed(1)}</div>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="text-lg font-bold text-green-300">{gdd.toFixed(1)}</div>
+                    <Sparkline
+                      values={[8, 10, 9, 11, gdd]}
+                      color="#86efac"
+                      width={48}
+                      height={20}
+                    />
+                  </div>
                   <div className="text-xs text-slate-500">base 10°C</div>
                 </div>
               </div>
@@ -854,7 +909,7 @@ function App() {
           <div className="flex flex-col gap-4">
             {/* Best Spray Window */}
             {todayBestWindow ? (
-              <div className={`rounded-2xl border p-5 flex-1 flex flex-col justify-between ${todayBestWindow.rating === 'Good' ? 'bg-green-950/70 border-green-500/40' : 'bg-yellow-950/70 border-yellow-500/40'} backdrop-blur-sm shadow-xl`}>
+              <div className={`rounded-2xl border p-5 flex-1 flex flex-col justify-between backdrop-blur-sm shadow-xl transition-all duration-300 hover:scale-[1.01] ${todayBestWindow.rating === 'Good' ? 'bg-green-950/70 border-green-500/40 farmcast-spray-glow-good' : 'bg-yellow-950/70 border-yellow-500/40 farmcast-spray-glow-moderate'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${todayBestWindow.rating === 'Good' ? 'bg-green-400' : 'bg-yellow-400'}`} />
                   <span className={`text-xs font-bold uppercase tracking-widest ${todayBestWindow.rating === 'Good' ? 'text-green-400' : 'text-yellow-400'}`}>
@@ -897,7 +952,7 @@ function App() {
               <div className="space-y-2">
                 {windGustKmh && windGustKmh > 50 && (
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
+                    <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0 animate-pulse" />
                     <span className="text-red-300">Wind gusts {Math.round(windGustKmh)} km/h — Spray risk</span>
                   </div>
                 )}
@@ -915,7 +970,7 @@ function App() {
                 )}
                 {deltaTCondition.rating === 'Excellent' && !frostWarning && (
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+                    <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 farmcast-pulse-green" />
                     <span className="text-green-300">Delta T ideal — excellent spray conditions</span>
                   </div>
                 )}
@@ -927,6 +982,23 @@ function App() {
                 )}
               </div>
             </div>
+
+            {/* Frost / Inversion Risk Indicator */}
+            <div className={`rounded-2xl border p-4 shadow-xl backdrop-blur-sm ${frostRisk ? 'bg-blue-950/80 border-blue-400/50' : frostWarning ? 'bg-blue-950/60 border-blue-500/30' : 'bg-slate-900/50 border-slate-700/40'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <Thermometer className={`w-4 h-4 flex-shrink-0 ${frostRisk ? 'text-blue-300' : frostWarning ? 'text-blue-400' : 'text-slate-500'}`} />
+                <span className={`text-xs font-bold uppercase tracking-widest ${frostRisk ? 'text-blue-300' : frostWarning ? 'text-blue-400' : 'text-slate-500'}`}>
+                  Frost / Inversion Risk
+                </span>
+              </div>
+              {frostRisk ? (
+                <p className="text-blue-200 text-xs">Min {Math.round(minTempNext24h)}°C — frost risk. Protect crops.</p>
+              ) : frostWarning ? (
+                <p className="text-blue-300 text-xs">Min {Math.round(minTempNext24h)}°C — monitor overnight.</p>
+              ) : (
+                <p className="text-slate-500 text-xs">Min {Math.round(minTempNext24h)}°C — no frost risk tonight.</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -934,7 +1006,7 @@ function App() {
         <div className="mb-5 grid grid-cols-2 lg:grid-cols-5 gap-4">
 
           {/* Wind */}
-          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors ${windSpeedKmh > 25 ? 'border-red-500/40' : windSpeedKmh > 15 ? 'border-yellow-500/40' : 'border-slate-700/60'}`}>
+          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 hover:scale-[1.02] transition-all duration-200 ${windSpeedKmh > 25 ? 'border-red-500/40' : windSpeedKmh > 15 ? 'border-yellow-500/40' : 'border-slate-700/60'}`}>
             <div className="flex items-center justify-between mb-3">
               <Wind className={`w-6 h-6 ${getWindColor(windSpeedKmh)}`} />
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${windSpeedKmh > 25 ? 'bg-red-500/20 text-red-300 border-red-500/40' : windSpeedKmh > 15 ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' : 'bg-green-500/20 text-green-300 border-green-500/40'}`}>
@@ -952,7 +1024,7 @@ function App() {
           </div>
 
           {/* Rain */}
-          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors ${todayRainChance > 70 ? 'border-blue-500/40' : todayRainChance > 40 ? 'border-sky-500/30' : 'border-slate-700/60'}`}>
+          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 hover:scale-[1.02] transition-all duration-200 ${todayRainChance > 70 ? 'border-blue-500/40' : todayRainChance > 40 ? 'border-sky-500/30' : 'border-slate-700/60'}`}>
             <div className="flex items-center justify-between mb-3">
               <CloudRain className={`w-6 h-6 ${todayRainChance > 70 ? 'text-blue-400' : todayRainChance > 40 ? 'text-sky-400' : 'text-slate-500'}`} />
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${todayRainChance > 70 ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : todayRainChance > 40 ? 'bg-sky-500/20 text-sky-300 border-sky-500/30' : 'bg-slate-700/40 text-slate-400 border-slate-600/40'}`}>
@@ -967,10 +1039,10 @@ function App() {
           </div>
 
           {/* Delta T */}
-          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors ${deltaTColors.border}`}>
+          <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 hover:scale-[1.02] transition-all duration-200 ${deltaTColors.border} ${deltaTCondition.rating === 'Excellent' ? 'farmcast-deltat-glow' : ''}`}>
             <div className="flex items-center justify-between mb-3">
               <Activity className={`w-6 h-6 ${deltaTCondition.rating === 'Excellent' || deltaTCondition.rating === 'Good' ? 'text-green-400' : deltaTCondition.rating === 'Marginal' ? 'text-yellow-400' : 'text-red-400'}`} />
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${deltaTColors.badge}`}>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${deltaTColors.badge} ${deltaTCondition.rating === 'Excellent' ? 'farmcast-pulse-green' : ''}`}>
                 {deltaTCondition.rating.toUpperCase()}
               </span>
             </div>
@@ -982,7 +1054,7 @@ function App() {
           </div>
 
           {/* Humidity */}
-          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors">
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 hover:scale-[1.02] transition-all duration-200">
             <div className="flex items-center justify-between mb-3">
               <Droplets className="w-6 h-6 text-cyan-400" />
               <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-slate-700/40 text-slate-400 border-slate-600/40">
@@ -997,7 +1069,7 @@ function App() {
           </div>
 
           {/* ETo */}
-          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 transition-colors">
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 hover:scale-[1.02] transition-all duration-200">
             <div className="flex items-center justify-between mb-3">
               <Leaf className="w-6 h-6 text-emerald-400" />
               <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-900/30 text-emerald-300 border-emerald-500/30">
@@ -1011,6 +1083,25 @@ function App() {
             <div className="text-sm text-slate-400 mt-1">mm evapotranspiration</div>
             <div className="text-xs text-slate-500 mt-1">GDD {gdd.toFixed(1)} (base 10°C)</div>
           </div>
+        </div>
+
+        {/* ACTIONABLE RECOMMENDATIONS */}
+        <div className="mb-5">
+          <ActionableRecommendations
+            locationName={`${location.name}${location.state ? ', ' + location.state : ''}`}
+            windSpeedKmh={windSpeedKmh}
+            windGustKmh={windGustKmh}
+            windDirection={windDirection}
+            deltaT={deltaT}
+            deltaTRating={deltaTCondition.rating}
+            todayRainChance={todayRainChance}
+            todayExpectedRain={todayExpectedRain}
+            tempC={tempC}
+            uvIndex={uvIndex}
+            humidity={humidity}
+            sprayWindowStart={todayBestWindow?.startTime}
+            sprayWindowEnd={todayBestWindow?.endTime}
+          />
         </div>
 
         {/* HOURLY FORECAST */}
@@ -1192,9 +1283,27 @@ function App() {
           </div>
         )}
 
-        <footer className="mt-8 pb-6 text-center">
-          <div className="text-xs text-slate-600">Data updates every hour • Powered by OpenWeather</div>
-          <div className="text-xs font-semibold text-slate-500 mt-1">FarmCast — Agricultural Weather Intelligence</div>
+        <footer className="mt-8 pb-6">
+          <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-7 h-7 bg-green-700/40 rounded-lg border border-green-600/30">
+                <Sprout className="w-4 h-4 text-green-400" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-slate-300">FarmCast — Agricultural Weather Intelligence</div>
+                <div className="text-xs text-slate-600">Powered by on-farm probes + BOM + OpenWeather</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-slate-600">
+              {lastUpdated && (
+                <span>Last updated: {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+              )}
+              <span>•</span>
+              <span>Data refreshes hourly</span>
+              <span>•</span>
+              <span>© {new Date().getFullYear()} FarmCast</span>
+            </div>
+          </div>
         </footer>
       </div>
 
@@ -1204,6 +1313,29 @@ function App() {
         onSuccess={() => setShowAuthModal(false)}
         initialMode={authMode}
       />
+
+      {showRadarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowRadarModal(false)} />
+          <div className="relative w-full max-w-4xl rounded-2xl border border-slate-600/60 bg-slate-900/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
+              <div className="flex items-center gap-3">
+                <Map className="w-5 h-5 text-blue-400" />
+                <h3 className="font-bold text-white">Rain Radar — {location.name}</h3>
+              </div>
+              <button
+                onClick={() => setShowRadarModal(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-700/60 text-slate-400 hover:text-white transition-colors text-sm font-semibold px-3"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4">
+              <RainRadar lat={location.lat} lon={location.lon} locationName={location.name} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <FarmerJoe
         weatherContext={{
