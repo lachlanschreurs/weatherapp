@@ -121,53 +121,53 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
     switch (severity) {
       case 'safe':
         return {
-          containerClass: 'bg-green-50 border-green-300',
-          iconColor: 'text-green-700',
-          titleClass: 'text-green-900',
-          messageClass: 'text-green-800',
+          containerClass: 'bg-green-950/40 border-green-500/40',
+          iconColor: 'text-green-400',
+          titleClass: 'text-green-300',
+          messageClass: 'text-green-400/80',
         };
       case 'info':
         return {
-          containerClass: 'bg-blue-50 border-blue-300',
-          iconColor: 'text-blue-700',
-          titleClass: 'text-blue-900',
-          messageClass: 'text-blue-800',
+          containerClass: 'bg-blue-950/40 border-blue-500/40',
+          iconColor: 'text-blue-400',
+          titleClass: 'text-blue-300',
+          messageClass: 'text-blue-400/80',
         };
       case 'caution':
         return {
-          containerClass: 'bg-yellow-50 border-yellow-300',
-          iconColor: 'text-yellow-700',
-          titleClass: 'text-yellow-900',
-          messageClass: 'text-yellow-800',
+          containerClass: 'bg-yellow-950/40 border-yellow-500/40',
+          iconColor: 'text-yellow-400',
+          titleClass: 'text-yellow-300',
+          messageClass: 'text-yellow-400/80',
         };
       case 'warning':
         return {
-          containerClass: 'bg-red-50 border-red-300',
-          iconColor: 'text-red-700',
-          titleClass: 'text-red-900',
-          messageClass: 'text-red-800',
+          containerClass: 'bg-red-950/40 border-red-500/40',
+          iconColor: 'text-red-400',
+          titleClass: 'text-red-300',
+          messageClass: 'text-red-400/80',
         };
       default:
         return {
-          containerClass: 'bg-gray-50 border-gray-300',
-          iconColor: 'text-gray-700',
-          titleClass: 'text-gray-900',
-          messageClass: 'text-gray-800',
+          containerClass: 'bg-slate-800/60 border-slate-600/40',
+          iconColor: 'text-slate-400',
+          titleClass: 'text-slate-200',
+          messageClass: 'text-slate-400',
         };
     }
   };
 
   const getNotificationStyle = (type: string, read: boolean) => {
     const baseStyle = 'p-4 border-l-4 transition-colors';
-    const readStyle = read ? 'bg-gray-50' : 'bg-white';
+    const readStyle = read ? 'bg-slate-800/30' : 'bg-slate-800/60';
 
     switch (type) {
       case 'alert':
-        return `${baseStyle} ${readStyle} border-red-500`;
+        return `${baseStyle} ${readStyle} border-red-500/60`;
       case 'update':
-        return `${baseStyle} ${readStyle} border-blue-500`;
+        return `${baseStyle} ${readStyle} border-blue-500/60`;
       default:
-        return `${baseStyle} ${readStyle} border-gray-400`;
+        return `${baseStyle} ${readStyle} border-slate-600/60`;
     }
   };
 
@@ -181,18 +181,18 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
   const totalAlerts = alerts.length + unreadCount;
 
   const bellColor = hasWarnings
-    ? 'text-red-600'
+    ? 'text-red-400'
     : hasCautions
-    ? 'text-yellow-600'
+    ? 'text-yellow-400'
     : totalAlerts > 0
-    ? 'text-blue-600'
-    : 'text-gray-700';
+    ? 'text-blue-400'
+    : 'text-slate-400';
 
   return (
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-3 bg-white rounded-lg hover:bg-gray-50 transition-colors shadow-md"
+        className="relative p-2.5 bg-slate-800 border border-slate-600/50 rounded-xl hover:bg-slate-700/80 hover:border-slate-500/60 transition-all duration-200 shadow-lg"
         title="Notifications & Alerts"
       >
         <Bell className={`w-5 h-5 ${bellColor}`} />
@@ -204,18 +204,18 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+        <div className="absolute right-0 mt-2 w-96 bg-slate-900 rounded-xl shadow-2xl border border-slate-700/60 z-50 max-h-[600px] flex flex-col">
+          <div className="px-4 py-3 border-b border-slate-700/60 bg-slate-800/80 rounded-t-xl">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Bell className="w-5 h-5" />
+              <h3 className="font-semibold text-slate-100 flex items-center gap-2">
+                <Bell className="w-5 h-5 text-slate-400" />
                 Notifications & Alerts
               </h3>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllAsRead}
-                    className="text-xs text-green-700 hover:text-green-800 font-semibold flex items-center gap-1"
+                    className="text-xs text-green-400 hover:text-green-300 font-semibold flex items-center gap-1 transition-colors"
                     title="Mark all as read"
                   >
                     <Check className="w-3 h-3" />
@@ -225,7 +225,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                 {notifications.length > 0 && (
                   <button
                     onClick={handleClearAll}
-                    className="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1"
+                    className="text-xs text-red-400 hover:text-red-300 font-semibold flex items-center gap-1 transition-colors"
                     title="Clear all notifications"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -239,13 +239,13 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
               <div className="flex gap-2 text-xs">
                 <button
                   onClick={() => setShowAlerts(true)}
-                  className={`px-3 py-1 rounded ${showAlerts ? 'bg-white text-green-700 font-semibold shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`px-3 py-1 rounded-lg transition-colors ${showAlerts ? 'bg-slate-700 text-green-400 font-semibold' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                   Current Alerts ({alerts.length})
                 </button>
                 <button
                   onClick={() => setShowAlerts(false)}
-                  className={`px-3 py-1 rounded ${!showAlerts ? 'bg-white text-green-700 font-semibold shadow-sm' : 'text-gray-600 hover:text-gray-800'}`}
+                  className={`px-3 py-1 rounded-lg transition-colors ${!showAlerts ? 'bg-slate-700 text-green-400 font-semibold' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                   History ({notifications.length})
                 </button>
@@ -282,7 +282,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                 })}
               </div>
             ) : !showAlerts && notifications.length > 0 ? (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-slate-700/40">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
@@ -292,26 +292,26 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                       <div className="mt-0.5">{getIcon(notification.type)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className={`text-sm font-semibold ${!notification.read ? 'text-gray-900' : 'text-gray-600'}`}>
+                          <h4 className={`text-sm font-semibold ${!notification.read ? 'text-slate-100' : 'text-slate-400'}`}>
                             {notification.title}
                           </h4>
                           <button
                             onClick={() => handleDelete(notification.id!)}
-                            className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                            className="text-slate-500 hover:text-slate-300 flex-shrink-0 transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <p className={`text-sm mt-1 ${!notification.read ? 'text-gray-700' : 'text-gray-500'}`}>
+                        <p className={`text-sm mt-1 ${!notification.read ? 'text-slate-300' : 'text-slate-500'}`}>
                           {notification.message}
                         </p>
                         {notification.data?.location && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-slate-500 mt-1">
                             Location: {notification.data.location}
                           </p>
                         )}
                         <div className="flex items-center justify-between mt-2">
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-slate-600">
                             {new Date(notification.created_at!).toLocaleString('en-AU', {
                               month: 'short',
                               day: 'numeric',
@@ -322,7 +322,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                           {!notification.read && (
                             <button
                               onClick={() => handleMarkAsRead(notification.id!)}
-                              className="text-xs text-green-700 hover:text-green-800 font-semibold flex items-center gap-1"
+                              className="text-xs text-green-400 hover:text-green-300 font-semibold flex items-center gap-1 transition-colors"
                             >
                               <Check className="w-3 h-3" />
                               Mark read
@@ -335,10 +335,10 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-gray-500">
-                <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">No {showAlerts ? 'current alerts' : 'notifications'} yet</p>
-                <p className="text-xs mt-1">{showAlerts ? 'Weather alerts will appear here' : 'Past notifications will appear here'}</p>
+              <div className="p-8 text-center text-slate-500">
+                <Bell className="w-12 h-12 mx-auto mb-3 text-slate-700" />
+                <p className="text-sm text-slate-400">No {showAlerts ? 'current alerts' : 'notifications'} yet</p>
+                <p className="text-xs mt-1 text-slate-600">{showAlerts ? 'Weather alerts will appear here' : 'Past notifications will appear here'}</p>
               </div>
             )}
           </div>

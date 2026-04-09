@@ -698,14 +698,14 @@ function App() {
                 <>
                   <button
                     onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}
-                    className="flex items-center gap-2 bg-slate-800 border border-slate-600 px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors text-sm font-semibold text-slate-200"
+                    className="flex items-center gap-2 bg-slate-800/80 border border-slate-600/50 px-4 py-2 rounded-xl hover:bg-slate-700/80 hover:border-slate-500/60 transition-all duration-200 text-sm font-semibold text-slate-300 hover:text-white shadow-lg"
                   >
                     <LogIn className="w-4 h-4" />
                     Sign In
                   </button>
                   <button
                     onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
-                    className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded-lg hover:bg-green-500 transition-colors text-sm font-semibold text-white shadow-lg shadow-green-900/40"
+                    className="flex items-center gap-2 bg-green-600/90 border border-green-500/40 px-4 py-2 rounded-xl hover:bg-green-500/90 hover:border-green-400/60 transition-all duration-200 text-sm font-semibold text-white shadow-lg shadow-green-900/30"
                   >
                     Sign Up
                   </button>
