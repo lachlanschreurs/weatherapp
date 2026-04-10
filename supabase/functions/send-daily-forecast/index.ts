@@ -243,16 +243,20 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 }
 
 function buildHourlyFromForecast(forecastData: any): any[] {
-  return (forecastData.list || []).slice(0, 24).map((item: any) => ({
-    dt: item.dt,
-    temp: item.main.temp,
-    feels_like: item.main.feels_like,
-    humidity: item.main.humidity,
-    wind_speed: item.wind.speed,
-    wind_deg: item.wind.deg,
-    pop: item.pop || 0,
-    weather: item.weather,
-  }));
+  const nowTs = Math.floor(Date.now() / 1000);
+  return (forecastData.list || [])
+    .filter((item: any) => item.dt >= nowTs)
+    .slice(0, 24)
+    .map((item: any) => ({
+      dt: item.dt,
+      temp: item.main.temp,
+      feels_like: item.main.feels_like,
+      humidity: item.main.humidity,
+      wind_speed: item.wind.speed,
+      wind_deg: item.wind.deg,
+      pop: item.pop || 0,
+      weather: item.weather,
+    }));
 }
 
 function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string) {
@@ -266,23 +270,23 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
   }
 
   const todayStr = new Date().toISOString().split('T')[0];
+  const nowTs = Math.floor(Date.now() / 1000);
 
-  const forecastDays = Object.entries(dayMap).slice(0, 8).map(([date, items]) => {
-    const temps = items.map((i: any) => i.main.temp);
-    const tempMaxValues = items.map((i: any) => i.main.temp_max);
-    const tempMinValues = items.map((i: any) => i.main.temp_min);
+  const forecastDays = Object.entries(dayMap)
+    .filter(([date]) => date >= todayStr)
+    .slice(0, 8)
+    .map(([date, items]) => {
+    const futureItems = date === todayStr
+      ? (items as any[]).filter((i: any) => i.dt >= nowTs)
+      : items as any[];
 
-    let maxtemp_c = Math.max(...temps, ...tempMaxValues);
-    let mintemp_c = Math.min(...temps, ...tempMinValues);
+    const relevantItems = futureItems.length > 0 ? futureItems : items as any[];
 
-    if (date === todayStr) {
-      if (currentData.main?.temp_max != null) {
-        maxtemp_c = Math.max(maxtemp_c, currentData.main.temp_max);
-      }
-      if (currentData.main?.temp_min != null) {
-        mintemp_c = Math.min(mintemp_c, currentData.main.temp_min);
-      }
-    }
+    const tempMaxValues = (relevantItems as any[]).map((i: any) => i.main.temp_max);
+    const tempMinValues = (relevantItems as any[]).map((i: any) => i.main.temp_min);
+
+    const maxtemp_c = Math.max(...tempMaxValues);
+    const mintemp_c = Math.min(...tempMinValues);
 
     const rain = items.reduce((sum: number, i: any) => sum + (i.rain?.['3h'] || 0), 0);
     const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
