@@ -176,7 +176,7 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
         const currentData = await currentResponse.json();
         const forecastData = await forecastResponse.json();
 
-        const weatherData = transformWeatherDataFromForecast(currentData, forecastData, name, country);
+        const weatherData = transformWeatherDataFromForecast(currentData, forecastData, name, country, currentData.timezone);
         const hourlyForecast = buildHourlyFromForecast(forecastData);
 
         let probeReport = '';
@@ -259,18 +259,21 @@ function buildHourlyFromForecast(forecastData: any): any[] {
     }));
 }
 
-function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string) {
+function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string, timezoneOffsetSeconds: number = 0) {
   const list = forecastData.list || [];
+
+  const localNowMs = Date.now() + timezoneOffsetSeconds * 1000;
+  const localNowDate = new Date(localNowMs);
+  const todayStr = localNowDate.toISOString().split('T')[0];
+  const nowTs = Math.floor(Date.now() / 1000);
 
   const dayMap: Record<string, any[]> = {};
   for (const item of list) {
-    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
+    const localItemMs = item.dt * 1000 + timezoneOffsetSeconds * 1000;
+    const date = new Date(localItemMs).toISOString().split('T')[0];
     if (!dayMap[date]) dayMap[date] = [];
     dayMap[date].push(item);
   }
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const nowTs = Math.floor(Date.now() / 1000);
 
   const forecastDays = Object.entries(dayMap)
     .filter(([date]) => date >= todayStr)
