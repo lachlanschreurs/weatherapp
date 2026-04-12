@@ -48,43 +48,52 @@ Deno.serve(async (req: Request) => {
 
     for (const subscriber of eligibleSubscribers) {
       try {
-        // Fetch user's active probe connections with their latest readings
-        const { data: connections, error: connError } = await supabaseAdmin
-          .from('probe_connections')
+        // Fetch user's active probe connections joined with their latest readings
+        const { data: readings, error: connError } = await supabaseAdmin
+          .from('probe_readings_latest')
           .select(`
-            id,
+            moisture_percent,
+            soil_temp_c,
+            rainfall_mm,
+            battery_level,
+            air_temp_c,
+            humidity_percent,
+            moisture_depths,
+            soil_temp_depths,
+            measured_at,
+            synced_at,
+            connection_id,
             station_id,
-            friendly_name,
-            provider,
-            device_id,
-            probe_readings_latest (
-              moisture_percent,
-              soil_temp_c,
-              rainfall_mm,
-              battery_level,
-              air_temp_c,
-              humidity_percent,
-              moisture_depths,
-              soil_temp_depths,
-              measured_at,
-              synced_at
+            probe_connections!inner (
+              station_id,
+              friendly_name,
+              provider,
+              device_id,
+              is_active
             )
           `)
           .eq('user_id', subscriber.user_id)
-          .eq('is_active', true);
+          .eq('probe_connections.is_active', true);
 
         if (connError) {
-          console.error(`Error fetching connections for ${subscriber.email}:`, connError);
+          console.error(`Error fetching readings for ${subscriber.email}:`, connError);
           continue;
         }
 
-        if (!connections || connections.length === 0) {
-          console.log(`No active probe connections for ${subscriber.email}`);
+        if (!readings || readings.length === 0) {
+          console.log(`No active probe readings for ${subscriber.email}`);
           continue;
         }
 
-        // Filter to connections that have readings
-        const connectionsWithData = connections.filter((c: any) => c.probe_readings_latest);
+        // Normalize shape to match buildReportData expectations
+        const connectionsWithData = readings.map((r: any) => ({
+          id: r.connection_id,
+          station_id: r.station_id,
+          friendly_name: (r.probe_connections as any)?.friendly_name,
+          provider: (r.probe_connections as any)?.provider,
+          device_id: (r.probe_connections as any)?.device_id,
+          probe_readings_latest: r,
+        }));
 
         if (connectionsWithData.length === 0) {
           console.log(`No probe readings found for ${subscriber.email}`);
