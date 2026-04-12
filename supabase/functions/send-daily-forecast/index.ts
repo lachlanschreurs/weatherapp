@@ -285,11 +285,13 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
 
     const relevantItems = futureItems.length > 0 ? futureItems : items as any[];
 
-    const tempMaxValues = (relevantItems as any[]).map((i: any) => i.main.temp_max);
-    const tempMinValues = (relevantItems as any[]).map((i: any) => i.main.temp_min);
+    const allDayItems = items as any[];
+    const tempMaxValues = allDayItems.map((i: any) => i.main.temp_max);
+    const tempMinValues = allDayItems.map((i: any) => i.main.temp_min);
+    const allTemps = allDayItems.map((i: any) => i.main.temp);
 
-    const maxtemp_c = Math.max(...tempMaxValues);
-    const mintemp_c = Math.min(...tempMinValues);
+    const maxtemp_c = Math.max(...tempMaxValues, ...allTemps);
+    const mintemp_c = Math.min(...tempMinValues, ...allTemps);
 
     const rain = items.reduce((sum: number, i: any) => sum + (i.rain?.['3h'] || 0), 0);
     const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
