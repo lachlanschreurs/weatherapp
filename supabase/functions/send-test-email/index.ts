@@ -91,15 +91,26 @@ function buildHourly(forecastData: any): any[] {
 
 function transformWeather(currentData: any, forecastData: any, cityName: string, country: string) {
   const list = forecastData.list || [];
+  const AEST_OFFSET_MS = 11 * 60 * 60 * 1000;
+  const localNowMs = Date.now() + AEST_OFFSET_MS;
+  const todayStr = new Date(localNowMs).toISOString().split('T')[0];
+
   const dayMap: Record<string, any[]> = {};
   for (const item of list) {
-    const date = new Date(item.dt * 1000).toISOString().split('T')[0];
+    const localMs = item.dt * 1000 + AEST_OFFSET_MS;
+    const date = new Date(localMs).toISOString().split('T')[0];
     if (!dayMap[date]) dayMap[date] = [];
     dayMap[date].push(item);
   }
 
-  const forecastDays = Object.entries(dayMap).slice(0, 8).map(([date, items]) => {
-    const temps = items.map((i: any) => i.main.temp);
+  const forecastDays = Object.entries(dayMap)
+    .filter(([date]) => date >= todayStr)
+    .slice(0, 8).map(([date, items]) => {
+    const tempMaxValues = items.map((i: any) => i.main.temp_max);
+    const tempMinValues = items.map((i: any) => i.main.temp_min);
+    const allTemps = items.map((i: any) => i.main.temp);
+    const maxtemp_c = Math.max(...tempMaxValues, ...allTemps);
+    const mintemp_c = Math.min(...tempMinValues, ...allTemps);
     const rain = items.reduce((s: number, i: any) => s + (i.rain?.['3h'] || 0), 0);
     const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
     const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
@@ -108,8 +119,8 @@ function transformWeather(currentData: any, forecastData: any, cityName: string,
       date,
       hour: items.map((i: any) => ({ humidity: i.main.humidity, wind_deg: i.wind?.deg || 0 })),
       day: {
-        maxtemp_c: Math.max(...temps),
-        mintemp_c: Math.min(...temps),
+        maxtemp_c,
+        mintemp_c,
         condition: { text: mid.weather[0].description },
         daily_chance_of_rain: Math.round(maxPop * 100),
         totalprecip_mm: rain,
@@ -268,7 +279,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
     </div>
     <div class="brand-tag">Daily Farm Intelligence</div>
     <div class="location-pill">${loc}, ${country}</div>
-    <div class="date-line" style="margin-top:8px;">${new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+    <div class="date-line" style="margin-top:8px;">${new Date(Date.now() + 11 * 60 * 60 * 1000).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
   </div>
 
   <div class="content">

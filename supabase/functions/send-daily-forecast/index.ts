@@ -1063,7 +1063,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       </div>
       <div class="brand-tag">Daily Farm Intelligence</div>
       <div class="location-pill">${location}, ${country}</div>
-      <div class="date-line" style="margin-top:8px;">${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      <div class="date-line" style="margin-top:8px;">${new Date(Date.now() + 11 * 60 * 60 * 1000).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
     </div>
 
     <div class="content">
@@ -1305,7 +1305,7 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
   return `
 FARMCAST DAILY FORECAST
 ${cityName}, ${country}
-${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+${new Date(Date.now() + 11 * 60 * 60 * 1000).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
 
 TODAY'S FORECAST:
 - Actual High: ${Math.round(highTemp)}°C
