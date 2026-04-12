@@ -638,14 +638,89 @@ Deno.serve(async (req: Request) => {
         throw fetchError;
       }
 
+      const allConnections: ProbeConnection[] = connections || [];
+
+      // Group connections by provider+station_id so each physical station is only
+      // fetched once from the API, then the result is written to all connections
+      // that share that station (different users pointing at the same probe).
+      const stationGroups: Record<string, ProbeConnection[]> = {};
+      for (const conn of allConnections) {
+        const key = `${conn.provider.toLowerCase()}::${conn.station_id}`;
+        if (!stationGroups[key]) stationGroups[key] = [];
+        stationGroups[key].push(conn);
+      }
+
       const results = [];
-      for (const connection of connections || []) {
-        const result = await syncProbeData(supabaseClient, connection);
-        results.push({
-          connection_id: connection.id,
-          station_id: connection.station_id,
-          ...result,
-        });
+
+      for (const [stationKey, group] of Object.entries(stationGroups)) {
+        // Try each connection in the group until one succeeds (in case some have bad credentials)
+        let normalizedData: NormalizedReading | null = null;
+        let primaryConnection: ProbeConnection | null = null;
+
+        for (const conn of group) {
+          try {
+            console.log(`Fetching station ${conn.station_id} via connection ${conn.id}`);
+            const rawData = await ProbeProviderAdapter.fetchData(conn);
+            normalizedData = ProbeProviderAdapter.normalizeData(
+              conn.provider,
+              rawData,
+              conn.sensor_mapping || {}
+            );
+            primaryConnection = conn;
+            console.log(`Successfully fetched data for station ${conn.station_id}`);
+            break;
+          } catch (err: any) {
+            console.warn(`Connection ${conn.id} failed for station ${conn.station_id}: ${err.message}`);
+            await supabaseClient
+              .from('probe_connections')
+              .update({ last_error: err.message })
+              .eq('id', conn.id);
+          }
+        }
+
+        if (!normalizedData || !primaryConnection) {
+          for (const conn of group) {
+            results.push({ connection_id: conn.id, station_id: conn.station_id, success: false, error: 'All credentials failed for this station' });
+          }
+          continue;
+        }
+
+        // Write the fetched data to every connection in the group
+        for (const conn of group) {
+          try {
+            const { error: upsertError } = await supabaseClient
+              .from('probe_readings_latest')
+              .upsert({
+                user_id: conn.user_id,
+                connection_id: conn.id,
+                provider: conn.provider,
+                station_id: conn.station_id,
+                device_id: conn.device_id,
+                moisture_percent: normalizedData.moisture_percent,
+                soil_temp_c: normalizedData.soil_temp_c,
+                rainfall_mm: normalizedData.rainfall_mm,
+                battery_level: normalizedData.battery_level,
+                air_temp_c: normalizedData.air_temp_c,
+                humidity_percent: normalizedData.humidity_percent,
+                moisture_depths: normalizedData.moisture_depths,
+                soil_temp_depths: normalizedData.soil_temp_depths,
+                raw_payload: normalizedData.raw_payload,
+                measured_at: normalizedData.measured_at,
+                synced_at: new Date().toISOString(),
+              }, { onConflict: 'user_id,connection_id' });
+
+            if (upsertError) throw upsertError;
+
+            await supabaseClient
+              .from('probe_connections')
+              .update({ last_sync_at: new Date().toISOString(), last_error: null })
+              .eq('id', conn.id);
+
+            results.push({ connection_id: conn.id, station_id: conn.station_id, success: true });
+          } catch (writeErr: any) {
+            results.push({ connection_id: conn.id, station_id: conn.station_id, success: false, error: writeErr.message });
+          }
+        }
       }
 
       return new Response(
