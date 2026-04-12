@@ -124,7 +124,6 @@ function App() {
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error('Unhandled promise rejection:', event.reason);
-      setAppError(`Promise Error: ${event.reason?.message || event.reason || 'Unknown error'}`);
       event.preventDefault();
     };
 
@@ -394,7 +393,6 @@ function App() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
-      setAppError(errorMessage);
     } finally {
       setLoading(false);
     }
