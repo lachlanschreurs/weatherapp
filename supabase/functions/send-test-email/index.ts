@@ -24,7 +24,7 @@ Deno.serve(async (req: Request) => {
     if (!weatherApiKey) throw new Error('Weather API key not configured');
 
     const testEmail = 'lachlan@schreurs.com.au';
-    const location = 'Tatura, AU';
+    const location = 'Middle Tarwin, AU';
 
     const geoResponse = await fetch(
       `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${weatherApiKey}`
