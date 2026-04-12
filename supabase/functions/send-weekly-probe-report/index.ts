@@ -104,14 +104,15 @@ Deno.serve(async (req: Request) => {
           continue;
         }
 
-        // Get probe data for the past week
+        // Get probe data for the past week using the probe_api_ids belonging to this user
+        const probeApiIds = probeApis.map((api: any) => api.id);
         const { data: probeData, error: dataError } = await supabaseAdmin
           .from('probe_data')
           .select('*')
-          .eq('user_id', subscriber.user_id)
-          .gte('recorded_at', startDate.toISOString())
-          .lte('recorded_at', endDate.toISOString())
-          .order('recorded_at', { ascending: false });
+          .in('probe_api_id', probeApiIds)
+          .gte('reading_time', startDate.toISOString())
+          .lte('reading_time', endDate.toISOString())
+          .order('reading_time', { ascending: false });
 
         if (dataError) {
           console.error(`Error fetching probe data for ${subscriber.email}:`, dataError);
@@ -276,8 +277,8 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
   const dailyData: any = {};
 
   probeData.forEach(reading => {
-    const probeName = reading.location_name || 'Unknown Probe';
-    const date = new Date(reading.recorded_at).toLocaleDateString('en-AU');
+    const probeName = reading.probe_id || 'Unknown Probe';
+    const date = new Date(reading.reading_time).toLocaleDateString('en-AU');
 
     // Initialize probe stats
     if (!probeStats[probeName]) {
@@ -304,26 +305,26 @@ function analyzeProbeData(probeData: any[], probeApis: any[]) {
       };
     }
 
-    if (reading.depth_cm) {
-      probe.depths.add(reading.depth_cm);
+    if (reading.depth) {
+      probe.depths.add(reading.depth);
     }
 
-    if (reading.temperature_c !== null && reading.temperature_c !== undefined) {
-      probe.temperature.min = Math.min(probe.temperature.min, reading.temperature_c);
-      probe.temperature.max = Math.max(probe.temperature.max, reading.temperature_c);
-      probe.temperature.sum += reading.temperature_c;
+    if (reading.temperature !== null && reading.temperature !== undefined) {
+      probe.temperature.min = Math.min(probe.temperature.min, reading.temperature);
+      probe.temperature.max = Math.max(probe.temperature.max, reading.temperature);
+      probe.temperature.sum += reading.temperature;
       probe.temperature.count++;
-      probe.temperature.values.push(reading.temperature_c);
-      probe.dailyReadings[date].temperature.push(reading.temperature_c);
+      probe.temperature.values.push(reading.temperature);
+      probe.dailyReadings[date].temperature.push(reading.temperature);
     }
 
-    if (reading.moisture_percent !== null && reading.moisture_percent !== undefined) {
-      probe.moisture.min = Math.min(probe.moisture.min, reading.moisture_percent);
-      probe.moisture.max = Math.max(probe.moisture.max, reading.moisture_percent);
-      probe.moisture.sum += reading.moisture_percent;
+    if (reading.moisture !== null && reading.moisture !== undefined) {
+      probe.moisture.min = Math.min(probe.moisture.min, reading.moisture);
+      probe.moisture.max = Math.max(probe.moisture.max, reading.moisture);
+      probe.moisture.sum += reading.moisture;
       probe.moisture.count++;
-      probe.moisture.values.push(reading.moisture_percent);
-      probe.dailyReadings[date].moisture.push(reading.moisture_percent);
+      probe.moisture.values.push(reading.moisture);
+      probe.dailyReadings[date].moisture.push(reading.moisture);
     }
   });
 
