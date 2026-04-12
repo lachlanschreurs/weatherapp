@@ -162,11 +162,17 @@ function buildReportData(connections: any[]) {
     const depthTemp: Array<{ depth_cm: number; value: number }> =
       reading.soil_temp_depths?.depths ?? [];
 
+    const measuredAt = reading.measured_at ? new Date(reading.measured_at) : null;
+    const hoursOld = measuredAt ? (Date.now() - measuredAt.getTime()) / 3_600_000 : null;
+    const isStale = hoursOld !== null && hoursOld > 48;
+
     return {
       name,
       station_id: conn.station_id,
       provider: conn.provider,
       measured_at: reading.measured_at,
+      isStale,
+      hoursOld: hoursOld !== null ? Math.round(hoursOld) : null,
       moisture_percent: reading.moisture_percent != null ? parseFloat(reading.moisture_percent) : null,
       soil_temp_c: reading.soil_temp_c != null ? parseFloat(reading.soil_temp_c) : null,
       rainfall_mm: reading.rainfall_mm != null ? parseFloat(reading.rainfall_mm) : null,
@@ -306,6 +312,11 @@ function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string):
       <div style="background: white; padding: 20px; margin: 15px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #059669;">
         <h3 style="margin: 0 0 5px 0; color: #111827;">${probe.name}</h3>
         <p style="color: #6b7280; font-size: 13px; margin: 0 0 15px 0;">Station ID: ${probe.station_id} &nbsp;|&nbsp; Last reading: ${measuredDate}</p>
+        ${probe.isStale ? `
+        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #92400e;">
+          Warning: Data is ${probe.hoursOld} hours old. The probe may be offline or not syncing correctly. Check your device connection.
+        </div>
+        ` : ''}
 
         ${probe.moisture_percent != null ? `
           <div style="margin-bottom: 15px;">
