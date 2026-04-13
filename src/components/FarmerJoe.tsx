@@ -15,6 +15,32 @@ interface FarmerJoeProps {
     location?: string;
     currentWeather?: any;
     forecast?: any;
+    daily?: any[];
+    rainfall?: {
+      current1h: number;
+      todayExpectedMm: number;
+      todayChancePct: number;
+    };
+    wind?: {
+      speedKmh: number;
+      gustKmh: number | null;
+      direction: string;
+    };
+    deltaT?: number;
+    deltaTRating?: string;
+    humidity?: number;
+    tempC?: number;
+    dewpointC?: number;
+    uvIndex?: number;
+    pressure?: number;
+    feelsLike?: number;
+    soilTempC?: number;
+    soilMoisturePct?: number;
+    probeIsLive?: boolean;
+    sprayWindow?: { start: string; end: string; rating: string } | null;
+    frostRisk?: boolean;
+    frostWarning?: boolean;
+    minTempNext24h?: number;
   };
   isAuthenticated?: boolean;
 }

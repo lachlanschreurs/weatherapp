@@ -1423,7 +1423,33 @@ function App() {
         weatherContext={{
           location: `${location.name}${location.state ? ', ' + location.state : ''}`,
           currentWeather: current,
-          forecast: hourlyList.slice(0, 8),
+          forecast: hourlyList.slice(0, 24),
+          daily: dailyList.slice(0, 7),
+          rainfall: {
+            current1h: current.rain?.['1h'] || 0,
+            todayExpectedMm: todayExpectedRain,
+            todayChancePct: todayRainChance,
+          },
+          wind: {
+            speedKmh: windSpeedKmh,
+            gustKmh: windGustKmh,
+            direction: windDirection,
+          },
+          deltaT,
+          deltaTRating: deltaTCondition.rating,
+          humidity,
+          tempC,
+          dewpointC: Math.round(dewpointC),
+          uvIndex,
+          pressure: current.pressure,
+          feelsLike: Math.round(feelsLike),
+          soilTempC: hasActiveProbe && probeReading?.soil_temp_c != null ? probeReading.soil_temp_c : Number(soilTempC),
+          soilMoisturePct: hasActiveProbe && probeReading?.moisture_percent != null ? probeReading.moisture_percent : Number(soilMoisture),
+          probeIsLive: hasActiveProbe && (probeReading?.soil_temp_c != null || probeReading?.moisture_percent != null),
+          sprayWindow: todayBestWindow ? { start: todayBestWindow.startTime, end: todayBestWindow.endTime, rating: todayBestWindow.rating } : null,
+          frostRisk,
+          frostWarning,
+          minTempNext24h: Math.round(minTempNext24h),
         }}
         isAuthenticated={!!user}
       />

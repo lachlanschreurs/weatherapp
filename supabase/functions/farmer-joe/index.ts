@@ -14,6 +14,32 @@ interface ChatRequest {
     location?: string;
     currentWeather?: any;
     forecast?: any;
+    daily?: any[];
+    rainfall?: {
+      current1h: number;
+      todayExpectedMm: number;
+      todayChancePct: number;
+    };
+    wind?: {
+      speedKmh: number;
+      gustKmh: number | null;
+      direction: string;
+    };
+    deltaT?: number;
+    deltaTRating?: string;
+    humidity?: number;
+    tempC?: number;
+    dewpointC?: number;
+    uvIndex?: number;
+    pressure?: number;
+    feelsLike?: number;
+    soilTempC?: number;
+    soilMoisturePct?: number;
+    probeIsLive?: boolean;
+    sprayWindow?: { start: string; end: string; rating: string } | null;
+    frostRisk?: boolean;
+    frostWarning?: boolean;
+    minTempNext24h?: number;
   };
   chatHistory?: any[];
 }
@@ -100,18 +126,110 @@ When analyzing images:
 
 You have access to real-time weather data and forecasts when available. Be conversational, helpful, and friendly. Use a warm, approachable tone while remaining knowledgeable and professional. Don't limit yourself - help with whatever the user needs!`;
 
-    // Build context from weather data if available
+    // Build context from weather data if available — formatted as readable text
     let contextInfo = '';
     if (weatherContext) {
+      contextInfo += '\n\n--- LIVE WEATHER DATA FOR THIS USER ---';
+
       if (weatherContext.location) {
-        contextInfo += `\nCurrent location: ${weatherContext.location}`;
+        contextInfo += `\nLocation: ${weatherContext.location}`;
       }
-      if (weatherContext.currentWeather) {
-        contextInfo += `\nCurrent weather: ${JSON.stringify(weatherContext.currentWeather)}`;
+
+      if (weatherContext.tempC !== undefined) {
+        contextInfo += `\nCurrent temperature: ${Math.round(weatherContext.tempC)}°C`;
       }
-      if (weatherContext.forecast) {
-        contextInfo += `\nForecast data: ${JSON.stringify(weatherContext.forecast)}`;
+      if (weatherContext.feelsLike !== undefined) {
+        contextInfo += ` (feels like ${weatherContext.feelsLike}°C)`;
       }
+      if (weatherContext.currentWeather?.weather?.[0]) {
+        contextInfo += `\nConditions: ${weatherContext.currentWeather.weather[0].description}`;
+      }
+      if (weatherContext.humidity !== undefined) {
+        contextInfo += `\nHumidity: ${weatherContext.humidity}%`;
+      }
+      if (weatherContext.dewpointC !== undefined) {
+        contextInfo += ` | Dew point: ${weatherContext.dewpointC}°C`;
+      }
+      if (weatherContext.pressure !== undefined) {
+        contextInfo += `\nPressure: ${weatherContext.pressure} hPa`;
+      }
+      if (weatherContext.uvIndex !== undefined) {
+        contextInfo += `\nUV Index: ${weatherContext.uvIndex}`;
+      }
+
+      if (weatherContext.wind) {
+        contextInfo += `\nWind: ${Math.round(weatherContext.wind.speedKmh)} km/h from the ${weatherContext.wind.direction}`;
+        if (weatherContext.wind.gustKmh) {
+          contextInfo += ` (gusts to ${Math.round(weatherContext.wind.gustKmh)} km/h)`;
+        }
+      }
+
+      if (weatherContext.rainfall) {
+        const r = weatherContext.rainfall;
+        contextInfo += `\nRainfall today: ${r.todayExpectedMm.toFixed(1)} mm expected, ${r.todayChancePct}% chance of rain`;
+        if (r.current1h > 0) {
+          contextInfo += ` | Currently raining: ${r.current1h.toFixed(1)} mm in last hour`;
+        }
+      }
+
+      if (weatherContext.deltaT !== undefined) {
+        contextInfo += `\nDelta T: ${weatherContext.deltaT.toFixed(1)}°C (${weatherContext.deltaTRating || 'unknown'} for spraying)`;
+      }
+
+      if (weatherContext.sprayWindow) {
+        contextInfo += `\nBest spray window today: ${weatherContext.sprayWindow.start} to ${weatherContext.sprayWindow.end} (${weatherContext.sprayWindow.rating})`;
+      } else {
+        contextInfo += `\nSpray window today: No suitable window found`;
+      }
+
+      if (weatherContext.frostRisk) {
+        contextInfo += `\nFROST RISK: Yes — minimum ${weatherContext.minTempNext24h}°C expected in next 24 hours`;
+      } else if (weatherContext.frostWarning) {
+        contextInfo += `\nFrost warning: Minimum ${weatherContext.minTempNext24h}°C expected — monitor overnight`;
+      } else if (weatherContext.minTempNext24h !== undefined) {
+        contextInfo += `\nOvernight minimum: ${weatherContext.minTempNext24h}°C (no frost risk)`;
+      }
+
+      if (weatherContext.soilTempC !== undefined) {
+        contextInfo += `\nSoil temperature: ${weatherContext.soilTempC.toFixed(1)}°C${weatherContext.probeIsLive ? ' (live probe reading)' : ' (estimated)'}`;
+      }
+      if (weatherContext.soilMoisturePct !== undefined) {
+        contextInfo += `\nSoil moisture: ${weatherContext.soilMoisturePct.toFixed(1)}%${weatherContext.probeIsLive ? ' (live probe reading)' : ' (estimated)'}`;
+      }
+
+      if (weatherContext.daily && weatherContext.daily.length > 0) {
+        contextInfo += '\n\n7-Day Forecast:';
+        weatherContext.daily.slice(0, 7).forEach((day: any, i: number) => {
+          const date = new Date(day.dt * 1000);
+          const dayName = i === 0 ? 'Today' : date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+          const rainMm = (day.rain || 0).toFixed(1);
+          const rainPct = Math.round((day.pop || 0) * 100);
+          const windKmh = Math.round((day.wind_speed || 0) * 3.6);
+          contextInfo += `\n  ${dayName}: High ${Math.round(day.temp?.max || 0)}°C / Low ${Math.round(day.temp?.min || 0)}°C, ${day.weather?.[0]?.description || 'unknown'}, Rain: ${rainMm}mm (${rainPct}% chance), Wind: ${windKmh} km/h, Humidity: ${day.humidity || 0}%`;
+        });
+      }
+
+      if (weatherContext.forecast && weatherContext.forecast.length > 0) {
+        contextInfo += '\n\nNext 24-hour hourly rainfall summary:';
+        let totalRain = 0;
+        const rainyHours: string[] = [];
+        weatherContext.forecast.slice(0, 24).forEach((h: any) => {
+          const rain1h = h.rain?.['1h'] || 0;
+          totalRain += rain1h;
+          if (rain1h > 0.1) {
+            const t = new Date(h.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
+            rainyHours.push(`${t}: ${rain1h.toFixed(1)}mm`);
+          }
+        });
+        contextInfo += `\n  Total forecast rain next 24h: ${totalRain.toFixed(1)} mm`;
+        if (rainyHours.length > 0) {
+          contextInfo += `\n  Rain hours: ${rainyHours.join(', ')}`;
+        } else {
+          contextInfo += `\n  No rain expected in next 24 hours`;
+        }
+      }
+
+      contextInfo += '\n--- END WEATHER DATA ---';
     }
 
     // Call OpenAI API (using gpt-4 or gpt-3.5-turbo)
