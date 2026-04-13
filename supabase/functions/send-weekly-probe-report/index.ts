@@ -185,11 +185,11 @@ async function fetchFieldClimateDailyHistory(
   const now = Math.floor(Date.now() / 1000);
   const sevenDaysAgo = now - 7 * 24 * 3600;
 
-  const path = `/v2/data/${stationId}/raw/from/${sevenDaysAgo}/to/${now}`;
+  const path = `/data/${stationId}/raw/from/${sevenDaysAgo}/to/${now}`;
   const method = 'GET';
   const date = new Date().toUTCString();
 
-  const msgToSign = `${method}\n${path}\n${date}`;
+  const msgToSign = method + path + date + apiKey;
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(apiSecret),
