@@ -48,69 +48,76 @@ Deno.serve(async (req: Request) => {
 
     for (const subscriber of eligibleSubscribers) {
       try {
-        // Fetch user's active probe connections joined with their latest readings
-        const { data: readings, error: connError } = await supabaseAdmin
-          .from('probe_readings_latest')
-          .select(`
-            moisture_percent,
-            soil_temp_c,
-            rainfall_mm,
-            battery_level,
-            air_temp_c,
-            humidity_percent,
-            moisture_depths,
-            soil_temp_depths,
-            measured_at,
-            synced_at,
-            connection_id,
-            station_id,
-            probe_connections!inner (
-              station_id,
-              friendly_name,
-              provider,
-              device_id,
-              is_active
-            )
-          `)
+        const { data: connections, error: connError } = await supabaseAdmin
+          .from('probe_connections')
+          .select('id, station_id, friendly_name, provider, api_key, api_secret, sensor_mapping, device_id')
           .eq('user_id', subscriber.user_id)
-          .eq('probe_connections.is_active', true);
+          .eq('is_active', true);
 
         if (connError) {
-          console.error(`Error fetching readings for ${subscriber.email}:`, connError);
+          console.error(`Error fetching connections for ${subscriber.email}:`, connError);
           continue;
         }
 
-        if (!readings || readings.length === 0) {
-          console.log(`No active probe readings for ${subscriber.email}`);
+        if (!connections || connections.length === 0) {
+          console.log(`No active probe connections for ${subscriber.email}`);
           continue;
         }
 
-        // Normalize shape to match buildReportData expectations
-        const connectionsWithData = readings.map((r: any) => ({
-          id: r.connection_id,
-          station_id: r.station_id,
-          friendly_name: (r.probe_connections as any)?.friendly_name,
-          provider: (r.probe_connections as any)?.provider,
-          device_id: (r.probe_connections as any)?.device_id,
-          probe_readings_latest: r,
-        }));
+        const { data: latestReadings } = await supabaseAdmin
+          .from('probe_readings_latest')
+          .select('*')
+          .eq('user_id', subscriber.user_id);
 
-        if (connectionsWithData.length === 0) {
-          console.log(`No probe readings found for ${subscriber.email}`);
-          continue;
+        const latestByConnection: Record<string, any> = {};
+        for (const r of (latestReadings ?? [])) {
+          latestByConnection[r.connection_id] = r;
         }
 
-        const reportData = buildReportData(connectionsWithData);
+        const probeHistories: ProbeHistory[] = [];
+
+        for (const conn of connections) {
+          const latest = latestByConnection[conn.id];
+          let dailyData: DailyData[] = [];
+
+          const provider = (conn.provider ?? '').toLowerCase();
+          if (provider === 'fieldclimate' && conn.api_key && conn.api_secret && conn.station_id) {
+            try {
+              dailyData = await fetchFieldClimateDailyHistory(
+                conn.api_key,
+                conn.api_secret,
+                conn.station_id,
+                conn.sensor_mapping,
+              );
+            } catch (err) {
+              console.error(`Failed to fetch history for ${conn.friendly_name}:`, err);
+            }
+          }
+
+          probeHistories.push({
+            id: conn.id,
+            name: conn.friendly_name || conn.station_id || 'Unknown Station',
+            station_id: conn.station_id,
+            provider: conn.provider,
+            latest,
+            dailyData,
+          });
+        }
+
+        if (probeHistories.length === 0) {
+          console.log(`No probe data for ${subscriber.email}`);
+          continue;
+        }
 
         let aiInterpretation = '';
         try {
-          aiInterpretation = await generateAIInterpretation(reportData);
+          aiInterpretation = await generateAIInterpretation(probeHistories);
         } catch (aiErr) {
           console.error(`AI interpretation failed for ${subscriber.email}:`, aiErr);
         }
 
-        const emailHtml = buildWeeklyProbeReportEmail(reportData, aiInterpretation);
-        const emailText = buildWeeklyProbeReportEmailText(reportData, aiInterpretation);
+        const emailHtml = buildWeeklyEmail(probeHistories, aiInterpretation);
+        const emailText = buildWeeklyEmailText(probeHistories, aiInterpretation);
 
         const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -152,62 +159,133 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function buildReportData(connections: any[]) {
-  const probeStats = connections.map((conn: any) => {
-    const reading = conn.probe_readings_latest;
-    const name = conn.friendly_name || conn.station_id || 'Unknown Station';
-
-    const depthMoisture: Array<{ depth_cm: number; value: number }> =
-      reading.moisture_depths?.depths ?? [];
-    const depthTemp: Array<{ depth_cm: number; value: number }> =
-      reading.soil_temp_depths?.depths ?? [];
-
-    const measuredAt = reading.measured_at ? new Date(reading.measured_at) : null;
-    const hoursOld = measuredAt ? (Date.now() - measuredAt.getTime()) / 3_600_000 : null;
-    const isStale = hoursOld !== null && hoursOld > 48;
-
-    return {
-      name,
-      station_id: conn.station_id,
-      provider: conn.provider,
-      measured_at: reading.measured_at,
-      isStale,
-      hoursOld: hoursOld !== null ? Math.round(hoursOld) : null,
-      moisture_percent: reading.moisture_percent != null ? parseFloat(reading.moisture_percent) : null,
-      soil_temp_c: reading.soil_temp_c != null ? parseFloat(reading.soil_temp_c) : null,
-      rainfall_mm: reading.rainfall_mm != null ? parseFloat(reading.rainfall_mm) : null,
-      battery_level: reading.battery_level != null ? parseFloat(reading.battery_level) : null,
-      air_temp_c: reading.air_temp_c != null ? parseFloat(reading.air_temp_c) : null,
-      humidity_percent: reading.humidity_percent != null ? parseFloat(reading.humidity_percent) : null,
-      depthMoisture,
-      depthTemp,
-    };
-  });
-
-  return {
-    probeCount: connections.length,
-    probeStats,
-  };
+interface DailyData {
+  date: string;
+  label: string;
+  moisture_avg: number | null;
+  soil_temp_avg: number | null;
+  rainfall_total: number | null;
 }
 
-async function generateAIInterpretation(reportData: any): Promise<string> {
+interface ProbeHistory {
+  id: string;
+  name: string;
+  station_id: string;
+  provider: string;
+  latest: any;
+  dailyData: DailyData[];
+}
+
+async function fetchFieldClimateDailyHistory(
+  apiKey: string,
+  apiSecret: string,
+  stationId: string,
+  sensorMapping: any,
+): Promise<DailyData[]> {
+  const now = Math.floor(Date.now() / 1000);
+  const sevenDaysAgo = now - 7 * 24 * 3600;
+
+  const path = `/v2/data/${stationId}/raw/from/${sevenDaysAgo}/to/${now}`;
+  const method = 'GET';
+  const date = new Date().toUTCString();
+
+  const msgToSign = `${method}\n${path}\n${date}`;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(apiSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msgToSign));
+  const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const response = await fetch(`https://api.fieldclimate.com${path}`, {
+    headers: {
+      'Authorization': `hmac ${apiKey}:${sigHex}`,
+      'Date': date,
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FieldClimate API error: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const rawData: any[] = payload.data ?? [];
+
+  const moistureKey = sensorMapping?.moisture ?? null;
+  const soilTempKey = sensorMapping?.soil_temp ?? null;
+  const rainfallKey = sensorMapping?.rainfall ?? null;
+
+  const byDay: Record<string, { moisture: number[]; soilTemp: number[]; rainfall: number[] }> = {};
+
+  for (const row of rawData) {
+    const dateStr = row.date?.substring(0, 10);
+    if (!dateStr) continue;
+    if (!byDay[dateStr]) byDay[dateStr] = { moisture: [], soilTemp: [], rainfall: [] };
+
+    if (moistureKey && row[moistureKey] != null) {
+      const v = parseFloat(row[moistureKey]);
+      if (!isNaN(v)) byDay[dateStr].moisture.push(v);
+    }
+    if (soilTempKey && row[soilTempKey] != null) {
+      const v = parseFloat(row[soilTempKey]);
+      if (!isNaN(v)) byDay[dateStr].soilTemp.push(v);
+    }
+    if (rainfallKey && row[rainfallKey] != null) {
+      const v = parseFloat(row[rainfallKey]);
+      if (!isNaN(v)) byDay[dateStr].rainfall.push(v);
+    }
+  }
+
+  const days: DailyData[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().substring(0, 10);
+    const label = d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    const bucket = byDay[dateStr];
+    days.push({
+      date: dateStr,
+      label,
+      moisture_avg: bucket && bucket.moisture.length > 0 ? avg(bucket.moisture) : null,
+      soil_temp_avg: bucket && bucket.soilTemp.length > 0 ? avg(bucket.soilTemp) : null,
+      rainfall_total: bucket && bucket.rainfall.length > 0 ? sum(bucket.rainfall) : null,
+    });
+  }
+
+  return days;
+}
+
+function avg(arr: number[]): number {
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function sum(arr: number[]): number {
+  return arr.reduce((a, b) => a + b, 0);
+}
+
+async function generateAIInterpretation(probeHistories: ProbeHistory[]): Promise<string> {
   const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openaiApiKey) return '';
 
-  const summaryText = reportData.probeStats.map((probe: any) => {
+  const summaryText = probeHistories.map((probe) => {
     let text = `${probe.name} (Station ${probe.station_id}):\n`;
-    if (probe.moisture_percent != null) text += `  Soil Moisture: ${probe.moisture_percent.toFixed(1)}%\n`;
-    if (probe.soil_temp_c != null) text += `  Soil Temperature: ${probe.soil_temp_c.toFixed(1)}°C\n`;
-    if (probe.rainfall_mm != null) text += `  Rainfall: ${probe.rainfall_mm.toFixed(1)}mm\n`;
-    if (probe.depthMoisture.length > 0) {
-      probe.depthMoisture.forEach((d: any) => {
-        text += `  Moisture at ${d.depth_cm}cm: ${d.value.toFixed(1)}%\n`;
-      });
+    if (probe.dailyData.length > 0) {
+      text += `  7-day daily averages:\n`;
+      for (const d of probe.dailyData) {
+        text += `    ${d.label}: moisture=${d.moisture_avg != null ? d.moisture_avg.toFixed(1) + '%' : 'N/A'}, soil temp=${d.soil_temp_avg != null ? d.soil_temp_avg.toFixed(1) + '°C' : 'N/A'}, rainfall=${d.rainfall_total != null ? d.rainfall_total.toFixed(1) + 'mm' : 'N/A'}\n`;
+      }
+    } else if (probe.latest) {
+      if (probe.latest.moisture_percent != null) text += `  Soil Moisture: ${parseFloat(probe.latest.moisture_percent).toFixed(1)}%\n`;
+      if (probe.latest.soil_temp_c != null) text += `  Soil Temperature: ${parseFloat(probe.latest.soil_temp_c).toFixed(1)}°C\n`;
     }
     return text;
   }).join('\n');
 
-  const prompt = `You are Farmer Joe, an experienced agricultural advisor. Analyze this week's soil probe data and provide a concise, actionable interpretation in 3-4 sentences. Focus on overall soil health, any concerning patterns, and specific recommendations.\n\nData:\n${summaryText}\n\nProvide a friendly, professional analysis.`;
+  const prompt = `You are Farmer Joe, an experienced agricultural advisor. Analyze this week's soil probe data trends and provide a concise, actionable interpretation in 3-5 sentences. Focus on moisture trends, temperature changes, rainfall impacts, and specific recommendations for the coming week.\n\nData:\n${summaryText}\n\nProvide a friendly, professional analysis focused on what the trends mean for the farmer.`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -219,11 +297,11 @@ async function generateAIInterpretation(reportData: any): Promise<string> {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          { role: 'system', content: 'You are Farmer Joe, an experienced agricultural advisor who provides concise, actionable advice to farmers based on soil probe data.' },
+          { role: 'system', content: 'You are Farmer Joe, an experienced agricultural advisor who provides concise, actionable advice to farmers based on soil probe data trends.' },
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 300,
+        max_tokens: 350,
       }),
     });
 
@@ -235,10 +313,12 @@ async function generateAIInterpretation(reportData: any): Promise<string> {
   }
 }
 
-function getMoistureStatus(m: number): string {
-  if (m < 20) return 'status-alert';
-  if (m > 80) return 'status-warning';
-  return 'status-good';
+function getMoistureColor(m: number): string {
+  if (m < 30) return '#D32F2F';
+  if (m < 40) return '#F57C00';
+  if (m < 60) return '#2E7D32';
+  if (m < 70) return '#1565C0';
+  return '#0277BD';
 }
 
 function getMoistureRecommendation(m: number): string {
@@ -249,166 +329,223 @@ function getMoistureRecommendation(m: number): string {
   return 'Very Wet - Check Drainage';
 }
 
-function getMoistureColor(m: number): string {
-  if (m < 30) return '#D32F2F';
-  if (m < 40) return '#F57C00';
-  if (m < 60) return '#388E3C';
-  if (m < 70) return '#1976D2';
-  return '#0277BD';
-}
+function buildBarChart(
+  days: DailyData[],
+  getValue: (d: DailyData) => number | null,
+  color: string,
+  unit: string,
+  maxValue?: number,
+): string {
+  const values = days.map(d => getValue(d) ?? 0);
+  const maxVal = maxValue ?? Math.max(...values.filter(v => v > 0), 1);
 
-function buildWeeklyProbeReportEmail(reportData: any, aiInterpretation: string): string {
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(weekStart.getDate() - 7);
-
-  const dateLabel = `${weekStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - ${now.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-  const probeCardsHtml = reportData.probeStats.map((probe: any) => {
-    const measuredDate = probe.measured_at
-      ? new Date(probe.measured_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-      : 'Unknown';
-
-    let depthRows = '';
-    if (probe.depthMoisture.length > 0) {
-      depthRows = `
-        <div style="margin-top: 15px;">
-          <h4 style="margin-bottom: 10px; color: #374151;">Moisture by Depth</h4>
-          <table style="width:100%; border-collapse: collapse;">
-            ${probe.depthMoisture.map((d: any) => `
-              <tr>
-                <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; color: #6b7280;">${d.depth_cm}cm depth</td>
-                <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; font-weight: bold; color: #2563eb;">${d.value.toFixed(1)}%</td>
-                <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6;">
-                  <div style="background: #e5e7eb; border-radius: 4px; height: 8px; width: 100%; max-width: 120px;">
-                    <div style="background: #2563eb; border-radius: 4px; height: 8px; width: ${Math.min(d.value, 100)}%;"></div>
-                  </div>
-                </td>
-              </tr>
-            `).join('')}
-          </table>
-        </div>
-      `;
-    }
-
-    let depthTempRows = '';
-    if (probe.depthTemp.length > 0) {
-      depthTempRows = `
-        <div style="margin-top: 15px;">
-          <h4 style="margin-bottom: 10px; color: #374151;">Temperature by Depth</h4>
-          <table style="width:100%; border-collapse: collapse;">
-            ${probe.depthTemp.map((d: any) => `
-              <tr>
-                <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; color: #6b7280;">${d.depth_cm}cm depth</td>
-                <td style="padding: 6px 10px; border-bottom: 1px solid #f3f4f6; font-weight: bold; color: #059669;">${d.value.toFixed(1)}°C</td>
-              </tr>
-            `).join('')}
-          </table>
-        </div>
-      `;
-    }
+  const bars = days.map((d, i) => {
+    const val = getValue(d);
+    const barHeight = val != null ? Math.round((val / maxVal) * 80) : 0;
+    const label = d.label.split(' ').slice(0, 2).join(' ');
+    const displayVal = val != null ? val.toFixed(1) : '-';
+    const isToday = i === days.length - 1;
 
     return `
-      <div style="background: white; padding: 20px; margin: 15px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-left: 4px solid #059669;">
-        <h3 style="margin: 0 0 5px 0; color: #111827;">${probe.name}</h3>
-        <p style="color: #6b7280; font-size: 13px; margin: 0 0 15px 0;">Station ID: ${probe.station_id} &nbsp;|&nbsp; Last reading: ${measuredDate}</p>
-        ${probe.isStale ? `
-        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; color: #92400e;">
-          Warning: Data is ${probe.hoursOld} hours old. The probe may be offline or not syncing correctly. Check your device connection.
+      <td style="text-align:center; vertical-align:bottom; padding: 0 3px; width:${Math.floor(100/7)}%;">
+        <div style="font-size:10px; color:#374151; margin-bottom:3px; font-weight:${isToday ? '700' : '400'};">${displayVal}${val != null ? unit : ''}</div>
+        <div style="background:#e5e7eb; border-radius:4px 4px 0 0; height:80px; display:flex; align-items:flex-end; justify-content:center;">
+          <div style="background:${isToday ? color : color + 'cc'}; border-radius:4px 4px 0 0; width:100%; height:${barHeight}px; min-height:${val != null && val > 0 ? 2 : 0}px; transition:height 0.3s;"></div>
         </div>
-        ` : ''}
-
-        ${probe.moisture_percent != null ? `
-          <div style="margin-bottom: 15px;">
-            <h4 style="margin: 0 0 8px 0; color: #374151;">Soil Moisture</h4>
-            <div style="font-size: 28px; font-weight: bold; color: ${getMoistureColor(probe.moisture_percent)};">${probe.moisture_percent.toFixed(1)}%</div>
-            <div style="margin-top: 8px; padding: 10px 14px; background: ${getMoistureColor(probe.moisture_percent)}; border-radius: 6px; color: white; font-weight: bold; display: inline-block; font-size: 14px;">
-              ${getMoistureRecommendation(probe.moisture_percent)}
-            </div>
-          </div>
-        ` : ''}
-
-        ${probe.soil_temp_c != null ? `
-          <div style="margin-bottom: 15px;">
-            <h4 style="margin: 0 0 8px 0; color: #374151;">Soil Temperature</h4>
-            <div style="font-size: 28px; font-weight: bold; color: #059669;">${probe.soil_temp_c.toFixed(1)}°C</div>
-          </div>
-        ` : ''}
-
-        ${probe.rainfall_mm != null ? `
-          <div style="margin-bottom: 15px;">
-            <h4 style="margin: 0 0 8px 0; color: #374151;">Rainfall</h4>
-            <div style="font-size: 24px; font-weight: bold; color: #2563eb;">${probe.rainfall_mm.toFixed(1)} mm</div>
-          </div>
-        ` : ''}
-
-        ${depthRows}
-        ${depthTempRows}
-
-        ${probe.battery_level != null ? `
-          <p style="margin: 15px 0 0 0; font-size: 13px; color: #9ca3af;">Battery: ${probe.battery_level.toFixed(0)}%</p>
-        ` : ''}
-      </div>
-    `;
+        <div style="font-size:9px; color:#6b7280; margin-top:4px; line-height:1.2;">${label}</div>
+      </td>`;
   }).join('');
 
   return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { background: #f9fafb; padding: 30px; }
-    .ai-box { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; }
-    .footer { background: #374151; color: #9ca3af; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 style="margin: 0 0 10px 0;">Weekly Soil Health Report</h1>
-      <p style="margin: 0; opacity: 0.9;">${dateLabel}</p>
-    </div>
-
-    <div class="content">
-      <div style="background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h2 style="margin: 0 0 10px 0;">Overview</h2>
-        <p style="margin: 0;"><strong>Active Probes:</strong> ${reportData.probeCount}</p>
-      </div>
-
-      <h2 style="color: #111827;">Probe Details</h2>
-      ${probeCardsHtml}
-
-      ${aiInterpretation ? `
-        <div class="ai-box">
-          <h2 style="margin-top: 0; color: #1e40af; font-size: 18px;">Farmer Joe's Weekly Analysis</h2>
-          <p style="margin-bottom: 0; font-size: 15px; line-height: 1.7;">${aiInterpretation}</p>
-        </div>
-      ` : ''}
-
-      <div style="margin-top: 30px; padding: 15px; background: #eff6ff; border-radius: 8px; font-size: 14px;">
-        <strong>Tip:</strong> Regular monitoring of soil conditions helps optimize irrigation, fertilization, and crop health.
-        Check your FarmCast dashboard for real-time updates.
-      </div>
-    </div>
-
-    <div class="footer">
-      <p><strong>FarmCast Weather</strong></p>
-      <p style="margin: 10px 0;">You're receiving weekly soil health reports as part of your subscription.</p>
-      <p style="margin: 10px 0;">
-        <a href="https://farmcastweather.com/settings" style="color: #60a5fa;">Manage Preferences</a> |
-        <a href="https://farmcastweather.com/unsubscribe" style="color: #60a5fa;">Unsubscribe</a>
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-  `.trim();
+    <table style="width:100%; border-collapse:collapse; border-bottom:2px solid #d1d5db;">
+      <tr style="vertical-align:bottom;">${bars}</tr>
+    </table>`;
 }
 
-function buildWeeklyProbeReportEmailText(reportData: any, aiInterpretation: string): string {
+function buildProbeSection(probe: ProbeHistory): string {
+  const latest = probe.latest;
+  const moisture = latest?.moisture_percent != null ? parseFloat(latest.moisture_percent) : null;
+  const soilTemp = latest?.soil_temp_c != null ? parseFloat(latest.soil_temp_c) : null;
+  const rainfall = latest?.rainfall_mm != null ? parseFloat(latest.rainfall_mm) : null;
+
+  const measuredDate = latest?.measured_at
+    ? new Date(latest.measured_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Unknown';
+
+  const hasDailyData = probe.dailyData.length > 0 && probe.dailyData.some(d => d.moisture_avg != null || d.soil_temp_avg != null);
+
+  let weeklyChange = '';
+  if (hasDailyData) {
+    const firstMoisture = probe.dailyData.find(d => d.moisture_avg != null)?.moisture_avg;
+    const lastMoisture = [...probe.dailyData].reverse().find(d => d.moisture_avg != null)?.moisture_avg;
+    if (firstMoisture != null && lastMoisture != null) {
+      const diff = lastMoisture - firstMoisture;
+      const arrow = diff > 0 ? '&#9650;' : diff < 0 ? '&#9660;' : '&#9654;';
+      const diffColor = diff > 0 ? '#1565C0' : diff < 0 ? '#D32F2F' : '#6b7280';
+      weeklyChange = `<span style="color:${diffColor}; font-size:13px; margin-left:10px;">${arrow} ${Math.abs(diff).toFixed(1)}% over 7 days</span>`;
+    }
+  }
+
+  const totalRainfall7d = probe.dailyData.reduce((acc, d) => acc + (d.rainfall_total ?? 0), 0);
+
+  let chartsHtml = '';
+  if (hasDailyData) {
+    const moistureChart = probe.dailyData.some(d => d.moisture_avg != null)
+      ? `<div style="margin-bottom:20px;">
+          <h4 style="margin:0 0 8px 0; color:#374151; font-size:13px; text-transform:uppercase; letter-spacing:0.05em;">Soil Moisture % - Daily Average</h4>
+          ${buildBarChart(probe.dailyData, d => d.moisture_avg, '#1565C0', '%', 100)}
+        </div>`
+      : '';
+
+    const tempChart = probe.dailyData.some(d => d.soil_temp_avg != null)
+      ? `<div style="margin-bottom:20px;">
+          <h4 style="margin:0 0 8px 0; color:#374151; font-size:13px; text-transform:uppercase; letter-spacing:0.05em;">Soil Temperature &#176;C - Daily Average</h4>
+          ${buildBarChart(probe.dailyData, d => d.soil_temp_avg, '#059669', '&#176;C')}
+        </div>`
+      : '';
+
+    const rainfallChart = probe.dailyData.some(d => d.rainfall_total != null && d.rainfall_total > 0)
+      ? `<div style="margin-bottom:20px;">
+          <h4 style="margin:0 0 8px 0; color:#374151; font-size:13px; text-transform:uppercase; letter-spacing:0.05em;">Rainfall mm - Daily Total</h4>
+          ${buildBarChart(probe.dailyData, d => d.rainfall_total, '#0284c7', 'mm')}
+        </div>`
+      : '';
+
+    chartsHtml = `
+      <div style="margin-top:20px; padding:16px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <h4 style="margin:0 0 16px 0; color:#111827; font-size:14px;">7-Day Trend Charts <span style="font-weight:400; color:#6b7280; font-size:12px;">(darkest bar = today)</span></h4>
+        ${moistureChart}
+        ${tempChart}
+        ${rainfallChart}
+      </div>`;
+  }
+
+  let depthRows = '';
+  const depthMoisture: Array<{ depth_cm: number; value: number }> = latest?.moisture_depths?.depths ?? [];
+  if (depthMoisture.length > 0) {
+    depthRows = `
+      <div style="margin-top:16px;">
+        <h4 style="margin-bottom:8px; color:#374151; font-size:13px; text-transform:uppercase; letter-spacing:0.05em;">Current Moisture by Depth</h4>
+        <table style="width:100%; border-collapse:collapse;">
+          ${depthMoisture.map((d: any) => `
+            <tr>
+              <td style="padding:6px 10px; border-bottom:1px solid #f3f4f6; color:#6b7280; font-size:13px;">${d.depth_cm}cm</td>
+              <td style="padding:6px 10px; border-bottom:1px solid #f3f4f6; font-weight:bold; color:#1565C0; font-size:13px;">${d.value.toFixed(1)}%</td>
+              <td style="padding:6px 10px; border-bottom:1px solid #f3f4f6; width:40%;">
+                <div style="background:#e5e7eb; border-radius:4px; height:8px;">
+                  <div style="background:#1565C0; border-radius:4px; height:8px; width:${Math.min(d.value, 100)}%;"></div>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </table>
+      </div>`;
+  }
+
+  return `
+    <div style="background:white; padding:20px; margin:15px 0; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.08); border-left:4px solid #059669;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0 0 4px 0; color:#111827; font-size:18px;">${probe.name}</h3>
+          <p style="color:#6b7280; font-size:12px; margin:0;">Station: ${probe.station_id} &nbsp;|&nbsp; Last reading: ${measuredDate}</p>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:16px; margin-top:16px; flex-wrap:wrap;">
+        ${moisture != null ? `
+        <div style="flex:1; min-width:120px; background:#eff6ff; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Current Moisture</div>
+          <div style="font-size:26px; font-weight:700; color:${getMoistureColor(moisture)};">${moisture.toFixed(1)}%</div>
+          <div style="font-size:11px; color:${getMoistureColor(moisture)}; font-weight:600; margin-top:4px;">${getMoistureRecommendation(moisture)}</div>
+          ${weeklyChange ? `<div style="margin-top:6px; font-size:11px;">${weeklyChange}</div>` : ''}
+        </div>` : ''}
+
+        ${soilTemp != null ? `
+        <div style="flex:1; min-width:120px; background:#f0fdf4; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Current Soil Temp</div>
+          <div style="font-size:26px; font-weight:700; color:#059669;">${soilTemp.toFixed(1)}&#176;C</div>
+        </div>` : ''}
+
+        ${totalRainfall7d > 0 ? `
+        <div style="flex:1; min-width:120px; background:#f0f9ff; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">7-Day Rainfall</div>
+          <div style="font-size:26px; font-weight:700; color:#0284c7;">${totalRainfall7d.toFixed(1)}mm</div>
+        </div>` : rainfall != null ? `
+        <div style="flex:1; min-width:120px; background:#f0f9ff; border-radius:8px; padding:12px; text-align:center;">
+          <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">Latest Rainfall</div>
+          <div style="font-size:26px; font-weight:700; color:#0284c7;">${rainfall.toFixed(1)}mm</div>
+        </div>` : ''}
+      </div>
+
+      ${chartsHtml}
+      ${depthRows}
+
+      ${latest?.battery_level != null ? `
+      <p style="margin:12px 0 0 0; font-size:12px; color:#9ca3af;">Battery: ${parseFloat(latest.battery_level).toFixed(0)} mV</p>
+      ` : ''}
+    </div>`;
+}
+
+function buildWeeklyEmail(probeHistories: ProbeHistory[], aiInterpretation: string): string {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - 7);
+  const dateLabel = `${weekStart.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })} - ${now.toLocaleDateString('en-AU', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+  const probeSections = probeHistories.map(buildProbeSection).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height:1.6; color:#333; margin:0; padding:0; background:#f3f4f6; }
+  .container { max-width:620px; margin:20px auto; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div style="background:linear-gradient(135deg,#166534 0%,#14532d 100%); color:white; padding:32px 30px; text-align:center;">
+    <div style="font-size:13px; text-transform:uppercase; letter-spacing:0.1em; opacity:0.8; margin-bottom:6px;">FarmCast</div>
+    <h1 style="margin:0 0 8px 0; font-size:24px; font-weight:700;">Weekly Soil Health Report</h1>
+    <p style="margin:0; opacity:0.85; font-size:14px;">${dateLabel}</p>
+  </div>
+
+  <div style="background:#f9fafb; padding:24px 20px;">
+
+    <div style="background:white; padding:16px 20px; margin-bottom:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.07);">
+      <span style="font-size:14px; color:#374151;"><strong>Active Probes:</strong> ${probeHistories.length}</span>
+    </div>
+
+    ${probeSections}
+
+    ${aiInterpretation ? `
+    <div style="background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%); padding:20px; margin:16px 0; border-radius:10px; border-left:4px solid #2563eb;">
+      <h2 style="margin-top:0; color:#1e40af; font-size:17px;">Farmer Joe's Weekly Analysis</h2>
+      <p style="margin-bottom:0; font-size:14px; line-height:1.75; color:#1e3a8a;">${aiInterpretation}</p>
+    </div>
+    ` : ''}
+
+    <div style="margin-top:20px; padding:14px 16px; background:#ecfdf5; border-radius:8px; font-size:13px; color:#065f46; border:1px solid #a7f3d0;">
+      <strong>Tip:</strong> Regular monitoring of soil conditions helps optimise irrigation, fertilisation, and crop health. Check your FarmCast dashboard for real-time updates.
+    </div>
+  </div>
+
+  <div style="background:#1f2937; color:#9ca3af; padding:20px; text-align:center; font-size:12px;">
+    <p style="margin:0 0 8px 0; font-weight:600; color:#d1d5db;">FarmCast Weather</p>
+    <p style="margin:0 0 8px 0;">You're receiving weekly soil health reports as part of your subscription.</p>
+    <p style="margin:0;">
+      <a href="https://farmcastweather.com/settings" style="color:#60a5fa;">Manage Preferences</a> &nbsp;|&nbsp;
+      <a href="https://farmcastweather.com/unsubscribe" style="color:#60a5fa;">Unsubscribe</a>
+    </p>
+  </div>
+</div>
+</body>
+</html>`.trim();
+}
+
+function buildWeeklyEmailText(probeHistories: ProbeHistory[], aiInterpretation: string): string {
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(weekStart.getDate() - 7);
@@ -420,31 +557,35 @@ function buildWeeklyProbeReportEmailText(reportData: any, aiInterpretation: stri
     text += `FARMER JOE'S WEEKLY ANALYSIS:\n${aiInterpretation}\n\n`;
   }
 
-  text += `OVERVIEW:\n- Active Probes: ${reportData.probeCount}\n\n`;
-  text += `PROBE DETAILS:\n\n`;
+  text += `ACTIVE PROBES: ${probeHistories.length}\n\n`;
 
-  reportData.probeStats.forEach((probe: any) => {
+  for (const probe of probeHistories) {
     text += `${probe.name} (Station ${probe.station_id})\n`;
-    if (probe.measured_at) {
-      text += `Last reading: ${new Date(probe.measured_at).toLocaleDateString('en-AU')}\n`;
+    text += `${'='.repeat(40)}\n`;
+
+    if (probe.latest) {
+      const m = probe.latest.moisture_percent != null ? parseFloat(probe.latest.moisture_percent) : null;
+      const t = probe.latest.soil_temp_c != null ? parseFloat(probe.latest.soil_temp_c) : null;
+      const r = probe.latest.rainfall_mm != null ? parseFloat(probe.latest.rainfall_mm) : null;
+      if (m != null) text += `Current Moisture: ${m.toFixed(1)}% (${getMoistureRecommendation(m)})\n`;
+      if (t != null) text += `Current Soil Temp: ${t.toFixed(1)}C\n`;
+      if (r != null) text += `Latest Rainfall: ${r.toFixed(1)}mm\n`;
     }
-    if (probe.moisture_percent != null) {
-      text += `Soil Moisture: ${probe.moisture_percent.toFixed(1)}% - ${getMoistureRecommendation(probe.moisture_percent)}\n`;
+
+    if (probe.dailyData.length > 0) {
+      text += `\n7-Day Daily Summary:\n`;
+      for (const d of probe.dailyData) {
+        text += `  ${d.label}: `;
+        const parts: string[] = [];
+        if (d.moisture_avg != null) parts.push(`moisture ${d.moisture_avg.toFixed(1)}%`);
+        if (d.soil_temp_avg != null) parts.push(`soil temp ${d.soil_temp_avg.toFixed(1)}C`);
+        if (d.rainfall_total != null && d.rainfall_total > 0) parts.push(`rain ${d.rainfall_total.toFixed(1)}mm`);
+        text += parts.join(', ') || 'No data';
+        text += '\n';
+      }
     }
-    if (probe.soil_temp_c != null) {
-      text += `Soil Temperature: ${probe.soil_temp_c.toFixed(1)}°C\n`;
-    }
-    if (probe.rainfall_mm != null) {
-      text += `Rainfall: ${probe.rainfall_mm.toFixed(1)}mm\n`;
-    }
-    if (probe.depthMoisture.length > 0) {
-      text += `Moisture by depth:\n`;
-      probe.depthMoisture.forEach((d: any) => {
-        text += `  ${d.depth_cm}cm: ${d.value.toFixed(1)}%\n`;
-      });
-    }
-    text += `---\n\n`;
-  });
+    text += '\n';
+  }
 
   text += `Visit dashboard: https://farmcastweather.com\nManage preferences: https://farmcastweather.com/settings\n`;
   return text;
