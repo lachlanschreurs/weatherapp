@@ -298,13 +298,20 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
     const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
     const midItem = items[Math.floor(items.length / 2)] || items[0];
 
-    const avgHumidity = Math.round(allDayItems.reduce((sum: number, i: any) => sum + i.main.humidity, 0) / allDayItems.length);
-    const avgWindKph = allDayItems.reduce((sum: number, i: any) => sum + (i.wind?.speed || 0) * 3.6, 0) / allDayItems.length;
     const avgWindDeg = allDayItems.reduce((sum: number, i: any) => sum + (i.wind?.deg || 0), 0) / allDayItems.length;
+
+    const hourlyItems = (items as any[]).map((i: any) => ({
+      dt: i.dt,
+      temp: i.main.temp,
+      humidity: i.main.humidity,
+      wind_speed_kph: (i.wind?.speed || 0) * 3.6,
+      wind_deg: i.wind?.deg || 0,
+      pop: i.pop || 0,
+    }));
 
     return {
       date,
-      hour: items.map((i: any) => ({ humidity: i.main.humidity, wind_deg: i.wind?.deg || 0, wind_speed_kph: (i.wind?.speed || 0) * 3.6 })),
+      hour: hourlyItems,
       day: {
         maxtemp_c,
         mintemp_c,
@@ -312,9 +319,7 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
         daily_chance_of_rain: Math.round(maxPop * 100),
         totalprecip_mm: rain,
         maxwind_kph: maxWind,
-        avg_wind_kph: avgWindKph,
         avg_wind_deg: avgWindDeg,
-        avg_humidity: avgHumidity,
       },
     };
   });
@@ -413,6 +418,51 @@ function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: 
   if (windSpeedKmh < 3 || windSpeedKmh > 20) return '⚠️';
   if (deltaT < 2 || deltaT > 10) return '⚠️';
   return '✓';
+}
+
+function getBestSprayWindowFromHours(hours: any[], totalRainMm: number): { icon: string; timeRange: string; windDir: string } {
+  if (totalRainMm > 5) return { icon: '❌', timeRange: 'Rain forecast', windDir: '' };
+
+  const idealWindows: any[] = [];
+  const goodWindows: any[] = [];
+
+  for (const h of hours) {
+    const windKph = h.wind_speed_kph;
+    const deltaT = calculateDeltaT(h.temp, h.humidity);
+    const rainLikely = h.pop > 0.5;
+
+    if (rainLikely || windKph > 25) continue;
+
+    if (windKph >= 3 && windKph <= 15 && deltaT >= 2 && deltaT <= 8 && h.temp >= 10 && h.temp <= 30) {
+      idealWindows.push(h);
+    } else if (windKph >= 3 && windKph <= 20 && deltaT >= 2 && deltaT <= 10) {
+      goodWindows.push(h);
+    }
+  }
+
+  const buildTimeRange = (windows: any[]) => {
+    if (windows.length === 0) return { timeRange: '', windDir: '' };
+    const first = windows[0];
+    const last = windows[windows.length - 1];
+    const fmt = (ts: number) => new Date(ts * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
+    const timeRange = windows.length === 1 ? fmt(first.dt) : `${fmt(first.dt)}–${fmt(last.dt)}`;
+    const avgDeg = windows.reduce((s: number, h: any) => s + h.wind_deg, 0) / windows.length;
+    return { timeRange, windDir: degreesToDirection(avgDeg) };
+  };
+
+  if (idealWindows.length > 0) {
+    const { timeRange, windDir } = buildTimeRange(idealWindows);
+    return { icon: '✅', timeRange, windDir };
+  }
+  if (goodWindows.length > 0) {
+    const { timeRange, windDir } = buildTimeRange(goodWindows);
+    return { icon: '✓', timeRange, windDir };
+  }
+
+  const anyHour = hours.find((h: any) => !h.pop || h.pop <= 0.5);
+  const windDirFallback = anyHour ? degreesToDirection(anyHour.wind_deg) : '';
+  if (totalRainMm > 0.5) return { icon: '❌', timeRange: 'Rain forecast', windDir: windDirFallback };
+  return { icon: '⚠️', timeRange: 'Marginal', windDir: windDirFallback };
 }
 
 async function generateProbeReport(userId: string, supabaseAdmin: any, weatherData?: any, dailyForecast?: any[]): Promise<string> {
@@ -783,12 +833,11 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
   const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
     const date = new Date(day.date);
     const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
-    const avgWind = day.day.avg_wind_kph ?? day.day.maxwind_kph;
-    const avgTemp = (day.day.maxtemp_c + day.day.mintemp_c) / 2;
-    const avgHumidity = day.day.avg_humidity ?? (day.hour?.reduce((s: number, h: any) => s + h.humidity, 0) / (day.hour?.length || 1)) ?? 60;
-    const sprayDeltaT = calculateDeltaT(avgTemp, avgHumidity);
-    const sprayWindow = getSprayWindowForDay(avgWind, day.day.totalprecip_mm, sprayDeltaT);
-    const windDeg = day.day.avg_wind_deg ?? (day.hour?.reduce((s: number, h: any) => s + (h.wind_deg || 0), 0) / (day.hour?.length || 1)) ?? 0;
+    const windDeg = day.day.avg_wind_deg ?? 0;
+    const avgWindKph = day.hour?.length > 0
+      ? day.hour.reduce((s: number, h: any) => s + h.wind_speed_kph, 0) / day.hour.length
+      : day.day.maxwind_kph;
+    const sprayResult = getBestSprayWindowFromHours(day.hour || [], day.day.totalprecip_mm);
 
     return {
       dayName,
@@ -797,9 +846,11 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       low: Math.round(day.day.mintemp_c),
       rain: day.day.totalprecip_mm.toFixed(1),
       rainChance: day.day.daily_chance_of_rain,
-      wind: Math.round(avgWind),
+      wind: Math.round(avgWindKph),
       windDir: degreesToDirection(windDeg),
-      sprayWindow
+      sprayIcon: sprayResult.icon,
+      sprayTime: sprayResult.timeRange,
+      sprayWindDir: sprayResult.windDir,
     };
   });
 
@@ -1158,7 +1209,10 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
                 <div style="font-size:12px;font-weight:700;color:#86efac;">${day.wind} km/h</div>
                 <div style="font-size:10px;font-weight:600;color:#64748b;margin-top:2px;">${day.windDir}</div>
               </td>
-              <td style="text-align:center;font-size:18px;">${day.sprayWindow}</td>
+              <td style="text-align:center;">
+                <div style="font-size:18px;">${day.sprayIcon}</div>
+                ${day.sprayTime ? `<div style="font-size:9px;font-weight:600;color:#94a3b8;margin-top:2px;">${day.sprayTime}</div>` : ''}
+              </td>
             </tr>
           `).join('')}
         </tbody>
@@ -1291,12 +1345,11 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
   const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
     const date = new Date(day.date);
     const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
-    const avgWind = day.day.avg_wind_kph ?? day.day.maxwind_kph;
-    const avgTemp = (day.day.maxtemp_c + day.day.mintemp_c) / 2;
-    const avgHumidity = day.day.avg_humidity ?? (day.hour?.reduce((s: number, h: any) => s + h.humidity, 0) / (day.hour?.length || 1)) ?? 60;
-    const sprayDeltaT = calculateDeltaT(avgTemp, avgHumidity);
-    const sprayWindow = getSprayWindowForDay(avgWind, day.day.totalprecip_mm, sprayDeltaT);
-    const windDeg = day.day.avg_wind_deg ?? (day.hour?.reduce((s: number, h: any) => s + (h.wind_deg || 0), 0) / (day.hour?.length || 1)) ?? 0;
+    const windDeg = day.day.avg_wind_deg ?? 0;
+    const avgWindKph = day.hour?.length > 0
+      ? day.hour.reduce((s: number, h: any) => s + h.wind_speed_kph, 0) / day.hour.length
+      : day.day.maxwind_kph;
+    const sprayResult = getBestSprayWindowFromHours(day.hour || [], day.day.totalprecip_mm);
 
     return {
       dayName,
@@ -1305,9 +1358,10 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
       low: Math.round(day.day.mintemp_c),
       rain: day.day.totalprecip_mm.toFixed(1),
       rainChance: day.day.daily_chance_of_rain,
-      wind: Math.round(avgWind),
+      wind: Math.round(avgWindKph),
       windDir: degreesToDirection(windDeg),
-      sprayWindow
+      sprayIcon: sprayResult.icon,
+      sprayTime: sprayResult.timeRange,
     };
   });
 
@@ -1331,7 +1385,7 @@ SPRAY WINDOW ANALYSIS:
 
 5-DAY FORECAST:
 ${fiveDayForecast.map((day: any) =>
-  `${day.dayName} ${day.date}: High ${day.high}°C / Low ${day.low}°C | Rain: ${day.rain}mm (${day.rainChance}%) | Wind: ${day.wind} km/h ${day.windDir} | Spray: ${day.sprayWindow}`
+  `${day.dayName} ${day.date}: High ${day.high}°C / Low ${day.low}°C | Rain: ${day.rain}mm (${day.rainChance}%) | Wind: ${day.wind} km/h ${day.windDir} | Spray: ${day.sprayIcon}${day.sprayTime ? ' ' + day.sprayTime : ''}`
 ).join('\n')}
 
 Spray Window Key: ✅ Ideal · ✓ Good · ⚠️ Marginal · ❌ Poor
