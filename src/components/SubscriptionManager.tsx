@@ -52,6 +52,11 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
       console.log('[Checkout] success, got URL:', !!data.url);
 
       if (data?.url) {
+        if (typeof (window as any).gtag === 'function') {
+          (window as any).gtag('event', 'conversion', {
+            send_to: 'AW-18083468482/OE7gCOTUQzweEMKp765D',
+          });
+        }
         window.location.href = data.url;
       } else {
         throw new Error('No checkout URL returned');
