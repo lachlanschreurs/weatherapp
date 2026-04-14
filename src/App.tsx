@@ -701,12 +701,15 @@ function App() {
                     <LogIn className="w-4 h-4" />
                     Sign In
                   </button>
-                  <button
-                    onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
-                    className="flex items-center gap-2 bg-green-600/90 border border-green-500/40 px-4 py-2 rounded-xl hover:bg-green-500/90 hover:border-green-400/60 transition-all duration-200 text-sm font-semibold text-white shadow-lg shadow-green-900/30"
-                  >
-                    Sign Up
-                  </button>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <button
+                      onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
+                      className="flex items-center gap-2 bg-green-600/90 border border-green-500/40 px-4 py-2 rounded-xl hover:bg-green-500/90 hover:border-green-400/60 transition-all duration-200 text-sm font-semibold text-white shadow-lg shadow-green-900/30"
+                    >
+                      Start 30-Day Free Trial
+                    </button>
+                    <p className="text-slate-400 text-xs">No credit card &bull; Cancel anytime &bull; Built for Aussie farmers</p>
+                  </div>
                 </>
               )}
               <button
