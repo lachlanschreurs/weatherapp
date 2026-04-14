@@ -298,9 +298,13 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
     const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
     const midItem = items[Math.floor(items.length / 2)] || items[0];
 
+    const avgHumidity = Math.round(allDayItems.reduce((sum: number, i: any) => sum + i.main.humidity, 0) / allDayItems.length);
+    const avgWindKph = allDayItems.reduce((sum: number, i: any) => sum + (i.wind?.speed || 0) * 3.6, 0) / allDayItems.length;
+    const avgWindDeg = allDayItems.reduce((sum: number, i: any) => sum + (i.wind?.deg || 0), 0) / allDayItems.length;
+
     return {
       date,
-      hour: items.map((i: any) => ({ humidity: i.main.humidity, wind_deg: i.wind?.deg || 0 })),
+      hour: items.map((i: any) => ({ humidity: i.main.humidity, wind_deg: i.wind?.deg || 0, wind_speed_kph: (i.wind?.speed || 0) * 3.6 })),
       day: {
         maxtemp_c,
         mintemp_c,
@@ -308,6 +312,9 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
         daily_chance_of_rain: Math.round(maxPop * 100),
         totalprecip_mm: rain,
         maxwind_kph: maxWind,
+        avg_wind_kph: avgWindKph,
+        avg_wind_deg: avgWindDeg,
+        avg_humidity: avgHumidity,
       },
     };
   });
@@ -776,11 +783,12 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
   const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
     const date = new Date(day.date);
     const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
-    const avgWind = day.day.maxwind_kph;
+    const avgWind = day.day.avg_wind_kph ?? day.day.maxwind_kph;
     const avgTemp = (day.day.maxtemp_c + day.day.mintemp_c) / 2;
-    const avgHumidity = day.hour?.[12]?.humidity || 60;
+    const avgHumidity = day.day.avg_humidity ?? (day.hour?.reduce((s: number, h: any) => s + h.humidity, 0) / (day.hour?.length || 1)) ?? 60;
     const sprayDeltaT = calculateDeltaT(avgTemp, avgHumidity);
     const sprayWindow = getSprayWindowForDay(avgWind, day.day.totalprecip_mm, sprayDeltaT);
+    const windDeg = day.day.avg_wind_deg ?? (day.hour?.reduce((s: number, h: any) => s + (h.wind_deg || 0), 0) / (day.hour?.length || 1)) ?? 0;
 
     return {
       dayName,
@@ -790,7 +798,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       rain: day.day.totalprecip_mm.toFixed(1),
       rainChance: day.day.daily_chance_of_rain,
       wind: Math.round(avgWind),
-      windDir: degreesToDirection(day.hour?.[12]?.wind_deg || 0),
+      windDir: degreesToDirection(windDeg),
       sprayWindow
     };
   });
@@ -1283,11 +1291,12 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
   const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
     const date = new Date(day.date);
     const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
-    const avgWind = day.day.maxwind_kph;
+    const avgWind = day.day.avg_wind_kph ?? day.day.maxwind_kph;
     const avgTemp = (day.day.maxtemp_c + day.day.mintemp_c) / 2;
-    const avgHumidity = day.hour?.[12]?.humidity || 60;
+    const avgHumidity = day.day.avg_humidity ?? (day.hour?.reduce((s: number, h: any) => s + h.humidity, 0) / (day.hour?.length || 1)) ?? 60;
     const sprayDeltaT = calculateDeltaT(avgTemp, avgHumidity);
     const sprayWindow = getSprayWindowForDay(avgWind, day.day.totalprecip_mm, sprayDeltaT);
+    const windDeg = day.day.avg_wind_deg ?? (day.hour?.reduce((s: number, h: any) => s + (h.wind_deg || 0), 0) / (day.hour?.length || 1)) ?? 0;
 
     return {
       dayName,
@@ -1297,7 +1306,7 @@ function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], ci
       rain: day.day.totalprecip_mm.toFixed(1),
       rainChance: day.day.daily_chance_of_rain,
       wind: Math.round(avgWind),
-      windDir: degreesToDirection(day.hour?.[12]?.wind_deg || 0),
+      windDir: degreesToDirection(windDeg),
       sprayWindow
     };
   });
