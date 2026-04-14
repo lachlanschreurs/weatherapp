@@ -794,6 +794,46 @@ function buildProbeReadingCard(reading: any, connection: any, moistureDepths: an
   `;
 }
 
+function getDailyIrrigationAdvice(rainMm: number, rainChance: number, maxTemp: number, minTemp: number): { action: string; amount: string; note: string; badgeColor: string } {
+  if (rainMm >= 10 || rainChance >= 70) {
+    return { action: 'Skip', amount: '0mm', note: 'Rain forecast — soil will recharge naturally', badgeColor: '#475569' };
+  }
+  if (rainMm >= 5 || rainChance >= 50) {
+    return { action: 'Reduce', amount: '5–10mm', note: 'Light rain expected — top up only if needed', badgeColor: '#d97706' };
+  }
+  if (maxTemp >= 35) {
+    return { action: 'Irrigate', amount: '25–35mm', note: 'Heat stress risk — irrigate early morning', badgeColor: '#dc2626' };
+  }
+  if (maxTemp >= 28 && minTemp >= 15) {
+    return { action: 'Irrigate', amount: '15–20mm', note: 'Warm & dry — apply in early morning', badgeColor: '#1d4ed8' };
+  }
+  if (maxTemp >= 20) {
+    return { action: 'Consider', amount: '10–15mm', note: 'Mild conditions — check soil moisture first', badgeColor: '#d97706' };
+  }
+  return { action: 'Optional', amount: '5–10mm', note: 'Cool conditions — irrigate only if soil is dry', badgeColor: '#475569' };
+}
+
+function getDailyPlantingRating(maxTemp: number, minTemp: number, rainMm: number, maxWindKph: number, rainChance: number): { rating: string; icon: string; color: string; note: string; soilTempEst: number } {
+  const soilTempEst = Math.round((maxTemp * 0.6 + minTemp * 0.4) * 0.85);
+
+  if (rainMm > 10 || rainChance > 70) {
+    return { rating: 'Avoid', icon: '❌', color: '#dc2626', note: 'Too wet — waterlogging risk', soilTempEst };
+  }
+  if (maxWindKph > 30) {
+    return { rating: 'Avoid', icon: '❌', color: '#dc2626', note: 'High winds — seedling damage risk', soilTempEst };
+  }
+  if (maxTemp > 38 || minTemp < 2) {
+    return { rating: 'Avoid', icon: '❌', color: '#dc2626', note: maxTemp > 38 ? 'Too hot for transplanting' : 'Frost risk overnight', soilTempEst };
+  }
+  if (maxTemp >= 20 && maxTemp <= 28 && minTemp >= 8 && rainMm < 5 && maxWindKph < 20) {
+    return { rating: 'Excellent', icon: '✅', color: '#16a34a', note: 'Ideal temp, calm & dry conditions', soilTempEst };
+  }
+  if (maxTemp >= 15 && maxTemp <= 32 && minTemp >= 5 && rainMm < 8 && maxWindKph < 25) {
+    return { rating: 'Good', icon: '✓', color: '#4ade80', note: 'Suitable conditions for planting', soilTempEst };
+  }
+  return { rating: 'Marginal', icon: '⚠️', color: '#f59e0b', note: 'Borderline — monitor conditions closely', soilTempEst };
+}
+
 function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeReport: string = ''): string {
   const location = weatherData.location.name;
   const country = weatherData.location.country;
@@ -849,6 +889,8 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       ? day.hour.reduce((s: number, h: any) => s + h.wind_speed_kph, 0) / day.hour.length
       : day.day.maxwind_kph;
     const sprayResult = getBestSprayWindowFromHours(day.hour || [], day.day.totalprecip_mm);
+    const irrigation = getDailyIrrigationAdvice(day.day.totalprecip_mm, day.day.daily_chance_of_rain, day.day.maxtemp_c, day.day.mintemp_c);
+    const planting = getDailyPlantingRating(day.day.maxtemp_c, day.day.mintemp_c, day.day.totalprecip_mm, day.day.maxwind_kph, day.day.daily_chance_of_rain);
 
     return {
       dayName,
@@ -862,6 +904,8 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       sprayIcon: sprayResult.icon,
       sprayTime: sprayResult.timeRange,
       sprayWindDir: sprayResult.windDir,
+      irrigation,
+      planting,
     };
   });
 
@@ -1190,7 +1234,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
 
       ${probeReport}
 
-      <div class="section-label" style="margin-top:8px;">5-Day Forecast</div>
+      <div class="section-label" style="margin-top:8px;">5-Day Outlook</div>
       <table class="forecast-table">
         <thead>
           <tr>
@@ -1230,6 +1274,73 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       </table>
       <div style="margin-top:8px;font-size:10px;color:#475569;text-align:center;font-weight:600;">
         Spray: ✅ Ideal &nbsp;·&nbsp; ✓ Good &nbsp;·&nbsp; ⚠️ Marginal &nbsp;·&nbsp; ❌ Poor
+      </div>
+
+      <div class="section-label" style="margin-top:20px;">5-Day Irrigation Schedule</div>
+      <table class="forecast-table" style="margin-bottom:8px;">
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Irrigation</th>
+            <th>Amount</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fiveDayForecast.map((day: any) => `
+            <tr>
+              <td>
+                <div style="font-size:13px;font-weight:800;color:#e2e8f0;">${day.dayName}</div>
+                <div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px;">${day.date}</div>
+              </td>
+              <td style="text-align:center;">
+                <span style="font-size:11px;font-weight:800;padding:4px 8px;border-radius:5px;background:${day.irrigation.badgeColor};color:white;">${day.irrigation.action}</span>
+              </td>
+              <td style="text-align:center;">
+                <div style="font-size:12px;font-weight:700;color:#7dd3fc;">${day.irrigation.amount}</div>
+              </td>
+              <td style="padding-right:10px;">
+                <div style="font-size:10px;font-weight:600;color:#94a3b8;">${day.irrigation.note}</div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="section-label" style="margin-top:20px;">Planting Days This Week</div>
+      <table class="forecast-table" style="margin-bottom:8px;">
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Rating</th>
+            <th>Soil Temp</th>
+            <th>Conditions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fiveDayForecast.map((day: any) => `
+            <tr>
+              <td>
+                <div style="font-size:13px;font-weight:800;color:#e2e8f0;">${day.dayName}</div>
+                <div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px;">${day.date}</div>
+              </td>
+              <td style="text-align:center;">
+                <div style="font-size:18px;">${day.planting.icon}</div>
+                <div style="font-size:9px;font-weight:700;color:${day.planting.color};margin-top:2px;">${day.planting.rating}</div>
+              </td>
+              <td style="text-align:center;">
+                <div style="font-size:12px;font-weight:700;color:#fcd34d;">${day.planting.soilTempEst}°C</div>
+                <div style="font-size:9px;font-weight:600;color:#64748b;margin-top:2px;">est.</div>
+              </td>
+              <td style="padding-right:10px;">
+                <div style="font-size:10px;font-weight:600;color:#94a3b8;">${day.planting.note}</div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:8px;font-size:10px;color:#475569;text-align:center;font-weight:600;">
+        Planting: ✅ Excellent &nbsp;·&nbsp; ✓ Good &nbsp;·&nbsp; ⚠️ Marginal &nbsp;·&nbsp; ❌ Avoid
       </div>
 
     </div>
