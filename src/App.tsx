@@ -1282,10 +1282,10 @@ function App() {
           <HourlyForecast forecastList={hourlyList} currentWeather={current} />
         </div>
 
-        {/* 7-DAY FORECAST */}
+        {/* 5-DAY FORECAST */}
         <div className="mb-5 rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white tracking-tight">7-Day Forecast</h2>
+            <h2 className="text-lg font-bold text-white tracking-tight">5-Day Forecast</h2>
             <span className="text-xs text-slate-500 uppercase tracking-wider">Spray windows & conditions</span>
           </div>
 
