@@ -307,6 +307,7 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
       wind_speed_kph: (i.wind?.speed || 0) * 3.6,
       wind_deg: i.wind?.deg || 0,
       pop: i.pop || 0,
+      rain_mm: i.rain?.['3h'] || 0,
     }));
 
     return {
@@ -420,8 +421,16 @@ function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: 
   return '✓';
 }
 
+function hourIsRainy(h: any): boolean {
+  if (h.rain_mm > 0.2) return true;
+  if (h.pop > 0.4) return true;
+  return false;
+}
+
 function getBestSprayWindowFromHours(hours: any[], totalRainMm: number): { icon: string; timeRange: string; windDir: string } {
-  if (totalRainMm > 5) return { icon: '❌', timeRange: 'Rain forecast', windDir: '' };
+  const totalActualRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
+  const heavyRainDay = totalActualRain > 5 || totalRainMm > 10;
+  if (heavyRainDay) return { icon: '❌', timeRange: 'Rain forecast', windDir: '' };
 
   const idealWindows: any[] = [];
   const goodWindows: any[] = [];
@@ -429,24 +438,26 @@ function getBestSprayWindowFromHours(hours: any[], totalRainMm: number): { icon:
   for (const h of hours) {
     const windKph = h.wind_speed_kph;
     const deltaT = calculateDeltaT(h.temp, h.humidity);
-    const rainLikely = h.pop > 0.5;
 
-    if (rainLikely || windKph > 25) continue;
+    if (hourIsRainy(h) || windKph > 25) continue;
 
-    if (windKph >= 3 && windKph <= 15 && deltaT >= 2 && deltaT <= 8 && h.temp >= 10 && h.temp <= 30) {
+    const recentRain = h.rain_mm > 0.1;
+
+    if (!recentRain && windKph >= 3 && windKph <= 15 && deltaT >= 2 && deltaT <= 8 && h.temp >= 10 && h.temp <= 30) {
       idealWindows.push(h);
-    } else if (windKph >= 3 && windKph <= 20 && deltaT >= 2 && deltaT <= 10) {
+    } else if (!recentRain && windKph >= 3 && windKph <= 20 && deltaT >= 2 && deltaT <= 10) {
       goodWindows.push(h);
     }
   }
 
   const buildTimeRange = (windows: any[]) => {
     if (windows.length === 0) return { timeRange: '', windDir: '' };
-    const first = windows[0];
-    const last = windows[windows.length - 1];
+    const sortedWindows = [...windows].sort((a, b) => a.dt - b.dt);
+    const first = sortedWindows[0];
+    const last = sortedWindows[sortedWindows.length - 1];
     const fmt = (ts: number) => new Date(ts * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-    const timeRange = windows.length === 1 ? fmt(first.dt) : `${fmt(first.dt)}–${fmt(last.dt)}`;
-    const avgDeg = windows.reduce((s: number, h: any) => s + h.wind_deg, 0) / windows.length;
+    const timeRange = sortedWindows.length === 1 ? fmt(first.dt) : `${fmt(first.dt)}–${fmt(last.dt)}`;
+    const avgDeg = sortedWindows.reduce((s: number, h: any) => s + h.wind_deg, 0) / sortedWindows.length;
     return { timeRange, windDir: degreesToDirection(avgDeg) };
   };
 
@@ -459,10 +470,10 @@ function getBestSprayWindowFromHours(hours: any[], totalRainMm: number): { icon:
     return { icon: '✓', timeRange, windDir };
   }
 
-  const anyHour = hours.find((h: any) => !h.pop || h.pop <= 0.5);
-  const windDirFallback = anyHour ? degreesToDirection(anyHour.wind_deg) : '';
-  if (totalRainMm > 0.5) return { icon: '❌', timeRange: 'Rain forecast', windDir: windDirFallback };
-  return { icon: '⚠️', timeRange: 'Marginal', windDir: windDirFallback };
+  const dryHour = hours.find((h: any) => !hourIsRainy(h));
+  const windDirFallback = dryHour ? degreesToDirection(dryHour.wind_deg) : '';
+  if (totalActualRain > 0.5 || totalRainMm > 0.5) return { icon: '❌', timeRange: 'Rain forecast', windDir: windDirFallback };
+  return { icon: '⚠️', timeRange: 'Marginal conditions', windDir: windDirFallback };
 }
 
 async function generateProbeReport(userId: string, supabaseAdmin: any, weatherData?: any, dailyForecast?: any[]): Promise<string> {
