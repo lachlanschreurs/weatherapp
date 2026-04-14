@@ -333,7 +333,6 @@ export function ActionableRecommendations(props: RecommendationProps) {
                 >
                   Sign Up Free
                 </button>
-                <p className="text-slate-600 text-xs mt-2">No credit card required</p>
               </div>
             </div>
           </div>
