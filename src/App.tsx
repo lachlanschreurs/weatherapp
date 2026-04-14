@@ -109,6 +109,9 @@ function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [probeReading, setProbeReading] = useState<{ soil_temp_c: number | null; moisture_percent: number | null } | null>(null);
   const [hasActiveProbe, setHasActiveProbe] = useState(false);
+  const [trialExpired, setTrialExpired] = useState(false);
+  const [trialEndDate, setTrialEndDate] = useState<Date | null>(null);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -152,6 +155,7 @@ function App() {
       if (session?.user) {
         setUser(session.user);
         await checkAdminStatus(session.user.id);
+        await checkTrialStatus(session.user.id);
 
         if (!hasLoadedInitialLocation) {
           await loadUserLocation(session.user.id);
@@ -192,6 +196,7 @@ function App() {
 
           setUser(session.user);
           await checkAdminStatus(session.user.id);
+          await checkTrialStatus(session.user.id);
 
           if (event === 'SIGNED_IN' && weather) {
             processWeatherNotifications(weather);
@@ -204,6 +209,9 @@ function App() {
           setUser(null);
           setIsAdmin(false);
           setShowAdminPanel(false);
+          setTrialExpired(false);
+          setTrialEndDate(null);
+          setHasActiveSubscription(false);
         }
       })();
     });
@@ -288,6 +296,29 @@ function App() {
       setIsAdmin(data.role === 'admin');
     } else {
       setIsAdmin(false);
+    }
+  };
+
+  const checkTrialStatus = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('trial_end_date, stripe_subscription_id, farmer_joe_subscription_status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!data) return;
+
+    const hasStripeSubscription = !!(data.stripe_subscription_id);
+    const subscriptionActive = data.farmer_joe_subscription_status === 'active' && hasStripeSubscription;
+    setHasActiveSubscription(subscriptionActive);
+
+    if (data.trial_end_date) {
+      const endDate = new Date(data.trial_end_date);
+      setTrialEndDate(endDate);
+      const expired = new Date() > endDate && !subscriptionActive;
+      setTrialExpired(expired);
+    } else {
+      setTrialExpired(false);
     }
   };
 
@@ -1073,6 +1104,31 @@ function App() {
           </div>
         )}
 
+        {/* TRIAL EXPIRED PAYWALL */}
+        {user && trialExpired && (
+          <div className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-950/40 backdrop-blur-sm shadow-xl overflow-hidden">
+            <div className="px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-amber-300 mb-0.5">Your free trial has ended</h3>
+                <p className="text-sm text-amber-200/70">
+                  Your 30-day free trial
+                  {trialEndDate ? ` ended on ${trialEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : ' has expired'}.
+                  Subscribe to continue accessing premium features like Farmer Joe AI, extended forecasts, probe data, and planting insights.
+                </p>
+              </div>
+              <button
+                onClick={() => { setAuthMode('login'); setShowAuthModal(true); }}
+                className="flex-shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold px-5 py-2.5 rounded-xl transition-colors text-sm whitespace-nowrap"
+              >
+                Subscribe — $2.99/mo
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* TODAY'S FARM SUMMARY STRIP */}
         {(() => {
           const summaryItems: { label: string; icon: string; status: 'ok' | 'warn' | 'info' }[] = [];
@@ -1300,7 +1356,7 @@ function App() {
         </div>
 
         {/* PROBE SECTION */}
-        {user && (
+        {user && !trialExpired && (
           <div id="probe-section" className="mt-5 mb-5">
             <ProbeConnectionManager />
           </div>
@@ -1315,14 +1371,14 @@ function App() {
           />
         </div>
 
-        {user && (
+        {user && !trialExpired && (
           <div className="mb-5">
             <ExtendedForecast location={location} />
           </div>
         )}
 
         {/* PLANTING + IRRIGATION */}
-        {user && (
+        {user && !trialExpired && (
           <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
@@ -1456,7 +1512,7 @@ function App() {
           frostWarning,
           minTempNext24h: Math.round(minTempNext24h),
         }}
-        isAuthenticated={!!user}
+        isAuthenticated={!!user && !trialExpired}
       />
     </div>
   );

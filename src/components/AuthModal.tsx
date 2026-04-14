@@ -129,6 +129,13 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
         throw new Error('This phone number is already registered.');
       }
 
+      const { data: trialUsed, error: trialCheckError } = await supabase
+        .rpc('check_phone_trial_used', { phone_input: normalizedPhone });
+
+      if (!trialCheckError && trialUsed === true) {
+        throw new Error('A free trial has already been used with this phone number. Please subscribe to continue.');
+      }
+
       console.log('[Auth] Creating account...');
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
