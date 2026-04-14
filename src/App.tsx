@@ -1198,6 +1198,7 @@ function App() {
             deltaTRating={deltaTCondition.rating}
             todayRainChance={todayRainChance}
             todayExpectedRain={todayExpectedRain}
+            currentRainfall={rainfall}
             tempC={tempC}
             uvIndex={uvIndex}
             humidity={humidity}

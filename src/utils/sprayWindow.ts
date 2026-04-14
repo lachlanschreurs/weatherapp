@@ -45,7 +45,9 @@ export function findBestSprayWindow(forecastItems: ForecastItem[]): SprayWindow 
     const item = forecastItems[i];
     const windSpeedKmh = item.wind_speed * 3.6;
     const rainfall = item.rain?.['3h'] || item.rain?.['1h'] || 0;
-    const sprayCondition = getSprayCondition(windSpeedKmh, rainfall);
+    const rainLikelyByPop = item.pop > 0.4;
+    const effectiveRainfall = rainLikelyByPop ? Math.max(rainfall, 1) : rainfall;
+    const sprayCondition = getSprayCondition(windSpeedKmh, effectiveRainfall);
 
     if (sprayCondition.rating === 'Good' || sprayCondition.rating === 'Moderate') {
       if (currentWindowStart === null) {

@@ -9,6 +9,7 @@ interface RecommendationProps {
   deltaTRating: string;
   todayRainChance: number;
   todayExpectedRain: number;
+  currentRainfall: number;
   tempC: number;
   uvIndex: number;
   humidity: number;
@@ -43,6 +44,7 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     deltaTRating,
     todayRainChance,
     todayExpectedRain,
+    currentRainfall,
     tempC,
     uvIndex,
     humidity,
@@ -63,7 +65,11 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   let sprayStatusLabel = '';
   let sprayReason = '';
 
-  if (rainLikely) {
+  if (currentRainfall > 0) {
+    sprayStatus = 'risk';
+    sprayStatusLabel = 'Currently raining — do not spray';
+    sprayReason = `${currentRainfall.toFixed(1)}mm falling now — product will wash off`;
+  } else if (rainLikely) {
     sprayStatus = 'risk';
     sprayStatusLabel = todayRainChance > 70 ? 'Avoid spraying — rain likely' : 'High washoff risk today';
     sprayReason = `${todayRainChance}% rain chance, ${todayExpectedRain.toFixed(1)}mm forecast`;
