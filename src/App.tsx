@@ -708,7 +708,7 @@ function App() {
                     >
                       Start 30-Day Free Trial
                     </button>
-                    <p className="text-slate-400 text-xs">No credit card &bull; Cancel anytime &bull; Built for Aussie farmers</p>
+                    <p className="text-slate-400 text-xs">Built for Aussie farmers</p>
                   </div>
                 </>
               )}
