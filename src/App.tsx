@@ -1061,6 +1061,15 @@ function App() {
           </div>
         </div>
 
+        {/* PREMIUM TEASER — shown after main cards so value lands first */}
+        {!user && (
+          <div className="mb-5">
+            <PremiumTeaser
+              onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
+            />
+          </div>
+        )}
+
         {/* TODAY'S FARM SUMMARY STRIP */}
         {(() => {
           const summaryItems: { label: string; icon: string; status: 'ok' | 'warn' | 'info' }[] = [];
@@ -1287,18 +1296,10 @@ function App() {
           </div>
         </div>
 
-        {/* PROBE + PREMIUM */}
+        {/* PROBE SECTION */}
         {user && (
           <div id="probe-section" className="mt-5 mb-5">
             <ProbeConnectionManager />
-          </div>
-        )}
-
-        {!user && (
-          <div className="mb-5">
-            <PremiumTeaser
-              onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
-            />
           </div>
         )}
 
