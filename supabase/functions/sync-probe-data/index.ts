@@ -194,7 +194,14 @@ class ProbeProviderAdapter {
       moisture_depths: { depths: [] },
       soil_temp_depths: { depths: [] },
       measured_at: new Date().toISOString(),
-      raw_payload: rawData,
+      raw_payload: {
+        station_id: rawData?.station?.name_custom || rawData?.station?.name || null,
+        sensor_count: Array.isArray(rawData?.sensors) ? rawData.sensors.length : null,
+        data_points: Array.isArray(rawData?.data) ? rawData.data.length : null,
+        last_date: Array.isArray(rawData?.data) && rawData.data.length > 0
+          ? rawData.data[rawData.data.length - 1]?.date || null
+          : null,
+      },
     };
 
     if (!rawData) {

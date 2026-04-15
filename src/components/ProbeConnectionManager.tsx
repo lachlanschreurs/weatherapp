@@ -850,39 +850,45 @@ export function ProbeConnectionManager() {
                         <div className="bg-blue-900/30 border border-blue-700/40 rounded-lg p-3">
                           <div className="text-xs text-blue-400 font-medium mb-1">Soil Moisture</div>
                           <div className="text-2xl font-bold text-blue-300">
-                            {reading.moisture_percent !== null ? `${reading.moisture_percent.toFixed(1)}%` : 'N/A'}
+                            {reading.moisture_percent != null && isFinite(reading.moisture_percent) ? `${reading.moisture_percent.toFixed(1)}%` : 'N/A'}
                           </div>
-                          {reading.moisture_depths?.depths && reading.moisture_depths.depths.length > 0 && (
+                          {Array.isArray(reading.moisture_depths?.depths) && reading.moisture_depths.depths.length > 0 && (
                             <div className="mt-2 pt-2 border-t border-blue-700/30 space-y-1">
-                              {reading.moisture_depths.depths.map((depth, idx) => (
-                                <div key={idx} className="flex justify-between text-xs">
-                                  <span className="text-blue-400 font-medium">{depth.depth_cm}cm:</span>
-                                  <span className="text-blue-300 font-semibold">{depth.value.toFixed(1)}%</span>
-                                </div>
-                              ))}
+                              {reading.moisture_depths.depths.map((depth, idx) => {
+                                const v = typeof depth.value === 'number' && isFinite(depth.value) ? depth.value.toFixed(1) : 'N/A';
+                                return (
+                                  <div key={idx} className="flex justify-between text-xs">
+                                    <span className="text-blue-400 font-medium">{depth.depth_cm}cm:</span>
+                                    <span className="text-blue-300 font-semibold">{v}%</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
                         <div className="bg-orange-900/30 border border-orange-700/40 rounded-lg p-3">
                           <div className="text-xs text-orange-400 font-medium mb-1">Soil Temp</div>
                           <div className="text-2xl font-bold text-orange-300">
-                            {reading.soil_temp_c !== null ? `${reading.soil_temp_c.toFixed(1)}°C` : 'N/A'}
+                            {reading.soil_temp_c != null && isFinite(reading.soil_temp_c) ? `${reading.soil_temp_c.toFixed(1)}°C` : 'N/A'}
                           </div>
-                          {reading.soil_temp_depths?.depths && reading.soil_temp_depths.depths.length > 0 && (
+                          {Array.isArray(reading.soil_temp_depths?.depths) && reading.soil_temp_depths.depths.length > 0 && (
                             <div className="mt-2 pt-2 border-t border-orange-700/30 space-y-1">
-                              {reading.soil_temp_depths.depths.map((depth, idx) => (
-                                <div key={idx} className="flex justify-between text-xs">
-                                  <span className="text-orange-400 font-medium">{depth.depth_cm}cm:</span>
-                                  <span className="text-orange-300 font-semibold">{depth.value.toFixed(1)}°C</span>
-                                </div>
-                              ))}
+                              {reading.soil_temp_depths.depths.map((depth, idx) => {
+                                const v = typeof depth.value === 'number' && isFinite(depth.value) ? depth.value.toFixed(1) : 'N/A';
+                                return (
+                                  <div key={idx} className="flex justify-between text-xs">
+                                    <span className="text-orange-400 font-medium">{depth.depth_cm}cm:</span>
+                                    <span className="text-orange-300 font-semibold">{v}°C</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
                         <div className="bg-cyan-900/30 border border-cyan-700/40 rounded-lg p-3">
                           <div className="text-xs text-cyan-400 font-medium mb-1">Rainfall</div>
                           <div className="text-2xl font-bold text-cyan-300">
-                            {reading.rainfall_mm !== null ? `${reading.rainfall_mm.toFixed(1)}mm` : 'N/A'}
+                            {reading.rainfall_mm != null && isFinite(reading.rainfall_mm) ? `${reading.rainfall_mm.toFixed(1)}mm` : 'N/A'}
                           </div>
                           <div className="text-xs text-cyan-400 font-semibold mt-1">Total</div>
                         </div>
