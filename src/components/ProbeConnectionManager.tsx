@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Gauge, Plus, Trash2, RefreshCw, AlertCircle, CheckCircle, Settings, Eye, EyeOff, Upload, Mail, Zap, CreditCard as Edit2, Check, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CSVUploadModal } from './CSVUploadModal';
@@ -121,11 +121,13 @@ export function ProbeConnectionManager() {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
 
-  useEffect(() => {
-    loadConnections();
-  }, []);
+  const mountedRef = useRef(true);
+  const loadingRef = useRef(false);
 
-  async function loadConnections() {
+  const loadConnections = useCallback(async () => {
+    if (loadingRef.current || !mountedRef.current) return;
+    loadingRef.current = true;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -136,28 +138,45 @@ export function ProbeConnectionManager() {
         .order('created_at', { ascending: false });
 
       if (connError) throw connError;
+      if (!mountedRef.current) return;
 
       setConnections(connectionsData || []);
 
-      const { data: readingsData, error: readError } = await supabase
-        .from('probe_readings_latest')
-        .select('*');
+      const connectionIds = (connectionsData || []).map((c: ProbeConnection) => c.id);
+      if (connectionIds.length > 0) {
+        const { data: readingsData, error: readError } = await supabase
+          .from('probe_readings_latest')
+          .select('*')
+          .in('connection_id', connectionIds);
 
-      if (readError) throw readError;
+        if (readError) throw readError;
+        if (!mountedRef.current) return;
 
-      const readingsMap = new Map();
-      (readingsData || []).forEach((reading: ProbeReading) => {
-        readingsMap.set(reading.connection_id, reading);
-      });
-      setReadings(readingsMap);
+        const readingsMap = new Map<string, ProbeReading>();
+        (readingsData || []).forEach((reading: ProbeReading) => {
+          readingsMap.set(reading.connection_id, reading);
+        });
+        setReadings(readingsMap);
+      } else {
+        setReadings(new Map());
+      }
 
     } catch (err: any) {
       console.error('Error loading probe connections:', err);
-      setError(err.message);
+      if (mountedRef.current) setError(err.message);
     } finally {
-      setIsLoading(false);
+      loadingRef.current = false;
+      if (mountedRef.current) setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    loadConnections();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadConnections]);
 
   function handleSelectConnectionMethod(methodId: string) {
     setShowAddMenu(false);
@@ -247,6 +266,7 @@ export function ProbeConnectionManager() {
         }
       }
 
+      if (!mountedRef.current) return;
       setSuccessMessage('Probe connected successfully!');
       setShowAPIForm(false);
       resetForm();
@@ -254,9 +274,9 @@ export function ProbeConnectionManager() {
 
     } catch (err: any) {
       console.error('Error adding probe connection:', err);
-      setError(err.message);
+      if (mountedRef.current) setError(err.message);
     } finally {
-      setTestingConnection(false);
+      if (mountedRef.current) setTestingConnection(false);
     }
   }
 
@@ -300,6 +320,7 @@ export function ProbeConnectionManager() {
   }
 
   async function handleSyncConnection(connectionId: string) {
+    if (isSyncing) return;
     try {
       setIsSyncing(true);
       setError(null);
@@ -320,23 +341,28 @@ export function ProbeConnectionManager() {
       );
 
       const result = await response.json();
+      if (!mountedRef.current) return;
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to sync probe data');
+      if (result.timed_out) {
+        setError('Last sync delayed — previous values are shown');
+      } else if (!result.success) {
+        setError(result.error || 'Failed to sync probe data');
+      } else {
+        setSuccessMessage('Probe data synced successfully!');
       }
 
-      setSuccessMessage('Probe data synced successfully!');
       await loadConnections();
 
     } catch (err: any) {
       console.error('Error syncing probe data:', err);
-      setError(err.message);
+      if (mountedRef.current) setError(err.message);
     } finally {
-      setIsSyncing(false);
+      if (mountedRef.current) setIsSyncing(false);
     }
   }
 
   async function handleSyncAll() {
+    if (isSyncing) return;
     try {
       setIsSyncing(true);
       setError(null);
@@ -357,11 +383,12 @@ export function ProbeConnectionManager() {
       );
 
       const result = await response.json();
+      if (!mountedRef.current) return;
 
       if (result.timed_out) {
         setError('Last sync delayed — previous values are shown');
       } else if (!result.success) {
-        throw new Error('Failed to sync probe data');
+        setError('Failed to sync probe data');
       } else {
         setSuccessMessage('All probe data synced successfully!');
       }
@@ -370,9 +397,9 @@ export function ProbeConnectionManager() {
 
     } catch (err: any) {
       console.error('Error syncing all probe data:', err);
-      setError(err.message);
+      if (mountedRef.current) setError(err.message);
     } finally {
-      setIsSyncing(false);
+      if (mountedRef.current) setIsSyncing(false);
     }
   }
 

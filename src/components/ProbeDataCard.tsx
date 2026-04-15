@@ -34,7 +34,7 @@ interface ProbeConnection {
   last_error: string | null;
 }
 
-interface StationData {
+interface RawStationData {
   connection: ProbeConnection;
   reading: ProbeReading | null;
 }
@@ -53,6 +53,11 @@ interface ProcessedReading {
   soil_temp_depths: ProcessedDepth[];
   measured_at: string;
   synced_at: string;
+}
+
+interface ProcessedStation {
+  connection: ProbeConnection;
+  processed: ProcessedReading | null;
 }
 
 interface ProbeDataCardProps {
@@ -159,28 +164,26 @@ function formatTimestamp(timestamp: string) {
 }
 
 function ProbeDataCardInner({ onManageProbes }: ProbeDataCardProps) {
-  const [stations, setStations] = useState<StationData[]>([]);
+  const [rawStations, setRawStations] = useState<RawStationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  const isFetchingRef = useRef(false);
   const mountedRef = useRef(true);
+  const loadingRef = useRef(false);
+  const initialLoadDoneRef = useRef(false);
 
   const loadProbeData = useCallback(async () => {
-    if (isFetchingRef.current) return;
-    isFetchingRef.current = true;
+    if (loadingRef.current || !mountedRef.current) return;
+    loadingRef.current = true;
 
     try {
-      setIsLoading(true);
-      setError(null);
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !mountedRef.current) return;
 
       const { data: connections, error: connError } = await supabase
         .from('probe_connections')
-        .select('*')
+        .select('id, provider, station_id, friendly_name, is_active, last_sync_at, last_error')
         .eq('is_active', true)
         .order('created_at', { ascending: true });
 
@@ -188,65 +191,64 @@ function ProbeDataCardInner({ onManageProbes }: ProbeDataCardProps) {
       if (!mountedRef.current) return;
 
       if (!connections || connections.length === 0) {
-        setStations([]);
+        setRawStations([]);
         return;
       }
 
-      const stationDataPromises = connections.map(async (connection: ProbeConnection) => {
-        const { data: readingData } = await supabase
-          .from('probe_readings_latest')
-          .select('*')
-          .eq('connection_id', connection.id)
-          .maybeSingle();
+      const stationDataList = await Promise.all(
+        connections.map(async (connection: ProbeConnection) => {
+          const { data: readingData } = await supabase
+            .from('probe_readings_latest')
+            .select('id, connection_id, moisture_percent, soil_temp_c, rainfall_mm, battery_level, air_temp_c, humidity_percent, moisture_depths, soil_temp_depths, measured_at, synced_at')
+            .eq('connection_id', connection.id)
+            .maybeSingle();
 
-        return { connection, reading: readingData as ProbeReading | null };
-      });
+          return { connection, reading: readingData as ProbeReading | null };
+        })
+      );
 
-      const stationData = await Promise.all(stationDataPromises);
       if (mountedRef.current) {
-        setStations(stationData);
+        setRawStations(stationDataList);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to load probe data';
       console.error('Error loading probe data:', err);
-      if (mountedRef.current) setError(msg);
+      if (mountedRef.current) setSyncError(msg);
     } finally {
-      isFetchingRef.current = false;
+      loadingRef.current = false;
       if (mountedRef.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    loadProbeData();
 
-    const subscription = supabase
-      .channel('probe_readings_changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'probe_readings_latest' },
-        () => { loadProbeData(); }
-      )
-      .subscribe();
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      loadProbeData();
+    }
 
     return () => {
       mountedRef.current = false;
-      subscription.unsubscribe();
     };
   }, [loadProbeData]);
 
-  const processedStations = useMemo(() => {
-    return stations.map(({ connection, reading }) => ({
+  const processedStations = useMemo((): ProcessedStation[] => {
+    return rawStations.map(({ connection, reading }) => ({
       connection,
       processed: processReading(reading),
     }));
-  }, [stations]);
+  }, [rawStations]);
 
-  async function handleSync(connectionId?: string) {
-    if (isSyncing) return;
-    try {
+  const handleSync = useCallback(async (connectionId?: string) => {
+    if (isSyncing || !mountedRef.current) return;
+
+    if (mountedRef.current) {
       setIsSyncing(true);
-      setError(null);
+      setSyncError(null);
+    }
 
+    try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
@@ -264,21 +266,23 @@ function ProbeDataCardInner({ onManageProbes }: ProbeDataCardProps) {
 
       const result = await response.json();
 
+      if (!mountedRef.current) return;
+
       if (result.timed_out) {
-        setError('Last sync delayed — previous values shown');
+        setSyncError('Last sync delayed — previous values shown');
       } else if (!result.success) {
-        throw new Error(result.error || 'Failed to sync probe data');
+        setSyncError(result.error || 'Failed to sync probe data');
       }
 
       await loadProbeData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sync failed';
       console.error('Error syncing probe data:', err);
-      setError(msg);
+      if (mountedRef.current) setSyncError(msg);
     } finally {
-      setIsSyncing(false);
+      if (mountedRef.current) setIsSyncing(false);
     }
-  }
+  }, [isSyncing, loadProbeData]);
 
   if (isLoading) {
     return (
@@ -290,7 +294,7 @@ function ProbeDataCardInner({ onManageProbes }: ProbeDataCardProps) {
     );
   }
 
-  if (stations.length === 0) {
+  if (rawStations.length === 0) {
     return (
       <div className="bg-slate-900/70 rounded-xl shadow-lg overflow-hidden border border-slate-700/60">
         <div className="bg-slate-800/80 border-b border-slate-700/60 p-4">
@@ -323,10 +327,10 @@ function ProbeDataCardInner({ onManageProbes }: ProbeDataCardProps) {
 
   return (
     <div className="space-y-4">
-      {error && (
+      {syncError && (
         <div className="p-3 bg-red-900/30 border border-red-700/40 rounded-lg flex items-start gap-2">
           <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-300">{error}</p>
+          <p className="text-sm text-red-300">{syncError}</p>
         </div>
       )}
 
