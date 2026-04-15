@@ -263,7 +263,12 @@ function ProbeDataCardInner({ onManageProbes }: ProbeDataCardProps) {
       });
 
       const result = await response.json();
-      if (!result.success) throw new Error(result.error || 'Failed to sync probe data');
+
+      if (result.timed_out) {
+        setError('Last sync delayed — previous values shown');
+      } else if (!result.success) {
+        throw new Error(result.error || 'Failed to sync probe data');
+      }
 
       await loadProbeData();
     } catch (err: unknown) {

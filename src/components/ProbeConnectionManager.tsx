@@ -358,11 +358,14 @@ export function ProbeConnectionManager() {
 
       const result = await response.json();
 
-      if (!result.success) {
+      if (result.timed_out) {
+        setError('Last sync delayed — previous values are shown');
+      } else if (!result.success) {
         throw new Error('Failed to sync probe data');
+      } else {
+        setSuccessMessage('All probe data synced successfully!');
       }
 
-      setSuccessMessage('All probe data synced successfully!');
       await loadConnections();
 
     } catch (err: any) {
