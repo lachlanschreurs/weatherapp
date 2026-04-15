@@ -151,10 +151,12 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`;
         const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=40`;
+        const dailyUrl = `https://api.openweathermap.org/data/2.5/forecast/daily?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=5`;
 
-        const [currentResponse, forecastResponse] = await Promise.all([
+        const [currentResponse, forecastResponse, dailyResponse] = await Promise.all([
           fetch(currentUrl),
           fetch(forecastUrl),
+          fetch(dailyUrl),
         ]);
 
         if (!currentResponse.ok) {
@@ -175,8 +177,9 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
 
         const currentData = await currentResponse.json();
         const forecastData = await forecastResponse.json();
+        const dailyData = dailyResponse.ok ? await dailyResponse.json() : null;
 
-        const weatherData = transformWeatherDataFromForecast(currentData, forecastData, name, country, currentData.timezone);
+        const weatherData = transformWeatherDataFromForecast(currentData, forecastData, name, country, currentData.timezone, dailyData);
         const hourlyForecast = buildHourlyFromForecast(forecastData);
 
         let probeReport = '';
@@ -259,13 +262,24 @@ function buildHourlyFromForecast(forecastData: any): any[] {
     }));
 }
 
-function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string, timezoneOffsetSeconds: number = 0) {
+function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string, timezoneOffsetSeconds: number = 0, dailyData: any = null) {
   const list = forecastData.list || [];
 
   const localNowMs = Date.now() + timezoneOffsetSeconds * 1000;
   const localNowDate = new Date(localNowMs);
   const todayStr = localNowDate.toISOString().split('T')[0];
   const nowTs = Math.floor(Date.now() / 1000);
+
+  const dailyMap: Record<string, { maxtemp_c: number; mintemp_c: number }> = {};
+  if (dailyData?.list) {
+    for (const d of dailyData.list) {
+      const dateStr = new Date(d.dt * 1000).toISOString().split('T')[0];
+      dailyMap[dateStr] = {
+        maxtemp_c: d.temp?.max ?? null,
+        mintemp_c: d.temp?.min ?? null,
+      };
+    }
+  }
 
   const dayMap: Record<string, any[]> = {};
   for (const item of list) {
@@ -279,19 +293,17 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
     .filter(([date]) => date >= todayStr)
     .slice(0, 8)
     .map(([date, items]) => {
-    const futureItems = date === todayStr
-      ? (items as any[]).filter((i: any) => i.dt >= nowTs)
-      : items as any[];
-
-    const relevantItems = futureItems.length > 0 ? futureItems : items as any[];
-
     const allDayItems = items as any[];
     const tempMaxValues = allDayItems.map((i: any) => i.main.temp_max);
     const tempMinValues = allDayItems.map((i: any) => i.main.temp_min);
     const allTemps = allDayItems.map((i: any) => i.main.temp);
 
-    const maxtemp_c = Math.max(...tempMaxValues, ...allTemps);
-    const mintemp_c = Math.min(...tempMinValues, ...allTemps);
+    const derivedMax = Math.max(...tempMaxValues, ...allTemps);
+    const derivedMin = Math.min(...tempMinValues, ...allTemps);
+
+    const officialDay = dailyMap[date];
+    const maxtemp_c = (officialDay?.maxtemp_c != null) ? officialDay.maxtemp_c : derivedMax;
+    const mintemp_c = (officialDay?.mintemp_c != null) ? officialDay.mintemp_c : derivedMin;
 
     const rain = items.reduce((sum: number, i: any) => sum + (i.rain?.['3h'] || 0), 0);
     const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
@@ -1184,16 +1196,22 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
 
       <div class="section-label">Today's Forecast</div>
       <div class="card" style="padding:16px;">
+        <div style="text-align:center;margin-bottom:16px;padding:16px;background:#1e293b;border:1px solid #334155;border-radius:10px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:4px;">Current Temperature</div>
+          <div style="font-size:48px;font-weight:800;color:#f1f5f9;line-height:1;">${Math.round(current.temp_c)}°C</div>
+          <div style="font-size:13px;color:#94a3b8;margin-top:6px;font-weight:500;text-transform:capitalize;">${current.condition.text}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;font-weight:600;">Feels like ${Math.round(current.feelslike_c)}°C · ${current.humidity}% humidity</div>
+        </div>
         <div class="stat-grid">
           <div class="stat-cell">
             <div class="stat-icon">🌡️</div>
-            <div class="stat-label">High</div>
+            <div class="stat-label">Today's High</div>
             <div class="stat-value" style="color:#fca5a5;">${Math.round(highTemp)}°C</div>
             <div class="stat-sub">Maximum</div>
           </div>
           <div class="stat-cell">
             <div class="stat-icon">🌡️</div>
-            <div class="stat-label">Low</div>
+            <div class="stat-label">Today's Low</div>
             <div class="stat-value" style="color:#93c5fd;">${Math.round(lowTemp)}°C</div>
             <div class="stat-sub">Minimum</div>
           </div>
