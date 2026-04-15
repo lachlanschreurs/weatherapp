@@ -65,13 +65,18 @@ export function WeedCard({ weed }: Props) {
           <InfoBlock icon={<Activity className="w-3.5 h-3.5 text-amber-400" />} label="Growth Habit" value={weed.growth_habit} />
           <InfoBlock icon={<Leaf className="w-3.5 h-3.5 text-green-400" />} label="Control Methods" value={weed.control_methods} />
 
-          {weed.resistance_notes && (
+          {(weed.resistance_notes || weed.resistance_group) && (
             <div className="rounded-lg bg-amber-950/30 border border-amber-500/20 p-3.5">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Resistance Notes</div>
+                <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Resistance</div>
               </div>
-              <p className="text-sm text-amber-200/80 leading-relaxed">{weed.resistance_notes}</p>
+              {weed.resistance_group && (
+                <p className="text-xs text-amber-400 font-semibold mb-1">Group: {weed.resistance_group}</p>
+              )}
+              {weed.resistance_notes && (
+                <p className="text-sm text-amber-200/80 leading-relaxed">{weed.resistance_notes}</p>
+              )}
             </div>
           )}
 

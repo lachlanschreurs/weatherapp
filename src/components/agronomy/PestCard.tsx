@@ -74,6 +74,13 @@ export function PestCard({ pest }: Props) {
         <div className="px-5 pb-5 border-t border-slate-700/40 pt-4 space-y-4">
           <InfoBlock icon={<Eye className="w-3.5 h-3.5 text-blue-400" />} label="Identification" value={pest.identification_details} />
           <InfoBlock icon={<AlertTriangle className="w-3.5 h-3.5 text-red-400" />} label="Damage Caused" value={pest.damage_caused} />
+          {pest.damage_symptoms && <InfoBlock icon={<AlertTriangle className="w-3.5 h-3.5 text-orange-400" />} label="Damage Symptoms" value={pest.damage_symptoms} />}
+          {pest.spray_threshold && (
+            <div className="rounded-lg bg-green-950/30 border border-green-500/20 p-3.5">
+              <div className="text-xs font-bold text-green-400 uppercase tracking-wider mb-1">Spray Threshold</div>
+              <p className="text-sm text-green-200/80 leading-relaxed">{pest.spray_threshold}</p>
+            </div>
+          )}
           <InfoBlock icon={<Activity className="w-3.5 h-3.5 text-amber-400" />} label="Lifecycle & Behaviour" value={pest.lifecycle_notes} />
           <InfoBlock icon={<Eye className="w-3.5 h-3.5 text-green-400" />} label="Monitoring Notes" value={pest.monitoring_notes} />
           <InfoBlock icon={<Bug className="w-3.5 h-3.5 text-emerald-400" />} label="Treatment Options" value={pest.treatment_options} />

@@ -9,6 +9,7 @@ export interface Chemical {
   mode_of_action: string;
   formulation_type: string;
   category: ChemicalCategory;
+  target_type: string;
   manufacturer: string;
   registered_crops: string[];
   target_issues: string[];
@@ -17,6 +18,8 @@ export interface Chemical {
   reentry_period: string;
   label_notes: string;
   resistance_notes: string;
+  apvma_registration: string;
+  label_link: string;
 }
 
 export interface Disease {
@@ -27,6 +30,7 @@ export interface Disease {
   affected_crops: string[];
   symptoms: string;
   conditions_favouring: string;
+  weather_favourable_conditions: string;
   management_options: string;
   prevention_notes: string;
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
@@ -40,8 +44,10 @@ export interface Pest {
   affected_crops: string[];
   identification_details: string;
   damage_caused: string;
+  damage_symptoms: string;
   lifecycle_notes: string;
   monitoring_notes: string;
+  spray_threshold: string;
   treatment_options: string;
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
 }
@@ -56,6 +62,7 @@ export interface Weed {
   growth_habit: string;
   control_methods: string;
   resistance_notes: string;
+  resistance_group: string;
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
 }
 
@@ -65,4 +72,5 @@ export interface SearchState {
   query: string;
   crop: string;
   category: string;
+  activeIngredient: string;
 }

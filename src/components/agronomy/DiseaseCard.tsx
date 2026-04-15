@@ -74,6 +74,7 @@ export function DiseaseCard({ disease }: Props) {
         <div className="px-5 pb-5 border-t border-slate-700/40 pt-4 space-y-4">
           <InfoBlock icon={<Bug className="w-3.5 h-3.5 text-red-400" />} label="Symptoms" value={disease.symptoms} />
           <InfoBlock icon={<Thermometer className="w-3.5 h-3.5 text-amber-400" />} label="Conditions Favouring Outbreak" value={disease.conditions_favouring} />
+          <InfoBlock icon={<Thermometer className="w-3.5 h-3.5 text-blue-400" />} label="Favourable Weather Conditions" value={disease.weather_favourable_conditions} />
           <InfoBlock icon={<Shield className="w-3.5 h-3.5 text-blue-400" />} label="Management Options" value={disease.management_options} />
           <InfoBlock icon={<Shield className="w-3.5 h-3.5 text-green-400" />} label="Prevention Notes" value={disease.prevention_notes} />
 

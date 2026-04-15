@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, FlaskConical, Clock, AlertTriangle, Shield } from 'lucide-react';
+import { ChevronDown, ChevronUp, FlaskConical, Clock, AlertTriangle, Shield, ExternalLink, Tag } from 'lucide-react';
 import type { Chemical } from './types';
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -121,6 +121,27 @@ export function ChemicalCard({ chemical }: Props) {
               <p className="text-sm text-amber-200/80 leading-relaxed">{chemical.resistance_notes}</p>
             </div>
           )}
+
+          <div className="flex flex-wrap gap-3 pt-1">
+            {chemical.apvma_registration && (
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Tag className="w-3 h-3" />
+                <span>APVMA: <span className="text-slate-400 font-mono">{chemical.apvma_registration}</span></span>
+              </div>
+            )}
+            {chemical.label_link && (
+              <a
+                href={chemical.label_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                View Product Label
+              </a>
+            )}
+          </div>
         </div>
       )}
     </div>

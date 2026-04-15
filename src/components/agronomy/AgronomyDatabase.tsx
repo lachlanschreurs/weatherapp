@@ -24,6 +24,7 @@ export function AgronomyDatabase({ onClose }: Props) {
   const [query, setQuery] = useState('');
   const [cropFilter, setCropFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [activeIngredient, setActiveIngredient] = useState('');
   const [loading, setLoading] = useState(true);
 
   const [chemicals, setChemicals] = useState<Chemical[]>([]);
@@ -86,6 +87,12 @@ export function AgronomyDatabase({ onClose }: Props) {
     return Array.from(crops).sort();
   }, [chemicals, diseases, pests, weeds]);
 
+  const allActiveIngredients = useMemo(() => {
+    const ais = new Set<string>();
+    chemicals.forEach(c => { if (c.active_ingredient) ais.add(c.active_ingredient); });
+    return Array.from(ais).sort();
+  }, [chemicals]);
+
   const filteredChemicals = useMemo(() => {
     return chemicals.filter(c => {
       const q = query.toLowerCase();
@@ -96,9 +103,10 @@ export function AgronomyDatabase({ onClose }: Props) {
         c.target_issues.some(t => t.toLowerCase().includes(q));
       const matchCrop = !cropFilter || c.registered_crops.includes(cropFilter);
       const matchCat = !categoryFilter || c.category === categoryFilter;
-      return matchQuery && matchCrop && matchCat;
+      const matchAI = !activeIngredient || c.active_ingredient === activeIngredient;
+      return matchQuery && matchCrop && matchCat && matchAI;
     });
-  }, [chemicals, query, cropFilter, categoryFilter]);
+  }, [chemicals, query, cropFilter, categoryFilter, activeIngredient]);
 
   const filteredDiseases = useMemo(() => {
     return diseases.filter(d => {
@@ -175,8 +183,11 @@ export function AgronomyDatabase({ onClose }: Props) {
             onCropChange={setCropFilter}
             categoryFilter={categoryFilter}
             onCategoryChange={setCategoryFilter}
+            activeIngredient={activeIngredient}
+            onActiveIngredientChange={setActiveIngredient}
             activeTab={activeTab}
             allCrops={allCrops}
+            allActiveIngredients={allActiveIngredients}
           />
 
           <div className="flex gap-1 mt-4 overflow-x-auto pb-0.5">

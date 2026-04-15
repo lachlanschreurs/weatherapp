@@ -7,8 +7,11 @@ interface Props {
   onCropChange: (c: string) => void;
   categoryFilter: string;
   onCategoryChange: (c: string) => void;
+  activeIngredient: string;
+  onActiveIngredientChange: (v: string) => void;
   activeTab: string;
   allCrops: string[];
+  allActiveIngredients: string[];
 }
 
 const CHEMICAL_CATEGORIES = [
@@ -20,13 +23,14 @@ const CHEMICAL_CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
-export function AgronomySearch({ query, onQueryChange, cropFilter, onCropChange, categoryFilter, onCategoryChange, activeTab, allCrops }: Props) {
-  const hasFilters = query || cropFilter || categoryFilter;
+export function AgronomySearch({ query, onQueryChange, cropFilter, onCropChange, categoryFilter, onCategoryChange, activeIngredient, onActiveIngredientChange, activeTab, allCrops, allActiveIngredients }: Props) {
+  const hasFilters = query || cropFilter || categoryFilter || activeIngredient;
 
   const clearAll = () => {
     onQueryChange('');
     onCropChange('');
     onCategoryChange('');
+    onActiveIngredientChange('');
   };
 
   return (
@@ -75,6 +79,19 @@ export function AgronomySearch({ query, onQueryChange, cropFilter, onCropChange,
           >
             {CHEMICAL_CATEGORIES.map(cat => (
               <option key={cat.value} value={cat.value}>{cat.label}</option>
+            ))}
+          </select>
+        )}
+
+        {activeTab === 'chemicals' && allActiveIngredients.length > 0 && (
+          <select
+            value={activeIngredient}
+            onChange={e => onActiveIngredientChange(e.target.value)}
+            className="flex-1 min-w-40 px-3 py-2.5 bg-slate-800/80 border border-slate-700/60 rounded-xl text-sm text-slate-300 focus:outline-none focus:border-green-500/60 transition-colors appearance-none cursor-pointer"
+          >
+            <option value="">All active ingredients</option>
+            {allActiveIngredients.map(ai => (
+              <option key={ai} value={ai}>{ai}</option>
             ))}
           </select>
         )}
