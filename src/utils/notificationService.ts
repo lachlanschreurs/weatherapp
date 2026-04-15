@@ -6,7 +6,7 @@ export interface WeatherNotification {
   title: string;
   message: string;
   type: 'alert' | 'update' | 'info';
-  read?: boolean;
+  is_read?: boolean;
   created_at?: string;
   data?: {
     location?: string;
@@ -16,9 +16,9 @@ export interface WeatherNotification {
   };
 }
 
-export async function createNotification(notification: Omit<WeatherNotification, 'id' | 'created_at' | 'read'>) {
+export async function createNotification(notification: Omit<WeatherNotification, 'id' | 'created_at' | 'is_read'>) {
   const { data, error } = await supabase
-    .from('user_notifications')
+    .from('notifications')
     .insert([notification])
     .select()
     .single();
@@ -33,13 +33,13 @@ export async function createNotification(notification: Omit<WeatherNotification,
 
 export async function getUserNotifications(userId: string, unreadOnly = false) {
   let query = supabase
-    .from('user_notifications')
+    .from('notifications')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (unreadOnly) {
-    query = query.eq('read', false);
+    query = query.eq('is_read', false);
   }
 
   const { data, error } = await query;
@@ -54,8 +54,8 @@ export async function getUserNotifications(userId: string, unreadOnly = false) {
 
 export async function markNotificationAsRead(notificationId: string) {
   const { error } = await supabase
-    .from('user_notifications')
-    .update({ read: true })
+    .from('notifications')
+    .update({ is_read: true })
     .eq('id', notificationId);
 
   if (error) {
@@ -68,10 +68,10 @@ export async function markNotificationAsRead(notificationId: string) {
 
 export async function markAllNotificationsAsRead(userId: string) {
   const { error } = await supabase
-    .from('user_notifications')
-    .update({ read: true })
+    .from('notifications')
+    .update({ is_read: true })
     .eq('user_id', userId)
-    .eq('read', false);
+    .eq('is_read', false);
 
   if (error) {
     console.error('Error marking all notifications as read:', error);
@@ -83,7 +83,7 @@ export async function markAllNotificationsAsRead(userId: string) {
 
 export async function deleteNotification(notificationId: string) {
   const { error } = await supabase
-    .from('user_notifications')
+    .from('notifications')
     .delete()
     .eq('id', notificationId);
 
@@ -97,7 +97,7 @@ export async function deleteNotification(notificationId: string) {
 
 export async function clearAllNotifications(userId: string) {
   const { error } = await supabase
-    .from('user_notifications')
+    .from('notifications')
     .delete()
     .eq('user_id', userId);
 

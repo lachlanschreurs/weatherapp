@@ -26,7 +26,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
         {
           event: '*',
           schema: 'public',
-          table: 'user_notifications',
+          table: 'notifications',
           filter: `user_id=eq.${userId}`,
         },
         () => {
@@ -54,7 +54,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
   const loadNotifications = async () => {
     const data = await getUserNotifications(userId);
     setNotifications(data);
-    setUnreadCount(data.filter(n => !n.read).length);
+    setUnreadCount(data.filter(n => !n.is_read).length);
   };
 
   const handleMarkAsRead = async (notificationId: string) => {
@@ -286,13 +286,13 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={getNotificationStyle(notification.type, notification.read || false)}
+                    className={getNotificationStyle(notification.type, notification.is_read || false)}
                   >
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5">{getIcon(notification.type)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className={`text-sm font-semibold ${!notification.read ? 'text-slate-100' : 'text-slate-400'}`}>
+                          <h4 className={`text-sm font-semibold ${!notification.is_read ? 'text-slate-100' : 'text-slate-400'}`}>
                             {notification.title}
                           </h4>
                           <button
@@ -302,7 +302,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <p className={`text-sm mt-1 ${!notification.read ? 'text-slate-300' : 'text-slate-500'}`}>
+                        <p className={`text-sm mt-1 ${!notification.is_read ? 'text-slate-300' : 'text-slate-500'}`}>
                           {notification.message}
                         </p>
                         {notification.data?.location && (
@@ -319,7 +319,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                               minute: '2-digit',
                             })}
                           </p>
-                          {!notification.read && (
+                          {!notification.is_read && (
                             <button
                               onClick={() => handleMarkAsRead(notification.id!)}
                               className="text-xs text-green-400 hover:text-green-300 font-semibold flex items-center gap-1 transition-colors"
