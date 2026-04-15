@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, ChevronDown } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, Database } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -14,6 +14,7 @@ import { AuthModal } from './components/AuthModal';
 import { UserMenu } from './components/UserMenu';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationCenter } from './components/NotificationCenter';
+import { AgronomyDatabase } from './components/agronomy/AgronomyDatabase';
 import { PremiumTeaser } from './components/PremiumTeaser';
 import FarmerJoe from './components/FarmerJoe';
 import { PromoBanner } from './components/PromoBanner';
@@ -112,6 +113,7 @@ function App() {
   const [trialExpired, setTrialExpired] = useState(false);
   const [trialEndDate, setTrialEndDate] = useState<Date | null>(null);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
+  const [showAgronomyDB, setShowAgronomyDB] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -712,6 +714,13 @@ function App() {
               >
                 <Map className="w-4 h-4 text-blue-400" />
                 Radar
+              </button>
+              <button
+                onClick={() => setShowAgronomyDB(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-green-600/40 text-slate-300 hover:bg-green-900/40 hover:text-green-300 hover:border-green-500/50 transition-all duration-200 text-sm font-semibold shadow-lg"
+              >
+                <Database className="w-4 h-4 text-green-400" />
+                Agronomy
               </button>
               {user ? (
                 <>
@@ -1478,6 +1487,10 @@ function App() {
         onSuccess={() => setShowAuthModal(false)}
         initialMode={authMode}
       />
+
+      {showAgronomyDB && (
+        <AgronomyDatabase onClose={() => setShowAgronomyDB(false)} />
+      )}
 
 
       <FarmerJoe
