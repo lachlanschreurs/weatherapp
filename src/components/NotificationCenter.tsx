@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, X, Check, AlertTriangle, Info, CloudRain, Trash2, Wind, Zap, Thermometer, Sun, Droplets, AlertCircle, CheckCircle } from 'lucide-react';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, clearAllNotifications, type WeatherNotification } from '../utils/notificationService';
-import { supabase } from '../lib/supabase';
 import type { WeatherAlert } from '../utils/weatherAlerts';
 
 interface NotificationCenterProps {
@@ -15,30 +14,44 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
   const [unreadCount, setUnreadCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const [showAlerts, setShowAlerts] = useState(true);
+  const mountedRef = useRef(true);
+  const loadingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
+
+  const loadNotifications = useCallback(async () => {
+    if (loadingRef.current || !mountedRef.current) return;
+    loadingRef.current = true;
+    try {
+      const data = await getUserNotifications(userId);
+      if (mountedRef.current) {
+        setNotifications(data);
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }
+    } catch {
+    } finally {
+      loadingRef.current = false;
+    }
+  }, [userId]);
 
   useEffect(() => {
-    loadNotifications();
-
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        () => {
-          loadNotifications();
-        }
-      )
-      .subscribe();
-
+    mountedRef.current = true;
     return () => {
-      supabase.removeChannel(channel);
+      mountedRef.current = false;
     };
-  }, [userId]);
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadNotifications();
+    }
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadNotifications();
+    }
+  }, [isOpen, loadNotifications]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -46,36 +59,29 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
         setIsOpen(false);
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const loadNotifications = async () => {
-    const data = await getUserNotifications(userId);
-    setNotifications(data);
-    setUnreadCount(data.filter(n => !n.is_read).length);
-  };
-
   const handleMarkAsRead = async (notificationId: string) => {
     await markNotificationAsRead(notificationId);
-    loadNotifications();
+    if (mountedRef.current) loadNotifications();
   };
 
   const handleMarkAllAsRead = async () => {
     await markAllNotificationsAsRead(userId);
-    loadNotifications();
+    if (mountedRef.current) loadNotifications();
   };
 
   const handleDelete = async (notificationId: string) => {
     await deleteNotification(notificationId);
-    loadNotifications();
+    if (mountedRef.current) loadNotifications();
   };
 
   const handleClearAll = async () => {
     if (window.confirm('Are you sure you want to clear all notifications?')) {
       await clearAllNotifications(userId);
-      loadNotifications();
+      if (mountedRef.current) loadNotifications();
     }
   };
 
@@ -92,88 +98,48 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
 
   const getAlertIcon = (iconName: string) => {
     const iconClass = 'w-5 h-5 flex-shrink-0';
-
     switch (iconName) {
-      case 'cloud-rain':
-        return <CloudRain className={iconClass} />;
-      case 'wind':
-        return <Wind className={iconClass} />;
-      case 'zap':
-        return <Zap className={iconClass} />;
-      case 'thermometer':
-        return <Thermometer className={iconClass} />;
-      case 'sun':
-        return <Sun className={iconClass} />;
-      case 'droplets':
-        return <Droplets className={iconClass} />;
-      case 'alert-triangle':
-        return <AlertTriangle className={iconClass} />;
-      case 'alert-circle':
-        return <AlertCircle className={iconClass} />;
-      case 'check-circle':
-        return <CheckCircle className={iconClass} />;
-      default:
-        return <AlertTriangle className={iconClass} />;
+      case 'cloud-rain': return <CloudRain className={iconClass} />;
+      case 'wind': return <Wind className={iconClass} />;
+      case 'zap': return <Zap className={iconClass} />;
+      case 'thermometer': return <Thermometer className={iconClass} />;
+      case 'sun': return <Sun className={iconClass} />;
+      case 'droplets': return <Droplets className={iconClass} />;
+      case 'alert-triangle': return <AlertTriangle className={iconClass} />;
+      case 'alert-circle': return <AlertCircle className={iconClass} />;
+      case 'check-circle': return <CheckCircle className={iconClass} />;
+      default: return <AlertTriangle className={iconClass} />;
     }
   };
 
   const getAlertStyles = (severity: string) => {
     switch (severity) {
       case 'safe':
-        return {
-          containerClass: 'bg-green-950/40 border-green-500/40',
-          iconColor: 'text-green-400',
-          titleClass: 'text-green-300',
-          messageClass: 'text-green-400/80',
-        };
+        return { containerClass: 'bg-green-950/40 border-green-500/40', iconColor: 'text-green-400', titleClass: 'text-green-300', messageClass: 'text-green-400/80' };
       case 'info':
-        return {
-          containerClass: 'bg-blue-950/40 border-blue-500/40',
-          iconColor: 'text-blue-400',
-          titleClass: 'text-blue-300',
-          messageClass: 'text-blue-400/80',
-        };
+        return { containerClass: 'bg-blue-950/40 border-blue-500/40', iconColor: 'text-blue-400', titleClass: 'text-blue-300', messageClass: 'text-blue-400/80' };
       case 'caution':
-        return {
-          containerClass: 'bg-yellow-950/40 border-yellow-500/40',
-          iconColor: 'text-yellow-400',
-          titleClass: 'text-yellow-300',
-          messageClass: 'text-yellow-400/80',
-        };
+        return { containerClass: 'bg-yellow-950/40 border-yellow-500/40', iconColor: 'text-yellow-400', titleClass: 'text-yellow-300', messageClass: 'text-yellow-400/80' };
       case 'warning':
-        return {
-          containerClass: 'bg-red-950/40 border-red-500/40',
-          iconColor: 'text-red-400',
-          titleClass: 'text-red-300',
-          messageClass: 'text-red-400/80',
-        };
+        return { containerClass: 'bg-red-950/40 border-red-500/40', iconColor: 'text-red-400', titleClass: 'text-red-300', messageClass: 'text-red-400/80' };
       default:
-        return {
-          containerClass: 'bg-slate-800/60 border-slate-600/40',
-          iconColor: 'text-slate-400',
-          titleClass: 'text-slate-200',
-          messageClass: 'text-slate-400',
-        };
+        return { containerClass: 'bg-slate-800/60 border-slate-600/40', iconColor: 'text-slate-400', titleClass: 'text-slate-200', messageClass: 'text-slate-400' };
     }
   };
 
   const getNotificationStyle = (type: string, read: boolean) => {
     const baseStyle = 'p-4 border-l-4 transition-colors';
     const readStyle = read ? 'bg-slate-800/30' : 'bg-slate-800/60';
-
     switch (type) {
-      case 'alert':
-        return `${baseStyle} ${readStyle} border-red-500/60`;
-      case 'update':
-        return `${baseStyle} ${readStyle} border-blue-500/60`;
-      default:
-        return `${baseStyle} ${readStyle} border-slate-600/60`;
+      case 'alert': return `${baseStyle} ${readStyle} border-red-500/60`;
+      case 'update': return `${baseStyle} ${readStyle} border-blue-500/60`;
+      default: return `${baseStyle} ${readStyle} border-slate-600/60`;
     }
   };
 
   const sortedAlerts = [...alerts].sort((a, b) => {
-    const severityOrder = { warning: 0, caution: 1, info: 2, safe: 3 };
-    return severityOrder[a.severity] - severityOrder[b.severity];
+    const severityOrder: Record<string, number> = { warning: 0, caution: 1, info: 2, safe: 3 };
+    return (severityOrder[a.severity] ?? 4) - (severityOrder[b.severity] ?? 4);
   });
 
   const hasWarnings = sortedAlerts.some(alert => alert.severity === 'warning');
@@ -258,23 +224,15 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
               <div className="p-3 space-y-2">
                 {sortedAlerts.map((alert) => {
                   const styles = getAlertStyles(alert.severity);
-
                   return (
-                    <div
-                      key={alert.id}
-                      className={`${styles.containerClass} border-l-4 border rounded-lg p-3`}
-                    >
+                    <div key={alert.id} className={`${styles.containerClass} border-l-4 border rounded-lg p-3`}>
                       <div className="flex items-start gap-3">
                         <div className={styles.iconColor}>
                           {getAlertIcon(alert.icon)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className={`${styles.titleClass} font-semibold text-sm mb-1`}>
-                            {alert.title}
-                          </h4>
-                          <p className={`${styles.messageClass} text-xs leading-relaxed`}>
-                            {alert.message}
-                          </p>
+                          <h4 className={`${styles.titleClass} font-semibold text-sm mb-1`}>{alert.title}</h4>
+                          <p className={`${styles.messageClass} text-xs leading-relaxed`}>{alert.message}</p>
                         </div>
                       </div>
                     </div>
@@ -284,10 +242,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
             ) : !showAlerts && notifications.length > 0 ? (
               <div className="divide-y divide-slate-700/40">
                 {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={getNotificationStyle(notification.type, notification.is_read || false)}
-                  >
+                  <div key={notification.id} className={getNotificationStyle(notification.type, notification.is_read || false)}>
                     <div className="flex items-start gap-3">
                       <div className="mt-0.5">{getIcon(notification.type)}</div>
                       <div className="flex-1 min-w-0">
@@ -306,9 +261,7 @@ export function NotificationCenter({ userId, alerts = [] }: NotificationCenterPr
                           {notification.message}
                         </p>
                         {notification.data?.location && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            Location: {notification.data.location}
-                          </p>
+                          <p className="text-xs text-slate-500 mt-1">Location: {notification.data.location}</p>
                         )}
                         <div className="flex items-center justify-between mt-2">
                           <p className="text-xs text-slate-600">
