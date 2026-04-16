@@ -1,8 +1,8 @@
 // ─── Google Ads Conversion Tracking ────────────────────────────────────────
 //
 // PASTE YOUR VALUES HERE:
-export const GOOGLE_ADS_CONVERSION_ID    = 'AW-18083468482';       // <-- your Conversion ID
-export const GOOGLE_ADS_CONVERSION_LABEL = 'OE7gCOTUQzweEMKp765D'; // <-- your Conversion Label
+export const GOOGLE_ADS_CONVERSION_ID    = 'AW-18083468482';
+export const GOOGLE_ADS_CONVERSION_LABEL = 'K8PUCMSP_JwcEMKp765D';
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -18,6 +18,8 @@ export function fireSubscriptionConversion(): void {
 
   gtag('event', 'conversion', {
     send_to: `${GOOGLE_ADS_CONVERSION_ID}/${GOOGLE_ADS_CONVERSION_LABEL}`,
+    value: 1.0,
+    currency: 'AUD',
   });
 
   sessionStorage.setItem(FIRED_KEY, '1');
