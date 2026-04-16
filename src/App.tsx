@@ -26,6 +26,8 @@ import { getFavoriteLocation } from './utils/savedLocations';
 import { getUserLocation } from './utils/geolocation';
 import { isNightTime } from './utils/weatherEffects';
 import type { User } from '@supabase/supabase-js';
+import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanner';
+import { fireSubscriptionConversion } from './utils/googleAds';
 
 interface WeatherData {
   current: {
@@ -114,6 +116,7 @@ function App() {
   const [trialEndDate, setTrialEndDate] = useState<Date | null>(null);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [showAgronomyDB, setShowAgronomyDB] = useState(false);
+  const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -220,7 +223,11 @@ function App() {
 
     const params = new URLSearchParams(window.location.search);
     const subscriptionStatus = params.get('subscription');
-    if (subscriptionStatus) {
+    if (subscriptionStatus === 'success') {
+      fireSubscriptionConversion();
+      setShowSubscriptionSuccess(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (subscriptionStatus) {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
@@ -776,6 +783,10 @@ function App() {
           onSignUp={() => { setAuthMode('signup'); setShowAuthModal(true); }}
           isLoggedIn={!!user}
         />
+
+        {showSubscriptionSuccess && (
+          <SubscriptionSuccessBanner onDismiss={() => setShowSubscriptionSuccess(false)} />
+        )}
 
         {showAdminPanel && isAdmin && (
           <div className="mb-6">
