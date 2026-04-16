@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Leaf, ArrowRight, Sparkles, Camera, ChevronRight } from 'lucide-react';
+import { Leaf, ArrowRight, Sparkles, Camera, ChevronRight, Lock, Zap } from 'lucide-react';
 
 const ROTATING_PLACEHOLDERS = [
   'Sclerotinia in celery?',
@@ -22,17 +22,31 @@ const QUICK_CHIPS = [
   { label: 'Upload photo', icon: '📷', isPhoto: true },
 ];
 
+const LIVE_PROMPTS = [
+  { query: 'Aphids on my canola — what spray window?', tag: 'Pests' },
+  { query: 'Ryegrass is taking over — resistance options?', tag: 'Weeds' },
+  { query: 'Yellow spots on wheat leaves — disease?', tag: 'Diseases' },
+  { query: 'Withholding period for Roundup?', tag: 'Chemicals' },
+  { query: 'Pale new leaves — iron or zinc deficiency?', tag: 'Nutrition' },
+  { query: 'Sclerotinia risk after rain?', tag: 'Diseases' },
+  { query: 'Capeweed in lucerne — safest option?', tag: 'Weeds' },
+  { query: 'Diamondback moth — spray threshold?', tag: 'Pests' },
+];
+
 interface Props {
   onOpen: (query?: string) => void;
   isAuthenticated?: boolean;
+  onSubscribeClick?: () => void;
 }
 
-export function AgronomyAdvisorCard({ onOpen, isAuthenticated }: Props) {
+export function AgronomyAdvisorCard({ onOpen, isAuthenticated, onSubscribeClick }: Props) {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
+  const [livePromptIndex, setLivePromptIndex] = useState(0);
+  const [promptVisible, setPromptVisible] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cycleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,6 +78,18 @@ export function AgronomyAdvisorCard({ onOpen, isAuthenticated }: Props) {
     };
   }, [placeholderIndex]);
 
+  useEffect(() => {
+    if (isAuthenticated) return;
+    const interval = setInterval(() => {
+      setPromptVisible(false);
+      setTimeout(() => {
+        setLivePromptIndex(i => (i + 1) % LIVE_PROMPTS.length);
+        setPromptVisible(true);
+      }, 400);
+    }, 3800);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     onOpen(query.trim() || undefined);
@@ -72,6 +98,8 @@ export function AgronomyAdvisorCard({ onOpen, isAuthenticated }: Props) {
   function handleChipClick(label: string) {
     onOpen(label);
   }
+
+  const currentPrompt = LIVE_PROMPTS[livePromptIndex];
 
   return (
     <div className="relative mb-5">
@@ -173,12 +201,50 @@ export function AgronomyAdvisorCard({ onOpen, isAuthenticated }: Props) {
             ))}
           </div>
 
-          <p className="text-[11px] text-slate-600 mt-3 leading-relaxed">
-            Instant answers for crop problems, chemical options, pests, weeds, diseases and nutrient issues.
-            {!isAuthenticated && (
-              <span className="text-slate-500"> Subscribe for full access.</span>
-            )}
-          </p>
+          {!isAuthenticated ? (
+            <div className="mt-4 rounded-xl border border-green-600/20 bg-green-950/30 overflow-hidden">
+              <div className="px-4 py-3 flex items-start gap-3">
+                <div className="flex-shrink-0 mt-0.5">
+                  <Zap className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Live on FarmCast right now</span>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-600/20 text-green-400 border border-green-500/25 transition-opacity duration-400 ${
+                        promptVisible ? 'opacity-100' : 'opacity-0'
+                      }`}
+                    >
+                      {currentPrompt.tag}
+                    </span>
+                  </div>
+                  <p
+                    className={`text-sm text-slate-300 font-medium leading-snug transition-opacity duration-400 ${
+                      promptVisible ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
+                    "{currentPrompt.query}"
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Subscribers get instant answers to questions like this — weeds, pests, diseases, chemicals and more.
+                  </p>
+                </div>
+              </div>
+              <div className="px-4 pb-3 flex items-center gap-3">
+                <button
+                  onClick={onSubscribeClick}
+                  className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition-all duration-200 shadow-sm"
+                >
+                  <Lock className="w-3 h-3" />
+                  Unlock Agronomy Advisor — Free for 30 Days
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-600 mt-3 leading-relaxed">
+              Instant answers for crop problems, chemical options, pests, weeds, diseases and nutrient issues.
+            </p>
+          )}
         </div>
       </div>
     </div>

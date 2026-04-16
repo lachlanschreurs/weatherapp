@@ -1138,7 +1138,7 @@ function App() {
                 <p className="text-sm text-amber-200/70">
                   Your 30-day free trial
                   {trialEndDate ? ` ended on ${trialEndDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : ' has expired'}.
-                  Subscribe to continue accessing premium features like Farmer Joe AI, extended forecasts, probe data, and planting insights.
+                  Subscribe to continue accessing premium features like Farmer Joe AI, Agronomy Advisor, extended forecasts, probe data, and planting insights.
                 </p>
               </div>
               <button
@@ -1306,6 +1306,7 @@ function App() {
             setShowAgronomyDB(true);
           }}
           isAuthenticated={!!user}
+          onSubscribeClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
         />
 
         {/* HOURLY FORECAST */}
