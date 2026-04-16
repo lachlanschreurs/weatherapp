@@ -29,6 +29,7 @@ import type { User } from '@supabase/supabase-js';
 import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanner';
 import { fireSubscriptionConversion } from './utils/googleAds';
 import { AgronomyAdvisorCard } from './components/AgronomyAdvisorCard';
+import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 
 interface WeatherData {
   current: {
@@ -724,13 +725,10 @@ function App() {
                 <Map className="w-4 h-4 text-blue-400" />
                 Radar
               </button>
-              <button
+              <AgronomyNavBubble
                 onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-950/60 border border-green-600/50 text-green-300 hover:bg-green-900/60 hover:text-green-200 hover:border-green-500/70 transition-all duration-200 text-sm font-bold shadow-lg shadow-green-950/40"
-              >
-                <Leaf className="w-4 h-4 text-green-400" />
-                Agronomy Advisor
-              </button>
+                show={!user}
+              />
               {user ? (
                 <>
                   <NotificationCenter userId={user.id} alerts={alerts} />
