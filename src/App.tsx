@@ -755,7 +755,7 @@ function App() {
                     >
                       Start Free Trial — Unlock Full Farm Report
                     </button>
-                    <p className="text-slate-400 text-xs">Built by farmers, for Australian farms</p>
+                    <p className="text-slate-400 text-xs">Built by farmers, for real farm decisions</p>
                   </div>
                 </>
               )}

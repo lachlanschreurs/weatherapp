@@ -38,11 +38,11 @@ export function PromoBanner({ onSignUp, isLoggedIn }: PromoBannerProps) {
               <div className="flex items-center justify-center w-7 h-7 bg-green-600/30 border border-green-500/40 rounded-lg flex-shrink-0">
                 <Sprout className="w-4 h-4 text-green-400" />
               </div>
-              <span className="text-xs font-bold tracking-widest uppercase text-green-400">Australian Farm Intelligence</span>
+              <span className="text-xs font-bold tracking-widest uppercase text-green-400">Farm Intelligence</span>
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black text-white leading-snug mb-2 tracking-tight">
-              Built for Australian farmers — spray timing, rainfall alerts, crop decisions and AI support in one platform.
+              Built for farmers — spray timing, rainfall alerts, crop decisions and AI support in one platform.
             </h2>
 
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed mb-4 max-w-2xl">
@@ -68,7 +68,7 @@ export function PromoBanner({ onSignUp, isLoggedIn }: PromoBannerProps) {
             </button>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-              <p className="text-xs text-slate-400 font-medium">Built by farmers, for Australian farms · $2.99/mo after trial</p>
+              <p className="text-xs text-slate-400 font-medium">Built by farmers, for real farm decisions · $2.99/mo after trial</p>
             </div>
           </div>
 

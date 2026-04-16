@@ -346,7 +346,7 @@ function ResultsWithPaywall<T>({ items, isPremium, onSignUp, renderItem, tab, lo
                 {lockedCount} more {tab} locked
               </h3>
               <p className="text-sm text-slate-400 mb-5 leading-relaxed">
-                Subscribe to unlock the full agronomy database — chemicals, diseases, pests and weeds for Australian farms.
+                Subscribe to unlock the full agronomy database — chemicals, diseases, pests and weeds for your farm.
               </p>
               {onSignUp && (
                 <button
