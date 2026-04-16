@@ -28,6 +28,7 @@ import { isNightTime } from './utils/weatherEffects';
 import type { User } from '@supabase/supabase-js';
 import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanner';
 import { fireSubscriptionConversion } from './utils/googleAds';
+import { AgronomyAdvisorCard } from './components/AgronomyAdvisorCard';
 
 interface WeatherData {
   current: {
@@ -116,6 +117,7 @@ function App() {
   const [trialEndDate, setTrialEndDate] = useState<Date | null>(null);
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [showAgronomyDB, setShowAgronomyDB] = useState(false);
+  const [agronomyInitialQuery, setAgronomyInitialQuery] = useState('');
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
 
   useEffect(() => {
@@ -723,11 +725,11 @@ function App() {
                 Radar
               </button>
               <button
-                onClick={() => setShowAgronomyDB(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-green-600/40 text-slate-300 hover:bg-green-900/40 hover:text-green-300 hover:border-green-500/50 transition-all duration-200 text-sm font-semibold shadow-lg"
+                onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-950/60 border border-green-600/50 text-green-300 hover:bg-green-900/60 hover:text-green-200 hover:border-green-500/70 transition-all duration-200 text-sm font-bold shadow-lg shadow-green-950/40"
               >
-                <Database className="w-4 h-4 text-green-400" />
-                Agronomy
+                <Leaf className="w-4 h-4 text-green-400" />
+                Agronomy Advisor
               </button>
               {user ? (
                 <>
@@ -1297,6 +1299,15 @@ function App() {
           />
         </div>
 
+        {/* AGRONOMY ADVISOR */}
+        <AgronomyAdvisorCard
+          onOpen={(query) => {
+            setAgronomyInitialQuery(query || '');
+            setShowAgronomyDB(true);
+          }}
+          isAuthenticated={!!user}
+        />
+
         {/* HOURLY FORECAST */}
         <div className="mb-5">
           <HourlyForecast forecastList={hourlyList} currentWeather={current} />
@@ -1501,9 +1512,10 @@ function App() {
 
       {showAgronomyDB && (
         <AgronomyDatabase
-          onClose={() => setShowAgronomyDB(false)}
+          onClose={() => { setShowAgronomyDB(false); setAgronomyInitialQuery(''); }}
           isPremium={hasActiveSubscription || (!!user && !trialExpired)}
-          onSignUp={() => { setShowAgronomyDB(false); setAuthMode('signup'); setShowAuthModal(true); }}
+          onSignUp={() => { setShowAgronomyDB(false); setAgronomyInitialQuery(''); setAuthMode('signup'); setShowAuthModal(true); }}
+          initialQuery={agronomyInitialQuery}
         />
       )}
 

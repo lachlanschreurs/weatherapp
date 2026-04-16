@@ -21,11 +21,12 @@ interface Props {
   onClose: () => void;
   isPremium?: boolean;
   onSignUp?: () => void;
+  initialQuery?: string;
 }
 
-export function AgronomyDatabase({ onClose, isPremium = false, onSignUp }: Props) {
+export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '' }: Props) {
   const [activeTab, setActiveTab] = useState<AgronomyTab>('chemicals');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [cropFilter, setCropFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [activeIngredient, setActiveIngredient] = useState('');
