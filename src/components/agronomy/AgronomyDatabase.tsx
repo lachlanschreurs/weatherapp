@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FlaskConical, Bug, Leaf, X, BookOpen, Database } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, BookOpen, Database, Lock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Chemical, Disease, Pest, Weed, AgronomyTab } from './types';
 import { AgronomySearch } from './AgronomySearch';
@@ -15,11 +15,15 @@ const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: stri
   { id: 'weeds', label: 'Weeds', icon: <Leaf className="w-4 h-4" />, color: 'text-orange-400' },
 ];
 
+const FREE_PREVIEW_COUNT = 3;
+
 interface Props {
   onClose: () => void;
+  isPremium?: boolean;
+  onSignUp?: () => void;
 }
 
-export function AgronomyDatabase({ onClose }: Props) {
+export function AgronomyDatabase({ onClose, isPremium = false, onSignUp }: Props) {
   const [activeTab, setActiveTab] = useState<AgronomyTab>('chemicals');
   const [query, setQuery] = useState('');
   const [cropFilter, setCropFilter] = useState('');
@@ -154,6 +158,9 @@ export function AgronomyDatabase({ onClose }: Props) {
     weeds: filteredWeeds.length,
   };
 
+  const currentCount = counts[activeTab];
+  const lockedCount = isPremium ? 0 : Math.max(0, currentCount - FREE_PREVIEW_COUNT);
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
       <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/95 backdrop-blur-sm">
@@ -164,7 +171,14 @@ export function AgronomyDatabase({ onClose }: Props) {
                 <Database className="w-5 h-5 text-green-400" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-white tracking-tight">Agronomy Database</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black text-white tracking-tight">Agronomy Database</h1>
+                  {!isPremium && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Preview
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-500 font-medium">Australian agricultural reference — diseases, chemicals, pests & weeds</p>
               </div>
             </div>
@@ -226,43 +240,47 @@ export function AgronomyDatabase({ onClose }: Props) {
           ) : (
             <>
               {activeTab === 'chemicals' && (
-                <div className="space-y-3">
-                  {filteredChemicals.length === 0 ? (
-                    <EmptyState tab="chemicals" />
-                  ) : (
-                    filteredChemicals.map(c => <ChemicalCard key={c.id} chemical={c} />)
-                  )}
-                </div>
+                <ResultsWithPaywall
+                  items={filteredChemicals}
+                  isPremium={isPremium}
+                  onSignUp={onSignUp}
+                  renderItem={(c) => <ChemicalCard key={c.id} chemical={c} />}
+                  tab="chemicals"
+                  lockedCount={lockedCount}
+                />
               )}
 
               {activeTab === 'diseases' && (
-                <div className="space-y-3">
-                  {filteredDiseases.length === 0 ? (
-                    <EmptyState tab="diseases" />
-                  ) : (
-                    filteredDiseases.map(d => <DiseaseCard key={d.id} disease={d} />)
-                  )}
-                </div>
+                <ResultsWithPaywall
+                  items={filteredDiseases}
+                  isPremium={isPremium}
+                  onSignUp={onSignUp}
+                  renderItem={(d) => <DiseaseCard key={d.id} disease={d} />}
+                  tab="diseases"
+                  lockedCount={lockedCount}
+                />
               )}
 
               {activeTab === 'pests' && (
-                <div className="space-y-3">
-                  {filteredPests.length === 0 ? (
-                    <EmptyState tab="pests" />
-                  ) : (
-                    filteredPests.map(p => <PestCard key={p.id} pest={p} />)
-                  )}
-                </div>
+                <ResultsWithPaywall
+                  items={filteredPests}
+                  isPremium={isPremium}
+                  onSignUp={onSignUp}
+                  renderItem={(p) => <PestCard key={p.id} pest={p} />}
+                  tab="pests"
+                  lockedCount={lockedCount}
+                />
               )}
 
               {activeTab === 'weeds' && (
-                <div className="space-y-3">
-                  {filteredWeeds.length === 0 ? (
-                    <EmptyState tab="weeds" />
-                  ) : (
-                    filteredWeeds.map(w => <WeedCard key={w.id} weed={w} />)
-                  )}
-                </div>
+                <ResultsWithPaywall
+                  items={filteredWeeds}
+                  isPremium={isPremium}
+                  onSignUp={onSignUp}
+                  renderItem={(w) => <WeedCard key={w.id} weed={w} />}
+                  tab="weeds"
+                  lockedCount={lockedCount}
+                />
               )}
 
               <div className="mt-8 py-5 border-t border-slate-800 text-center">
@@ -278,6 +296,70 @@ export function AgronomyDatabase({ onClose }: Props) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+interface ResultsWithPaywallProps<T> {
+  items: T[];
+  isPremium: boolean;
+  onSignUp?: () => void;
+  renderItem: (item: T) => React.ReactNode;
+  tab: string;
+  lockedCount: number;
+}
+
+function ResultsWithPaywall<T>({ items, isPremium, onSignUp, renderItem, tab, lockedCount }: ResultsWithPaywallProps<T>) {
+  if (items.length === 0) {
+    return <EmptyState tab={tab} />;
+  }
+
+  if (isPremium) {
+    return <div className="space-y-3">{items.map(renderItem)}</div>;
+  }
+
+  const visibleItems = items.slice(0, FREE_PREVIEW_COUNT);
+  const hiddenItems = items.slice(FREE_PREVIEW_COUNT);
+
+  return (
+    <div className="space-y-3">
+      {visibleItems.map(renderItem)}
+
+      {hiddenItems.length > 0 && (
+        <div className="relative mt-1">
+          <div className="space-y-3 pointer-events-none select-none" aria-hidden="true">
+            {hiddenItems.slice(0, 3).map((item, i) => (
+              <div key={i} className="blur-sm opacity-40">
+                {renderItem(item)}
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent absolute inset-0 rounded-xl" />
+            <div className="relative z-10 text-center px-6 py-8 max-w-sm mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-green-600/20 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-6 h-6 text-green-400" />
+              </div>
+              <h3 className="text-lg font-black text-white mb-1">
+                {lockedCount} more {tab} locked
+              </h3>
+              <p className="text-sm text-slate-400 mb-5 leading-relaxed">
+                Subscribe to unlock the full agronomy database — chemicals, diseases, pests and weeds for Australian farms.
+              </p>
+              {onSignUp && (
+                <button
+                  onClick={onSignUp}
+                  className="bg-green-600 hover:bg-green-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all duration-200 shadow-lg shadow-green-900/40 hover:scale-[1.02]"
+                >
+                  Start Free Trial — Unlock Full Access
+                </button>
+              )}
+              <p className="text-xs text-slate-600 mt-3">$2.99/mo after free trial</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

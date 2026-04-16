@@ -1500,7 +1500,11 @@ function App() {
       />
 
       {showAgronomyDB && (
-        <AgronomyDatabase onClose={() => setShowAgronomyDB(false)} />
+        <AgronomyDatabase
+          onClose={() => setShowAgronomyDB(false)}
+          isPremium={hasActiveSubscription || (!!user && !trialExpired)}
+          onSignUp={() => { setShowAgronomyDB(false); setAuthMode('signup'); setShowAuthModal(true); }}
+        />
       )}
 
 
