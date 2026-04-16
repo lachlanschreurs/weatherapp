@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User as UserIcon, LogOut, ChevronDown, Shield } from 'lucide-react';
+import { User as UserIcon, LogOut, ChevronDown, Shield, Mail } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface UserMenuProps {
@@ -65,13 +65,29 @@ export function UserMenu({ user, onSignOut, isAdmin = false, onAdminPanelToggle 
             </button>
           )}
 
-          <button
-            onClick={onSignOut}
-            className="w-full px-4 py-2 text-left flex items-center gap-3 hover:bg-gray-50 text-red-600"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="font-medium">Sign Out</span>
-          </button>
+          <div className="border-t border-gray-200 mt-1 pt-1">
+            <a
+              href="mailto:support@farmcastweather.com"
+              className="w-full px-4 py-2 text-left flex items-center gap-3 hover:bg-gray-50 text-gray-600 block"
+              onClick={() => setIsOpen(false)}
+            >
+              <Mail className="w-4 h-4 flex-shrink-0" />
+              <div>
+                <span className="font-medium text-sm block">Contact Us</span>
+                <span className="text-xs text-gray-400">support@farmcastweather.com</span>
+              </div>
+            </a>
+          </div>
+
+          <div className="border-t border-gray-100">
+            <button
+              onClick={onSignOut}
+              className="w-full px-4 py-2 text-left flex items-center gap-3 hover:bg-gray-50 text-red-600"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="font-medium">Sign Out</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
