@@ -240,7 +240,29 @@ function buildWelcomeEmail(location: string, probeReport: string = ''): string {
           <li><strong>Best Planting Days</strong> - Optimized schedules based on weather patterns</li>
           <li><strong>Irrigation Schedule</strong> - Smart watering recommendations</li>
           <li><strong>Soil Moisture Monitoring</strong> - Track and analyze probe data with AI-powered insights</li>
+          <li><strong>Agronomy Advisor</strong> - Instant answers for crop problems, weeds, pests, diseases, chemicals and nutrient deficiencies</li>
         </ul>
+      </div>
+
+      <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 25px; margin: 20px 0; border-radius: 12px; border-left: 5px solid #16a34a; box-shadow: 0 2px 10px rgba(22, 163, 74, 0.1);">
+        <h3 style="margin-top: 0; color: #15803d; font-size: 20px; font-weight: 700;">🌿 Agronomy Advisor — Your Crop Problem Solver</h3>
+        <p style="color: #166534; font-size: 15px; line-height: 1.7; margin-bottom: 15px;">
+          The <strong>Agronomy Advisor</strong> is one of FarmCast's most powerful tools. It gives you instant, searchable answers to crop problems — right when you need them in the paddock.
+        </p>
+        <p style="color: #166534; font-size: 14px; font-weight: 700; margin-bottom: 8px;">What you can look up:</p>
+        <ul style="margin: 0 0 15px 0; padding-left: 0; list-style: none;">
+          <li style="padding: 6px 0 6px 28px; position: relative; color: #1f2937; font-size: 14px;"><span style="position: absolute; left: 0; color: #16a34a; font-weight: bold; font-size: 16px;">✓</span> <strong>Weeds</strong> — Identify problem weeds like ryegrass, capeweed and wild oats, and find registered herbicide options</li>
+          <li style="padding: 6px 0 6px 28px; position: relative; color: #1f2937; font-size: 14px;"><span style="position: absolute; left: 0; color: #16a34a; font-weight: bold; font-size: 16px;">✓</span> <strong>Pests</strong> — Search for aphids, mites, caterpillars and other insects, and see recommended treatment windows</li>
+          <li style="padding: 6px 0 6px 28px; position: relative; color: #1f2937; font-size: 14px;"><span style="position: absolute; left: 0; color: #16a34a; font-weight: bold; font-size: 16px;">✓</span> <strong>Diseases</strong> — Look up Sclerotinia, powdery mildew, botrytis, rust and more — with spray timing and resistance notes</li>
+          <li style="padding: 6px 0 6px 28px; position: relative; color: #1f2937; font-size: 14px;"><span style="position: absolute; left: 0; color: #16a34a; font-weight: bold; font-size: 16px;">✓</span> <strong>Chemicals</strong> — Search any registered chemical by name or active ingredient, see withholding periods and label details</li>
+          <li style="padding: 6px 0 6px 28px; position: relative; color: #1f2937; font-size: 14px;"><span style="position: absolute; left: 0; color: #16a34a; font-weight: bold; font-size: 16px;">✓</span> <strong>Nutrient deficiencies</strong> — Identify nitrogen, iron, zinc and other deficiency symptoms with correction options</li>
+        </ul>
+        <p style="color: #166534; font-size: 14px; line-height: 1.7; margin-bottom: 8px;">
+          <strong>How to use it:</strong> Tap the <em>Agronomy Advisor</em> card on the FarmCast homepage. Type what you're seeing — for example <em>"yellowing leaves in wheat"</em> or <em>"best spray for aphids"</em> — or tap one of the quick-search buttons for common problems. Results appear instantly so you can make a decision on the spot.
+        </p>
+        <p style="color: #15803d; font-size: 13px; margin: 0; font-style: italic;">
+          Built for farmers who need the right answer fast, not after an hour of searching.
+        </p>
       </div>
 
       ${probeReport}
@@ -313,6 +335,29 @@ You now have access to all premium features:
 
 - Soil Moisture Monitoring
   Track and analyze probe data with AI-powered insights
+
+- Agronomy Advisor
+  Instant answers for crop problems, weeds, pests, diseases, chemicals and nutrient deficiencies
+
+AGRONOMY ADVISOR — YOUR CROP PROBLEM SOLVER
+
+The Agronomy Advisor is one of FarmCast's most powerful tools. It gives you instant, searchable answers to crop problems — right when you need them in the paddock.
+
+What you can look up:
+
+  Weeds — Identify problem weeds like ryegrass, capeweed and wild oats, and find registered herbicide options
+
+  Pests — Search for aphids, mites, caterpillars and other insects, and see recommended treatment windows
+
+  Diseases — Look up Sclerotinia, powdery mildew, botrytis, rust and more — with spray timing and resistance notes
+
+  Chemicals — Search any registered chemical by name or active ingredient, see withholding periods and label details
+
+  Nutrient deficiencies — Identify nitrogen, iron, zinc and other deficiency symptoms with correction options
+
+How to use it: Tap the Agronomy Advisor card on the FarmCast homepage. Type what you're seeing — for example "yellowing leaves in wheat" or "best spray for aphids" — or tap one of the quick-search buttons for common problems. Results appear instantly so you can make a decision on the spot.
+
+Built for farmers who need the right answer fast, not after an hour of searching.
 
 YOUR LOCATION:
 
