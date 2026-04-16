@@ -753,9 +753,9 @@ function App() {
                       onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
                       className="flex items-center gap-2 bg-green-600/90 border border-green-500/40 px-4 py-2 rounded-xl hover:bg-green-500/90 hover:border-green-400/60 transition-all duration-200 text-sm font-semibold text-white shadow-lg shadow-green-900/30"
                     >
-                      Start 30-Day Free Trial
+                      Start Free Trial — Unlock Full Farm Report
                     </button>
-                    <p className="text-slate-400 text-xs">Built for Aussie farmers</p>
+                    <p className="text-slate-400 text-xs">Built by farmers, for Australian farms</p>
                   </div>
                 </>
               )}
