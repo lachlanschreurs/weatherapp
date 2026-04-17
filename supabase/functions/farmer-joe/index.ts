@@ -99,6 +99,60 @@ Deno.serve(async (req: Request) => {
       throw new Error('Message is required');
     }
 
+    // Fetch agronomy database using service role for full access
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    const [chemRes, pestRes, disRes, weedRes, fertRes] = await Promise.all([
+      serviceClient.from('agro_chemicals').select('product_name,active_ingredient,chemical_group,category,registered_crops,target_issues,withholding_period_days,pre_harvest_interval_days,re_entry_interval_hours,application_rate_min,application_rate_max,application_rate_unit,notes').order('product_name').limit(10000),
+      serviceClient.from('agro_pests').select('pest_name,common_name,pest_type,affected_crops,damage_caused,identification_features,life_cycle,management_threshold').order('pest_name').limit(10000),
+      serviceClient.from('agro_diseases').select('disease_name,common_name,pathogen_type,affected_crops,symptoms,conditions_favoring,management_strategies').order('disease_name').limit(10000),
+      serviceClient.from('agro_weeds').select('weed_name,common_name,weed_family,growth_habit,affected_environments,identification_features,management_strategies').order('weed_name').limit(10000),
+      serviceClient.from('agro_fertilisers').select('product_name,brand,fertiliser_type,npk_ratio,suitable_crops,application_method,application_rate,notes').order('product_name').limit(10000),
+    ]);
+
+    // Build agronomy context summary
+    let agronomyContext = '\n\n--- FARMCAST REGISTERED AGRONOMY DATABASE ---';
+
+    if (chemRes.data && chemRes.data.length > 0) {
+      agronomyContext += `\n\nREGISTERED CHEMICALS (${chemRes.data.length} products):`;
+      for (const c of chemRes.data) {
+        agronomyContext += `\n• ${c.product_name} | AI: ${c.active_ingredient} | Group: ${c.chemical_group} | Category: ${c.category} | Crops: ${(c.registered_crops || []).join(', ')} | Targets: ${(c.target_issues || []).join(', ')} | Rate: ${c.application_rate_min}–${c.application_rate_max} ${c.application_rate_unit || ''} | WHI: ${c.withholding_period_days ?? 'N/A'}d | REI: ${c.re_entry_interval_hours ?? 'N/A'}h`;
+      }
+    }
+
+    if (pestRes.data && pestRes.data.length > 0) {
+      agronomyContext += `\n\nREGISTERED PESTS (${pestRes.data.length}):`;
+      for (const p of pestRes.data) {
+        agronomyContext += `\n• ${p.pest_name} (${p.common_name}) | Type: ${p.pest_type} | Crops: ${(p.affected_crops || []).join(', ')} | Damage: ${p.damage_caused} | Threshold: ${p.management_threshold || 'N/A'}`;
+      }
+    }
+
+    if (disRes.data && disRes.data.length > 0) {
+      agronomyContext += `\n\nREGISTERED DISEASES (${disRes.data.length}):`;
+      for (const d of disRes.data) {
+        agronomyContext += `\n• ${d.disease_name} (${d.common_name}) | Pathogen: ${d.pathogen_type} | Crops: ${(d.affected_crops || []).join(', ')} | Symptoms: ${d.symptoms}`;
+      }
+    }
+
+    if (weedRes.data && weedRes.data.length > 0) {
+      agronomyContext += `\n\nREGISTERED WEEDS (${weedRes.data.length}):`;
+      for (const w of weedRes.data) {
+        agronomyContext += `\n• ${w.weed_name} (${w.common_name}) | Family: ${w.weed_family} | Habit: ${w.growth_habit} | Environments: ${(w.affected_environments || []).join(', ')}`;
+      }
+    }
+
+    if (fertRes.data && fertRes.data.length > 0) {
+      agronomyContext += `\n\nREGISTERED FERTILISERS (${fertRes.data.length} products):`;
+      for (const f of fertRes.data) {
+        agronomyContext += `\n• ${f.product_name} (${f.brand}) | Type: ${f.fertiliser_type} | NPK: ${f.npk_ratio || 'N/A'} | Crops: ${(f.suitable_crops || []).join(', ')} | Rate: ${f.application_rate || 'N/A'} | Method: ${f.application_method || 'N/A'}`;
+      }
+    }
+
+    agronomyContext += '\n--- END AGRONOMY DATABASE ---\nWhen recommending chemicals, pests, diseases, weeds or fertilisers ALWAYS reference products from the above registered database. Quote exact product names, withholding periods, and registered crops.';
+
     // Build the system prompt for Farmer Joe
     const systemPrompt = `You are Farmer Joe, a friendly and knowledgeable AI assistant with a warm, folksy personality. While you have extensive expertise in agriculture and farming, you can help with absolutely anything the user asks about.
 
@@ -124,7 +178,7 @@ When analyzing images:
 - Identify objects, animals, plants, problems, or anything else visible
 - Offer relevant advice or information based on the image content
 
-You have access to real-time weather data and forecasts when available. Be conversational, helpful, and friendly. Use a warm, approachable tone while remaining knowledgeable and professional. Don't limit yourself - help with whatever the user needs!`;
+You have access to real-time weather data and forecasts when available. You also have access to the FarmCast registered agronomy database containing all registered chemicals, pests, diseases, weeds and fertilisers. When answering agronomy questions, ALWAYS draw from this database and cite exact registered product names, withholding periods (WHI), and registered crops. Be conversational, helpful, and friendly. Use a warm, approachable tone while remaining knowledgeable and professional. Don't limit yourself - help with whatever the user needs!` + agronomyContext;
 
     // Build context from weather data if available — formatted as readable text
     let contextInfo = '';

@@ -113,7 +113,7 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
     setLoading(true);
     try {
       const [chemRes, disRes, pestRes, weedRes, fertRes] = await Promise.all([
-        supabase.from('agro_chemicals').select('*').order('product_name'),
+        supabase.from('agro_chemicals').select('*').order('product_name').limit(10000),
         supabase.from('agro_diseases').select(`
           *,
           chemicals:agro_disease_chemicals(
@@ -121,7 +121,7 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
             efficacy_rating,
             chemical:agro_chemicals(*)
           )
-        `).order('disease_name'),
+        `).order('disease_name').limit(10000),
         supabase.from('agro_pests').select(`
           *,
           chemicals:agro_pest_chemicals(
@@ -129,7 +129,7 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
             efficacy_rating,
             chemical:agro_chemicals(*)
           )
-        `).order('pest_name'),
+        `).order('pest_name').limit(10000),
         supabase.from('agro_weeds').select(`
           *,
           chemicals:agro_weed_chemicals(
@@ -137,9 +137,15 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
             efficacy_rating,
             chemical:agro_chemicals(*)
           )
-        `).order('weed_name'),
-        supabase.from('agro_fertilisers').select('*').order('product_name'),
+        `).order('weed_name').limit(10000),
+        supabase.from('agro_fertilisers').select('*').order('product_name').limit(10000),
       ]);
+
+      if (chemRes.error) console.error('Chemicals load error:', chemRes.error);
+      if (disRes.error) console.error('Diseases load error:', disRes.error);
+      if (pestRes.error) console.error('Pests load error:', pestRes.error);
+      if (weedRes.error) console.error('Weeds load error:', weedRes.error);
+      if (fertRes.error) console.error('Fertilisers load error:', fertRes.error);
 
       if (chemRes.data) setChemicals(chemRes.data);
       if (disRes.data) setDiseases(disRes.data as unknown as Disease[]);
