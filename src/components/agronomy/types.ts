@@ -66,7 +66,34 @@ export interface Weed {
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
 }
 
-export type AgronomyTab = 'chemicals' | 'diseases' | 'pests' | 'weeds';
+export interface Fertiliser {
+  id: string;
+  product_name: string;
+  brand: string;
+  fertiliser_type: string;
+  n_percent: string;
+  p_percent: string;
+  k_percent: string;
+  s_percent: string;
+  ca_percent: string;
+  mg_percent: string;
+  zn_percent: string;
+  mn_percent: string;
+  cu_percent: string;
+  b_percent: string;
+  mo_percent: string;
+  fe_percent: string;
+  application_rate: string;
+  application_timing: string;
+  application_method: string;
+  suitable_crops: string[];
+  suitable_soil_types: string[];
+  notes: string;
+  compatibility_notes: string;
+  registration_number: string;
+}
+
+export type AgronomyTab = 'chemicals' | 'diseases' | 'pests' | 'weeds' | 'fertilisers';
 
 export interface SearchState {
   query: string;
