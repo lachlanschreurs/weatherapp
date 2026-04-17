@@ -53,7 +53,7 @@ function ScanAIButton({ onClick }: { onClick: () => void }) {
       >
         <div className="flex items-center gap-2">
           <Camera className="w-4 h-4 flex-shrink-0" />
-          <span className="text-sm font-bold whitespace-nowrap">Scan with AI</span>
+          <span className="text-sm font-bold whitespace-nowrap">Photo Identifier AI</span>
           <span className="flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20 uppercase tracking-wider flex-shrink-0">
             <Sparkles className="w-2 h-2" />
             AI
