@@ -58,17 +58,6 @@ export async function reverseGeocode(lat: number, lon: number): Promise<Location
 }
 
 export async function getUserLocation(): Promise<Location> {
-  try {
-    const position = await getCurrentPosition();
-    return reverseGeocode(position.coords.latitude, position.coords.longitude);
-  } catch (error) {
-    console.warn('Could not get user location, using Melbourne as default:', error);
-    return {
-      name: 'Melbourne',
-      lat: -37.8136,
-      lon: 144.9631,
-      country: 'AU',
-      state: 'Victoria',
-    };
-  }
+  const position = await getCurrentPosition();
+  return reverseGeocode(position.coords.latitude, position.coords.longitude);
 }

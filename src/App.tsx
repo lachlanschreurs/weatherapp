@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, Database } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -104,6 +104,7 @@ function App() {
     state: 'Victoria',
   });
   const [locationResolved, setLocationResolved] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -134,7 +135,8 @@ function App() {
       setIsUsingCurrentLocation(true);
       setHasLoadedInitialLocation(true);
     }).catch(() => {
-      setLocationResolved(true);
+      setLocationDenied(true);
+      setLocationResolved(false);
     });
   }, []);
 
@@ -482,6 +484,33 @@ function App() {
           >
             Try Again
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (locationDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+        <div className="text-center max-w-sm w-full">
+          <div className="w-16 h-16 mx-auto mb-6 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+            <MapPin className="w-8 h-8 text-green-500" />
+          </div>
+          <p className="text-white text-2xl font-bold tracking-wide mb-2">FarmCast</p>
+          <p className="text-slate-300 text-base mb-1">Where are you located?</p>
+          <p className="text-slate-500 text-sm mb-8">Search for your town or region to get local weather</p>
+          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+            <LocationSearch
+              onLocationSelect={(loc) => {
+                setLocation(loc);
+                setLocationResolved(true);
+                setLocationDenied(false);
+                setIsUsingCurrentLocation(false);
+                setHasLoadedInitialLocation(true);
+              }}
+              currentLocation=""
+            />
+          </div>
         </div>
       </div>
     );
