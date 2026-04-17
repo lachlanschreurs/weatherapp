@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Leaf, Sparkles } from 'lucide-react';
 
-const BUBBLE_PROMPTS = [
-  'What weed is this?',
-  'Best spray for aphids?',
-  'Sclerotinia in celery?',
-  'Identify a disease',
-  'Find the right chemical',
-  'Upload a crop photo',
-  'Ryegrass resistance?',
-  'Botrytis in strawberries?',
+const ROTATING_PROMPTS = [
+  'Need spray advice?',
+  'Disease risk today?',
+  'Ask AI — weed ID',
+  'Spot a pest? Ask AI',
+  'Fungicide timing?',
+  'Identify crop disease',
 ];
 
 interface Props {
@@ -18,92 +16,116 @@ interface Props {
 }
 
 export function AgronomyNavBubble({ onClick, show = true }: Props) {
-  const [index, setIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [promptVisible, setPromptVisible] = useState(true);
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
-    if (!show) return;
     const interval = setInterval(() => {
-      setVisible(false);
+      setPromptVisible(false);
       setTimeout(() => {
-        setIndex(i => (i + 1) % BUBBLE_PROMPTS.length);
-        setVisible(true);
-      }, 300);
-    }, 3400);
+        setPromptIndex(i => (i + 1) % ROTATING_PROMPTS.length);
+        setPromptVisible(true);
+      }, 280);
+    }, 3600);
     return () => clearInterval(interval);
-  }, [show]);
+  }, []);
 
   return (
     <div className="relative flex-shrink-0">
       <style>{`
-        @keyframes nav-bubble-in {
-          0% { opacity: 0; transform: translateY(-6px) scale(0.94); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes agro-btn-pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.55), 0 0 18px 2px rgba(34,197,94,0.18), 0 4px 20px rgba(0,0,0,0.5); }
+          50%  { box-shadow: 0 0 0 6px rgba(34,197,94,0.0), 0 0 28px 6px rgba(34,197,94,0.32), 0 4px 20px rgba(0,0,0,0.5); }
+          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55), 0 0 18px 2px rgba(34,197,94,0.18), 0 4px 20px rgba(0,0,0,0.5); }
         }
-        @keyframes nav-dot-pulse {
-          0%, 100% { opacity: 0.5; transform: scale(0.85); }
-          50% { opacity: 1; transform: scale(1.2); }
+        @keyframes agro-btn-pulse-hover {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.7), 0 0 32px 8px rgba(34,197,94,0.35), 0 4px 24px rgba(0,0,0,0.5); }
+          50%       { box-shadow: 0 0 0 8px rgba(34,197,94,0.0), 0 0 40px 12px rgba(34,197,94,0.5), 0 4px 24px rgba(0,0,0,0.5); }
         }
-        @keyframes nav-glow-breathe {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0), 0 4px 16px rgba(0,0,0,0.4); }
-          50% { box-shadow: 0 0 12px 2px rgba(34,197,94,0.18), 0 4px 16px rgba(0,0,0,0.4); }
+        @keyframes agro-dot-beat {
+          0%, 100% { opacity: 0.55; transform: scale(0.85); }
+          50%       { opacity: 1;    transform: scale(1.25); }
         }
-        .nav-bubble-in { animation: nav-bubble-in 0.3s ease-out forwards; }
-        .nav-dot { animation: nav-dot-pulse 1.8s ease-in-out infinite; }
-        .nav-glow { animation: nav-glow-breathe 3.5s ease-in-out infinite; }
+        @keyframes agro-prompt-in {
+          0%   { opacity: 0; transform: translateY(3px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes agro-shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position:  200% center; }
+        }
+        .agro-btn-idle  { animation: agro-btn-pulse       3.8s ease-in-out infinite; }
+        .agro-btn-hover { animation: agro-btn-pulse-hover  1.6s ease-in-out infinite; }
+        .agro-dot       { animation: agro-dot-beat         1.9s ease-in-out infinite; }
+        .agro-prompt-in { animation: agro-prompt-in        0.28s ease-out forwards; }
+        .agro-shimmer-text {
+          background: linear-gradient(90deg, #86efac 0%, #4ade80 35%, #bbf7d0 55%, #4ade80 75%, #86efac 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: agro-shimmer 3.2s linear infinite;
+        }
       `}</style>
 
-      <button
-        onClick={onClick}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        className={`nav-glow relative flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-200 text-sm font-bold shadow-lg ${
-          hovered
-            ? 'bg-green-900/70 border-green-500/70 text-green-200'
-            : 'bg-green-950/60 border-green-600/50 text-green-300'
-        }`}
-      >
-        <Leaf className="w-4 h-4 text-green-400 flex-shrink-0" />
-        <span className="hidden sm:inline">Agronomy Advisor</span>
-        <span className="sm:hidden">Agronomy</span>
-        <span className="flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20 uppercase tracking-wider ml-0.5">
-          <Sparkles className="w-2 h-2" />
-          AI
-        </span>
-      </button>
-
-      {show && <div
-        className="absolute left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-        style={{ top: 'calc(100% + 10px)' }}
-      >
-        <div
-          className={`nav-bubble-in relative transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
-          key={index}
+      <div className="flex flex-col items-center gap-1">
+        <button
+          onClick={onClick}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className={`
+            relative flex items-center gap-2.5 rounded-xl border transition-all duration-200 font-bold shadow-xl
+            px-5 py-2 text-sm
+            ${hovered
+              ? 'agro-btn-hover bg-green-900/80 border-green-400/80 text-green-100 scale-[1.03]'
+              : 'agro-btn-idle  bg-green-950/70 border-green-500/60 text-green-200'
+            }
+          `}
+          style={{
+            minWidth: '11rem',
+            background: hovered
+              ? 'linear-gradient(135deg, rgba(20,55,30,0.95) 0%, rgba(10,35,18,0.95) 100%)'
+              : 'linear-gradient(135deg, rgba(14,42,24,0.92) 0%, rgba(7,26,14,0.92) 100%)',
+          }}
         >
-          <div
-            className="relative px-3 py-2 rounded-xl border backdrop-blur-md whitespace-nowrap"
+          <div className={`absolute inset-0 rounded-xl opacity-20 pointer-events-none transition-opacity duration-300 ${hovered ? 'opacity-30' : 'opacity-15'}`}
             style={{
-              background: 'linear-gradient(135deg, rgba(12,24,16,0.97) 0%, rgba(8,18,12,0.97) 100%)',
+              background: 'linear-gradient(135deg, rgba(34,197,94,0.35) 0%, transparent 70%)',
+            }}
+          />
+
+          <Leaf className="w-4 h-4 text-green-400 flex-shrink-0 relative z-10" />
+
+          <span className="hidden sm:inline relative z-10">
+            <span className={hovered ? 'agro-shimmer-text' : 'text-green-200'}>
+              Agronomy Advisor
+            </span>
+          </span>
+          <span className="sm:hidden relative z-10 text-green-200">Agronomy</span>
+
+          <span className="relative z-10 flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full border uppercase tracking-wider ml-0.5"
+            style={{
+              background: 'rgba(34,197,94,0.15)',
               borderColor: 'rgba(34,197,94,0.35)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.55), 0 0 16px rgba(34,197,94,0.1)',
+              color: '#86efac',
             }}
           >
-            <div className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-t border-l"
-              style={{
-                background: 'linear-gradient(135deg, rgba(12,24,16,0.97) 0%, rgba(8,18,12,0.97) 100%)',
-                borderColor: 'rgba(34,197,94,0.35)',
-              }}
-            />
-            <div className="flex items-center gap-2">
-              <span className="nav-dot w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-              <span className="text-xs font-bold text-green-200">
-                {BUBBLE_PROMPTS[index]}
-              </span>
-            </div>
-          </div>
+            <Sparkles className="w-2.5 h-2.5" />
+            AI
+          </span>
+        </button>
+
+        <div
+          className={`flex items-center gap-1.5 transition-opacity duration-280 ${promptVisible ? 'agro-prompt-in opacity-100' : 'opacity-0'}`}
+          key={promptIndex}
+        >
+          <span className="agro-dot w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+          <span className="text-[11px] font-semibold text-green-400/80 whitespace-nowrap tracking-wide">
+            {ROTATING_PROMPTS[promptIndex]}
+          </span>
         </div>
-      </div>}
+      </div>
     </div>
   );
 }

@@ -770,7 +770,7 @@ function App() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+            <div className="flex items-start gap-2 flex-shrink-0 flex-wrap">
               <button
                 onClick={() => document.getElementById('radar-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-slate-600/50 text-slate-300 hover:bg-slate-700/80 hover:text-white transition-all duration-200 text-sm font-semibold shadow-lg"
@@ -780,7 +780,7 @@ function App() {
               </button>
               <AgronomyNavBubble
                 onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
-                show={!user}
+                show={true}
               />
               {user ? (
                 <>
