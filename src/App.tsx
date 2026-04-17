@@ -28,7 +28,6 @@ import { isNightTime } from './utils/weatherEffects';
 import type { User } from '@supabase/supabase-js';
 import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanner';
 import { fireSubscriptionConversion } from './utils/googleAds';
-import { AgronomyAdvisorCard } from './components/AgronomyAdvisorCard';
 import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 
 interface WeatherData {
@@ -1350,16 +1349,6 @@ function App() {
             onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
           />
         </div>
-
-        {/* AGRONOMY ADVISOR */}
-        <AgronomyAdvisorCard
-          onOpen={(query) => {
-            setAgronomyInitialQuery(query || '');
-            setShowAgronomyDB(true);
-          }}
-          isAuthenticated={!!user}
-          onSubscribeClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
-        />
 
         {/* HOURLY FORECAST */}
         <div className="mb-5">
