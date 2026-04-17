@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FlaskConical, Bug, Leaf, X, BookOpen, Database, Lock } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, BookOpen, Database, Lock, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Chemical, Disease, Pest, Weed, AgronomyTab } from './types';
 import { AgronomySearch } from './AgronomySearch';
@@ -183,12 +183,29 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
                 <p className="text-xs text-slate-500 font-medium">Australian agricultural reference — diseases, chemicals, pests & weeds</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-700/60 bg-slate-800/50">
+                <img
+                  src="/image.png"
+                  alt="Pests of Field Crops and Pastures"
+                  className="w-8 h-10 object-cover rounded shadow-md flex-shrink-0"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <BookOpen className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Reference</span>
+                  </div>
+                  <p className="text-[11px] font-bold text-white leading-tight whitespace-nowrap">Pests of Field Crops & Pastures</p>
+                  <p className="text-[10px] text-slate-500 whitespace-nowrap">Ed. P.T. Bailey</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
               className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
+            </div>
           </div>
 
           <AgronomySearch
