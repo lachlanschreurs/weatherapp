@@ -441,7 +441,7 @@ Respond ONLY with this exact JSON format (no other text):
 
               <div className="mt-8 py-5 border-t border-slate-800 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <BookOpen className="w-4 h-4 text-slate-600" />
+                  <Database className="w-4 h-4 text-slate-600" />
                   <p className="text-xs text-slate-600 font-medium uppercase tracking-wider">FarmCast Agronomy Reference Database</p>
                 </div>
                 <p className="text-xs text-slate-700 max-w-lg mx-auto">
