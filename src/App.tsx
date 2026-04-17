@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -96,11 +96,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [location, setLocation] = useState<Location>({
-    name: 'Melbourne',
-    lat: -37.8136,
-    lon: 144.9631,
-    country: 'AU',
-    state: 'Victoria',
+    name: '',
+    lat: 0,
+    lon: 0,
+    country: '',
   });
   const [locationResolved, setLocationResolved] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -294,10 +293,17 @@ function App() {
   };
 
   const loadGuestLocation = async () => {
-    const userLocation = await getUserLocation();
-    setLocation(userLocation);
-    setIsUsingCurrentLocation(true);
-    setHasLoadedInitialLocation(true);
+    try {
+      const userLocation = await getUserLocation();
+      setLocation(userLocation);
+      setLocationResolved(true);
+      setLocationDenied(false);
+      setIsUsingCurrentLocation(true);
+      setHasLoadedInitialLocation(true);
+    } catch {
+      setLocationDenied(true);
+      setLocationResolved(false);
+    }
   };
 
   const checkAdminStatus = async (userId: string) => {
@@ -491,13 +497,40 @@ function App() {
   if (locationDenied) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-        <div className="text-center max-w-sm w-full">
-          <div className="w-16 h-16 mx-auto mb-6 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
-            <MapPin className="w-8 h-8 text-green-500" />
+        <div className="max-w-sm w-full">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 mx-auto mb-5 bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/30">
+              <MapPin className="w-8 h-8 text-green-400" />
+            </div>
+            <p className="text-white text-2xl font-bold tracking-wide mb-2">FarmCast</p>
+            <p className="text-slate-300 text-base mb-1">Where are you farming?</p>
+            <p className="text-slate-500 text-sm">Get hyper-local weather for your exact location, anywhere in the world</p>
           </div>
-          <p className="text-white text-2xl font-bold tracking-wide mb-2">FarmCast</p>
-          <p className="text-slate-300 text-base mb-1">Where are you located?</p>
-          <p className="text-slate-500 text-sm mb-8">Search for your town or region to get local weather</p>
+
+          <button
+            onClick={() => {
+              setLocationDenied(false);
+              getUserLocation().then((loc) => {
+                setLocation(loc);
+                setLocationResolved(true);
+                setIsUsingCurrentLocation(true);
+                setHasLoadedInitialLocation(true);
+              }).catch(() => {
+                setLocationDenied(true);
+              });
+            }}
+            className="w-full mb-4 px-4 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold flex items-center justify-center gap-3 transition-colors"
+          >
+            <Navigation className="w-5 h-5" />
+            Allow Location Access
+          </button>
+
+          <div className="relative flex items-center mb-4">
+            <div className="flex-1 border-t border-slate-700" />
+            <span className="px-3 text-slate-500 text-sm">or search manually</span>
+            <div className="flex-1 border-t border-slate-700" />
+          </div>
+
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
             <LocationSearch
               onLocationSelect={(loc) => {
@@ -510,6 +543,8 @@ function App() {
               currentLocation=""
             />
           </div>
+
+          <p className="text-center text-slate-600 text-xs mt-4">Works worldwide — Australia, USA, UK, Europe and beyond</p>
         </div>
       </div>
     );
@@ -527,7 +562,8 @@ function App() {
           </div>
           <p className="text-white text-xl font-bold tracking-wide">FarmCast</p>
           <p className="mt-2 text-slate-400 text-sm">Detecting your location...</p>
-          <p className="mt-1 text-slate-600 text-xs">Allow location access for accurate local weather</p>
+          <p className="mt-1 text-slate-500 text-xs">Allow location access for precise local weather</p>
+          <p className="mt-1 text-slate-600 text-xs">Works anywhere in the world</p>
         </div>
       </div>
     );
