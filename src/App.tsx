@@ -103,6 +103,7 @@ function App() {
     country: 'AU',
     state: 'Victoria',
   });
+  const [locationResolved, setLocationResolved] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -127,6 +128,17 @@ function App() {
   }, []);
 
   useEffect(() => {
+    getUserLocation().then((loc) => {
+      setLocation(loc);
+      setLocationResolved(true);
+      setIsUsingCurrentLocation(true);
+      setHasLoadedInitialLocation(true);
+    }).catch(() => {
+      setLocationResolved(true);
+    });
+  }, []);
+
+  useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       console.error('Global error:', event.error);
       setAppError(`Application Error: ${event.error?.message || 'Unknown error'}`);
@@ -148,9 +160,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!locationResolved) return;
     fetchWeather();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.lat, location.lon]);
+  }, [location.lat, location.lon, locationResolved]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -165,15 +178,9 @@ function App() {
         await checkAdminStatus(session.user.id);
         await checkTrialStatus(session.user.id);
 
-        if (!hasLoadedInitialLocation) {
-          await loadUserLocation(session.user.id);
-        }
+        await loadUserLocation(session.user.id);
       } else {
         setUser(null);
-
-        if (!hasLoadedInitialLocation) {
-          await loadGuestLocation();
-        }
       }
     };
 
@@ -475,6 +482,24 @@ function App() {
           >
             Try Again
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!locationResolved) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-slate-700 border-t-green-500 absolute inset-0"></div>
+            <div className="flex items-center justify-center h-20 w-20">
+              <Map className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+          <p className="text-white text-xl font-bold tracking-wide">FarmCast</p>
+          <p className="mt-2 text-slate-400 text-sm">Detecting your location...</p>
+          <p className="mt-1 text-slate-600 text-xs">Allow location access for accurate local weather</p>
         </div>
       </div>
     );
