@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Leaf, ArrowRight, Sparkles, Camera, ChevronRight, Lock, Zap, FlaskConical, BookOpen } from 'lucide-react';
+import { Leaf, ArrowRight, Sparkles, Camera, ChevronRight, Lock, Zap, FlaskConical } from 'lucide-react';
 
 const FLOATING_PROMPTS = [
   { text: 'What weed is this?', icon: '🌿' },
@@ -304,36 +304,6 @@ export function AgronomyAdvisorCard({ onOpen, isAuthenticated, onSubscribeClick 
                   {chip.label}
                 </button>
               ))}
-            </div>
-
-            <div className="mt-3 rounded-xl border border-slate-700/50 bg-slate-800/40 overflow-hidden hover:border-slate-600/60 transition-colors duration-200 cursor-default">
-              <div className="flex items-stretch gap-0">
-                <div className="flex-shrink-0 w-[72px] relative overflow-hidden rounded-l-xl">
-                  <img
-                    src="/image.png"
-                    alt="Pests of Field Crops and Pastures"
-                    className="w-full h-full object-cover object-center"
-                    style={{ minHeight: '88px' }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-slate-800/20" />
-                </div>
-                <div className="flex-1 min-w-0 px-3.5 py-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <BookOpen className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Reference</span>
-                      </div>
-                      <p className="text-xs font-bold text-white leading-tight">Pests of Field Crops and Pastures</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Identification and Control</p>
-                      <p className="text-[11px] text-slate-600 mt-0.5">Editor: P.T. Bailey</p>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-                    Key reference for Australian field crop pest identification — used alongside AI advice for confirmation.
-                  </p>
-                </div>
-              </div>
             </div>
 
             {!isAuthenticated ? (

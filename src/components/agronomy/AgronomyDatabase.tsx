@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FlaskConical, Bug, Leaf, X, BookOpen, Database, Lock, Sprout, Camera, Loader2, Sparkles } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab } from './types';
 import { AgronomySearch } from './AgronomySearch';
@@ -18,6 +18,59 @@ const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: stri
 ];
 
 const FREE_PREVIEW_COUNT = 3;
+
+const SCAN_LABELS = ['Pest ID', 'Disease ID', 'Weed ID', 'Crop ID'];
+
+function ScanAIButton({ onClick }: { onClick: () => void }) {
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex(i => (i + 1) % SCAN_LABELS.length);
+        setVisible(true);
+      }, 220);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      <style>{`
+        @keyframes scan-fade-in {
+          from { opacity: 0; transform: translateY(2px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .scan-label-in { animation: scan-fade-in 0.22s ease-out forwards; }
+      `}</style>
+      <button
+        onClick={onClick}
+        className="flex flex-col items-center justify-center gap-0.5 px-4 py-2 rounded-xl border border-green-600/50 bg-green-950/50 text-green-300 hover:bg-green-900/50 hover:border-green-500/70 transition-all duration-200 shadow-lg"
+        title="Upload a photo for AI identification"
+        style={{ minWidth: '7.5rem' }}
+      >
+        <div className="flex items-center gap-2">
+          <Camera className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm font-bold whitespace-nowrap">Scan with AI</span>
+          <span className="flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20 uppercase tracking-wider flex-shrink-0">
+            <Sparkles className="w-2 h-2" />
+            AI
+          </span>
+        </div>
+        <div className="h-3.5 flex items-center justify-center overflow-hidden">
+          <span
+            key={index}
+            className={`text-[10px] font-semibold text-green-400/70 tracking-wide whitespace-nowrap transition-opacity duration-200 ${visible ? 'scan-label-in opacity-100' : 'opacity-0'}`}
+          >
+            {SCAN_LABELS[index]}
+          </span>
+        </div>
+      </button>
+    </>
+  );
+}
 
 interface Props {
   onClose: () => void;
@@ -250,21 +303,6 @@ Respond ONLY with this exact JSON format (no other text):
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-700/60 bg-slate-800/50">
-                <img
-                  src="/image.png"
-                  alt="Pests of Field Crops and Pastures"
-                  className="w-8 h-10 object-cover rounded shadow-md flex-shrink-0"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1 mb-0.5">
-                    <BookOpen className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Reference</span>
-                  </div>
-                  <p className="text-[11px] font-bold text-white leading-tight whitespace-nowrap">Pests of Field Crops & Pastures</p>
-                  <p className="text-[10px] text-slate-500 whitespace-nowrap">Ed. P.T. Bailey</p>
-                </div>
-              </div>
               <button
                 onClick={onClose}
                 className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
@@ -300,18 +338,7 @@ Respond ONLY with this exact JSON format (no other text):
                 className="hidden"
                 onChange={handleFileSelect}
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-3.5 rounded-xl border border-green-600/50 bg-green-950/50 text-green-300 hover:bg-green-900/50 hover:border-green-500/70 transition-all duration-200 text-sm font-bold shadow-lg whitespace-nowrap"
-                title="Upload a photo for AI identification"
-              >
-                <Camera className="w-4 h-4" />
-                <span className="hidden sm:inline">Photo ID</span>
-                <span className="flex items-center gap-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20 uppercase tracking-wider">
-                  <Sparkles className="w-2 h-2" />
-                  AI
-                </span>
-              </button>
+              <ScanAIButton onClick={() => fileInputRef.current?.click()} />
             </div>
           </div>
 
