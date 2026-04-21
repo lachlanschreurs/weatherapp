@@ -1177,6 +1177,29 @@ function App() {
               {deltaT.toFixed(1)}°
             </div>
             <div className="text-sm text-slate-400 mt-1">{deltaTCondition.reason}</div>
+
+            {/* Rating table */}
+            <div className="mt-4 pt-3 border-t border-slate-700/40 space-y-1">
+              {[
+                { label: '< 2', desc: 'Poor', sub: 'Inversion risk', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', active: deltaT < 2 },
+                { label: '2 – 4', desc: 'Monitor', sub: 'Marginal', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', active: deltaT >= 2 && deltaT < 4 },
+                { label: '4 – 6', desc: 'Excellent', sub: 'Ideal', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/30', active: deltaT >= 4 && deltaT <= 6 },
+                { label: '6 – 8', desc: 'Monitor', sub: 'Rising evaporation', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', active: deltaT > 6 && deltaT <= 8 },
+                { label: '> 8', desc: 'Poor', sub: 'Too dry', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', active: deltaT > 8 },
+              ].map(row => (
+                <div
+                  key={row.label}
+                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border transition-all duration-200 ${row.active ? `${row.bg} ${row.border} ring-1 ring-inset ${row.border}` : 'border-transparent bg-transparent opacity-40'}`}
+                >
+                  <span className={`text-xs font-black font-mono w-12 ${row.active ? row.color : 'text-slate-500'}`}>{row.label}</span>
+                  <div className="flex-1 flex items-center gap-1.5 px-2">
+                    <span className={`text-xs font-bold ${row.active ? row.color : 'text-slate-500'}`}>{row.desc}</span>
+                    <span className={`text-[10px] ${row.active ? 'text-slate-400' : 'text-slate-600'}`}>— {row.sub}</span>
+                  </div>
+                  {row.active && <div className={`w-1.5 h-1.5 rounded-full ${row.color.replace('text-', 'bg-')} flex-shrink-0`} />}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Humidity */}
