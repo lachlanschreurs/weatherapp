@@ -9,6 +9,7 @@ import { DiseaseCard } from './DiseaseCard';
 import { PestCard } from './PestCard';
 import { WeedCard } from './WeedCard';
 import { FertiliserCard } from './FertiliserCard';
+import { AgronomyDisclaimerModal, hasAcceptedAgronomyDisclaimer } from './AgronomyDisclaimerModal';
 
 const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'chemicals',   label: 'Chemicals',   icon: <FlaskConical className="w-4 h-4" />, color: 'text-emerald-400' },
@@ -87,6 +88,7 @@ interface AIAnalysisResult {
 }
 
 export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '' }: Props) {
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => hasAcceptedAgronomyDisclaimer());
   const [activeTab, setActiveTab] = useState<AgronomyTab>('chemicals');
   const [query, setQuery] = useState(initialQuery);
   const [cropFilter, setCropFilter] = useState('');
@@ -290,6 +292,9 @@ Respond ONLY with this exact JSON format (no other text):
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
+      {!disclaimerAccepted && (
+        <AgronomyDisclaimerModal onAccept={() => setDisclaimerAccepted(true)} />
+      )}
       <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
@@ -453,6 +458,9 @@ Respond ONLY with this exact JSON format (no other text):
                 </div>
                 <p className="text-[10px] text-slate-600 max-w-2xl mx-auto text-center leading-relaxed">
                   {DISCLAIMER_FULL}
+                </p>
+                <p className="text-[10px] text-slate-600 text-center mt-2 font-medium italic">
+                  Guide only — always check current label and local agronomy advice.
                 </p>
               </div>
             </>
