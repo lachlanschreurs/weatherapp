@@ -1,14 +1,7 @@
 import { AlertTriangle, ExternalLink, ShieldCheck, BookOpen, ClipboardList } from 'lucide-react';
 
-const DISCLAIMER_VERSION = 'v1';
-const STORAGE_KEY = 'farmcast_agronomy_disclaimer_accepted';
-
 export function hasAcceptedAgronomyDisclaimer(): boolean {
-  return localStorage.getItem(STORAGE_KEY) === DISCLAIMER_VERSION;
-}
-
-export function acceptAgronomyDisclaimer() {
-  localStorage.setItem(STORAGE_KEY, DISCLAIMER_VERSION);
+  return false;
 }
 
 interface Props {
@@ -17,7 +10,6 @@ interface Props {
 
 export function AgronomyDisclaimerModal({ onAccept }: Props) {
   function handleAccept() {
-    acceptAgronomyDisclaimer();
     onAccept();
   }
 

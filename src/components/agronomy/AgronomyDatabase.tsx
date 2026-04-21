@@ -9,7 +9,7 @@ import { DiseaseCard } from './DiseaseCard';
 import { PestCard } from './PestCard';
 import { WeedCard } from './WeedCard';
 import { FertiliserCard } from './FertiliserCard';
-import { AgronomyDisclaimerModal, hasAcceptedAgronomyDisclaimer } from './AgronomyDisclaimerModal';
+import { AgronomyDisclaimerModal } from './AgronomyDisclaimerModal';
 
 const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'chemicals',   label: 'Chemicals',   icon: <FlaskConical className="w-4 h-4" />, color: 'text-emerald-400' },
@@ -88,7 +88,7 @@ interface AIAnalysisResult {
 }
 
 export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '' }: Props) {
-  const [disclaimerAccepted, setDisclaimerAccepted] = useState(() => hasAcceptedAgronomyDisclaimer());
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [activeTab, setActiveTab] = useState<AgronomyTab>('chemicals');
   const [query, setQuery] = useState(initialQuery);
   const [cropFilter, setCropFilter] = useState('');
