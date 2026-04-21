@@ -411,9 +411,9 @@ function calculateDeltaT(tempC: number, humidity: number): number {
 
 function getDeltaTCondition(deltaT: number): { rating: string; color: string; bgColor: string } {
   if (deltaT < 2) return { rating: 'Poor', color: '#dc2626', bgColor: '#fee2e2' };
-  if (deltaT >= 2 && deltaT <= 8) return { rating: 'Excellent', color: '#059669', bgColor: '#d1fae5' };
-  if (deltaT > 8 && deltaT <= 10) return { rating: 'Good', color: '#10b981', bgColor: '#d1fae5' };
-  if (deltaT > 10 && deltaT <= 14) return { rating: 'Marginal', color: '#f59e0b', bgColor: '#fef3c7' };
+  if (deltaT < 4) return { rating: 'Okay', color: '#f59e0b', bgColor: '#fef3c7' };
+  if (deltaT <= 6) return { rating: 'Excellent', color: '#059669', bgColor: '#d1fae5' };
+  if (deltaT <= 8) return { rating: 'Okay', color: '#f59e0b', bgColor: '#fef3c7' };
   return { rating: 'Poor', color: '#dc2626', bgColor: '#fee2e2' };
 }
 
@@ -1291,7 +1291,7 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
         </tbody>
       </table>
       <div style="margin-top:8px;font-size:10px;color:#475569;text-align:center;font-weight:600;">
-        Spray: ✅ Ideal &nbsp;·&nbsp; ✓ Good &nbsp;·&nbsp; ⚠️ Marginal &nbsp;·&nbsp; ❌ Poor
+        Spray: ✅ Ideal &nbsp;·&nbsp; ✓ Okay &nbsp;·&nbsp; ⚠️ Monitor &nbsp;·&nbsp; ❌ Poor
       </div>
 
       <div class="section-label" style="margin-top:20px;">5-Day Irrigation Schedule</div>
@@ -1374,6 +1374,9 @@ function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeR
       <p style="margin-top:12px;font-size:10px;color:#334155;">
         FarmCast Weather Services &mdash; Sent to daily forecast subscribers<br>
         $2.99/month, billed monthly. Cancel anytime in settings.
+      </p>
+      <p style="margin-top:12px;font-size:9px;color:#334155;line-height:1.5;">
+        FarmCast provides general agricultural information only and does not constitute chemical, agronomic, fertiliser, or legal application advice. Always verify with current label directions, local regulations, and qualified agronomic advice before spraying or applying products.
       </p>
     </div>
 
@@ -1528,7 +1531,7 @@ ${fiveDayForecast.map((day: any) =>
   `${day.dayName} ${day.date}: High ${day.high}°C / Low ${day.low}°C | Rain: ${day.rain}mm (${day.rainChance}%) | Wind: ${day.wind} km/h ${day.windDir} | Spray: ${day.sprayIcon}${day.sprayTime ? ' ' + day.sprayTime : ''}`
 ).join('\n')}
 
-Spray Window Key: ✅ Ideal · ✓ Good · ⚠️ Marginal · ❌ Poor
+Spray Window Key: ✅ Ideal · ✓ Okay · ⚠️ Monitor · ❌ Poor
 
 24-HOUR FORECAST WITH DELTA T:
 ${next24Hours.slice(0, 12).map((hour: any) => {
@@ -1543,7 +1546,7 @@ ${next24Hours.slice(0, 12).map((hour: any) => {
   return `${timeStr}: ${temp}°C, ${weatherMain}, ${rainProb}% rain, Wind ${hourWindSpeed}km/h, ΔT ${hourDeltaT.toFixed(1)} (${deltaTCond.rating})`;
 }).join('\n')}
 
-Delta T Guide: 2-8=Excellent | 8-10=Good | 10-14=Marginal | <2 or >14=Poor
+Delta T Guide: <2=Poor | 2-4=Okay | 4-6=Excellent | 6-8=Okay | >8=Poor
 
 Visit your dashboard: https://farmcastweather.com
 Manage preferences: https://farmcastweather.com/settings
@@ -1553,5 +1556,7 @@ FarmCast Weather Services
 Sent to subscribers of daily weather forecasts
 
 Your subscription: $2.99/month, billed monthly. Cancel anytime in settings.
+
+FarmCast provides general agricultural information only and does not constitute chemical, agronomic, fertiliser, or legal application advice. Always verify with current label directions, local regulations, and qualified agronomic advice before spraying or applying products.
   `.trim();
 }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation } from 'lucide-react';
-import { getSprayCondition, calculateDeltaT, getDeltaTCondition } from './utils/deltaT';
+import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
 import { analyzePlantingDays, analyzeIrrigationNeeds } from './utils/farmingRecommendations';
 import { getSprayAdvice } from './utils/sprayAdvice';
+import { loadUnitPrefs, saveUnitPrefs, resolveUnits, convertTemp, convertWind, convertRain, convertPressure, formatTemp, formatTempValue, formatWind, formatWindValue, formatRain, formatRainValue, formatPressure, formatPressureValue, tempLabel, windLabel, rainLabel, pressureLabel, type UnitPreferences, type RegionUnits } from './utils/units';
 import { LocationSearch, Location } from './components/LocationSearch';
 import { HourlyForecast } from './components/HourlyForecast';
 import { RainRadar } from './components/RainRadar';
@@ -120,6 +121,15 @@ function App() {
   const [showAgronomyDB, setShowAgronomyDB] = useState(false);
   const [agronomyInitialQuery, setAgronomyInitialQuery] = useState('');
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
+  const [unitPrefs, setUnitPrefs] = useState<UnitPreferences>(loadUnitPrefs());
+
+  const countryCode = location.country || 'AU';
+  const units: RegionUnits = resolveUnits(unitPrefs, countryCode);
+
+  const handleUnitPrefsChange = (newPrefs: UnitPreferences) => {
+    setUnitPrefs(newPrefs);
+    saveUnitPrefs(newPrefs);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -759,11 +769,6 @@ function App() {
     return 'text-red-400';
   };
 
-  const getDeltaTCardColors = (rating: string) => {
-    if (rating === 'Excellent' || rating === 'Good') return { border: 'border-green-500/40', bg: 'bg-green-500/10', badge: 'bg-green-500/20 text-green-300 border-green-500/40' };
-    if (rating === 'Marginal') return { border: 'border-yellow-500/40', bg: 'bg-yellow-500/10', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' };
-    return { border: 'border-red-500/40', bg: 'bg-red-500/10', badge: 'bg-red-500/20 text-red-300 border-red-500/40' };
-  };
   const deltaTColors = getDeltaTCardColors(deltaTCondition.rating);
 
   return (
@@ -826,6 +831,8 @@ function App() {
                     onSignOut={handleSignOut}
                     isAdmin={isAdmin}
                     onAdminPanelToggle={() => setShowAdminPanel(!showAdminPanel)}
+                    unitPrefs={unitPrefs}
+                    onUnitPrefsChange={handleUnitPrefsChange}
                   />
                 </>
               ) : (
@@ -892,7 +899,7 @@ function App() {
                 {frostRisk ? 'FROST RISK — ' : 'FROST WARNING — '}
               </span>
               <span className="text-slate-300 text-sm">
-                Minimum temperature of {Math.round(minTempNext24h)}°C expected in next 24 hours.
+                Minimum temperature of {formatTemp(minTempNext24h, units.temp)} expected in next 24 hours.
                 {frostRisk ? ' Protect sensitive crops immediately.' : ' Monitor crops overnight.'}
               </span>
             </div>
@@ -914,10 +921,10 @@ function App() {
                   </div>
                   <div>
                     <div className="text-8xl xl:text-9xl font-black text-white leading-none tracking-tighter">
-                      {Math.round(tempC)}<span className="text-5xl xl:text-6xl text-slate-400">°C</span>
+                      {formatTempValue(tempC, units.temp)}<span className="text-5xl xl:text-6xl text-slate-400">{tempLabel(units.temp)}</span>
                     </div>
                     <div className="mt-2 flex items-center gap-4">
-                      <span className="text-slate-400 text-lg">Feels like <span className="text-white font-semibold">{Math.round(feelsLike)}°C</span></span>
+                      <span className="text-slate-400 text-lg">Feels like <span className="text-white font-semibold">{formatTemp(feelsLike, units.temp)}</span></span>
                     </div>
                     <div className="mt-1 text-xl text-slate-300 capitalize font-medium">{weatherDescription}</div>
                   </div>
@@ -926,11 +933,11 @@ function App() {
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                   <div className="flex items-center gap-2 text-right">
                     <span className="text-slate-400 text-sm">H</span>
-                    <span className="text-red-400 font-bold text-xl">{Math.round(todayHighTemp)}°</span>
+                    <span className="text-red-400 font-bold text-xl">{formatTempValue(todayHighTemp, units.temp)}°</span>
                   </div>
                   <div className="flex items-center gap-2 text-right">
                     <span className="text-slate-400 text-sm">L</span>
-                    <span className="text-blue-400 font-bold text-xl">{Math.round(todayLowTemp)}°</span>
+                    <span className="text-blue-400 font-bold text-xl">{formatTempValue(todayLowTemp, units.temp)}°</span>
                   </div>
                   <div className="mt-2 text-right">
                     <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">UV Index</div>
@@ -938,7 +945,7 @@ function App() {
                   </div>
                   <div className="mt-1 text-right">
                     <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Pressure</div>
-                    <div className="text-lg font-bold text-slate-300">{current.pressure} <span className="text-sm font-normal text-slate-500">hPa</span></div>
+                    <div className="text-lg font-bold text-slate-300">{formatPressureValue(current.pressure, units.pressure)} <span className="text-sm font-normal text-slate-500">{pressureLabel(units.pressure)}</span></div>
                   </div>
                 </div>
               </div>
@@ -949,12 +956,12 @@ function App() {
                   <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Soil Temp</div>
                   {hasActiveProbe && probeReading?.soil_temp_c != null ? (
                     <>
-                      <div className="text-lg font-bold text-amber-300">{probeReading.soil_temp_c.toFixed(1)}°C</div>
+                      <div className="text-lg font-bold text-amber-300">{formatTempValue(probeReading.soil_temp_c, units.temp, 1)}{tempLabel(units.temp)}</div>
                       <div className="text-xs text-green-400 font-medium">live probe</div>
                     </>
                   ) : (
                     <>
-                      <div className="text-lg font-bold text-amber-300/70">{soilTempC}°C</div>
+                      <div className="text-lg font-bold text-amber-300/70">{formatTempValue(Number(soilTempC), units.temp, 1)}{tempLabel(units.temp)}</div>
                       {user ? (
                         <button
                           onClick={() => document.getElementById('probe-section')?.scrollIntoView({ behavior: 'smooth' })}
@@ -1018,7 +1025,7 @@ function App() {
                       height={20}
                     />
                   </div>
-                  <div className="text-xs text-slate-500">base 10°C</div>
+                  <div className="text-xs text-slate-500">base {formatTemp(10, units.temp)}</div>
                 </div>
               </div>
             </div>
@@ -1072,19 +1079,19 @@ function App() {
                 {windGustKmh && windGustKmh > 50 && (
                   <div className="flex items-center gap-2 text-sm">
                     <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0 animate-pulse" />
-                    <span className="text-red-300">Wind gusts {Math.round(windGustKmh)} km/h — Spray risk</span>
+                    <span className="text-red-300">Wind gusts {formatWind(windGustKmh, units.wind)} — Spray risk</span>
                   </div>
                 )}
                 {todayRainChance > 70 && (
                   <div className="flex items-center gap-2 text-sm">
                     <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
-                    <span className="text-blue-300">Heavy rain likely — {todayExpectedRain.toFixed(1)} mm expected</span>
+                    <span className="text-blue-300">Heavy rain likely — {formatRain(todayExpectedRain, units.rain)} expected</span>
                   </div>
                 )}
                 {frostWarning && (
                   <div className="flex items-center gap-2 text-sm">
                     <div className="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0" />
-                    <span className="text-blue-200">Frost risk — min {Math.round(minTempNext24h)}°C overnight</span>
+                    <span className="text-blue-200">Frost risk — min {formatTemp(minTempNext24h, units.temp)} overnight</span>
                   </div>
                 )}
                 {deltaTCondition.rating === 'Excellent' && !frostWarning && (
@@ -1111,11 +1118,11 @@ function App() {
                 </span>
               </div>
               {frostRisk ? (
-                <p className="text-blue-200 text-xs">Min {Math.round(minTempNext24h)}°C — frost risk. Protect crops.</p>
+                <p className="text-blue-200 text-xs">Min {formatTemp(minTempNext24h, units.temp)} — frost risk. Protect crops.</p>
               ) : frostWarning ? (
-                <p className="text-blue-300 text-xs">Min {Math.round(minTempNext24h)}°C — monitor overnight.</p>
+                <p className="text-blue-300 text-xs">Min {formatTemp(minTempNext24h, units.temp)} — monitor overnight.</p>
               ) : (
-                <p className="text-slate-500 text-xs">Min {Math.round(minTempNext24h)}°C — no frost risk tonight.</p>
+                <p className="text-slate-500 text-xs">Min {formatTemp(minTempNext24h, units.temp)} — no frost risk tonight.</p>
               )}
             </div>
           </div>
@@ -1134,11 +1141,11 @@ function App() {
             </div>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Wind Speed</div>
             <div className={`text-4xl font-black leading-none ${getWindColor(windSpeedKmh)}`}>
-              {Math.round(windSpeedKmh)}
+              {formatWindValue(windSpeedKmh, units.wind)}
             </div>
-            <div className="text-sm text-slate-400 mt-1">km/h {windDirection}</div>
+            <div className="text-sm text-slate-400 mt-1">{windLabel(units.wind)} {windDirection}</div>
             {windGustKmh && (
-              <div className="text-xs text-slate-500 mt-1">Gusts {Math.round(windGustKmh)} km/h</div>
+              <div className="text-xs text-slate-500 mt-1">Gusts {formatWind(windGustKmh, units.wind)}</div>
             )}
           </div>
 
@@ -1154,19 +1161,19 @@ function App() {
             <div className={`text-4xl font-black leading-none ${todayRainChance > 70 ? 'text-blue-400' : todayRainChance > 40 ? 'text-sky-400' : 'text-slate-300'}`}>
               {todayRainChance}%
             </div>
-            <div className="text-sm text-slate-400 mt-1">{todayExpectedRain.toFixed(1)} mm expected</div>
+            <div className="text-sm text-slate-400 mt-1">{formatRain(todayExpectedRain, units.rain)} expected</div>
           </div>
 
           {/* Delta T */}
           <div className={`rounded-2xl border bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl hover:bg-slate-800/70 hover:scale-[1.02] transition-all duration-200 ${deltaTColors.border} ${deltaTCondition.rating === 'Excellent' ? 'farmcast-deltat-glow' : ''}`}>
             <div className="flex items-center justify-between mb-3">
-              <Activity className={`w-6 h-6 ${deltaTCondition.rating === 'Excellent' || deltaTCondition.rating === 'Good' ? 'text-green-400' : deltaTCondition.rating === 'Marginal' ? 'text-yellow-400' : 'text-red-400'}`} />
+              <Activity className={`w-6 h-6 ${getDeltaTIconColor(deltaTCondition.rating)}`} />
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${deltaTColors.badge} ${deltaTCondition.rating === 'Excellent' ? 'farmcast-pulse-green' : ''}`}>
                 {deltaTCondition.rating.toUpperCase()}
               </span>
             </div>
             <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Delta T</div>
-            <div className={`text-4xl font-black leading-none ${deltaTCondition.rating === 'Excellent' || deltaTCondition.rating === 'Good' ? 'text-green-400' : deltaTCondition.rating === 'Marginal' ? 'text-yellow-400' : 'text-red-400'}`}>
+            <div className={`text-4xl font-black leading-none ${getDeltaTValueColor(deltaTCondition.rating)}`}>
               {deltaT.toFixed(1)}°
             </div>
             <div className="text-sm text-slate-400 mt-1">{deltaTCondition.reason}</div>
@@ -1184,7 +1191,7 @@ function App() {
             <div className="text-4xl font-black leading-none text-cyan-400">
               {humidity}%
             </div>
-            <div className="text-sm text-slate-400 mt-1">Dew point {Math.round(dewpointC)}°C</div>
+            <div className="text-sm text-slate-400 mt-1">Dew point {formatTemp(dewpointC, units.temp)}</div>
           </div>
 
           {/* ETo */}
@@ -1199,8 +1206,8 @@ function App() {
             <div className="text-4xl font-black leading-none text-emerald-400">
               {eto}
             </div>
-            <div className="text-sm text-slate-400 mt-1">mm evapotranspiration</div>
-            <div className="text-xs text-slate-500 mt-1">GDD {gdd.toFixed(1)} (base 10°C)</div>
+            <div className="text-sm text-slate-400 mt-1">{rainLabel(units.rain)} evapotranspiration</div>
+            <div className="text-xs text-slate-500 mt-1">GDD {gdd.toFixed(1)} (base {formatTemp(10, units.temp)})</div>
           </div>
         </div>
 
@@ -1252,7 +1259,7 @@ function App() {
           }
 
           if (todayExpectedRain >= 10) {
-            summaryItems.push({ label: `${todayExpectedRain.toFixed(0)}mm rain — skip irrigation`, icon: '✓', status: 'ok' });
+            summaryItems.push({ label: `${formatRain(todayExpectedRain, units.rain, 0)} rain — skip irrigation`, icon: '✓', status: 'ok' });
           } else if (todayExpectedRain >= 3) {
             summaryItems.push({ label: 'Light irrigation only', icon: '~', status: 'info' });
           } else {
@@ -1261,7 +1268,7 @@ function App() {
 
           const tonightRain = hourlyList.slice(12, 24).reduce((sum: number, h: any) => sum + (h.rain?.['1h'] || 0), 0);
           if (tonightRain >= 5) {
-            summaryItems.push({ label: `Heavy rain tonight (${tonightRain.toFixed(0)}mm)`, icon: '!', status: 'warn' });
+            summaryItems.push({ label: `Heavy rain tonight (${formatRain(tonightRain, units.rain, 0)})`, icon: '!', status: 'warn' });
           } else if (todayRainChance > 60) {
             summaryItems.push({ label: 'Rain possible tonight', icon: '~', status: 'info' });
           } else {
@@ -1274,9 +1281,9 @@ function App() {
           if (windSpeedKmh > 20 && afternoonWindKmh < windSpeedKmh * 0.75) {
             summaryItems.push({ label: 'Wind easing late afternoon', icon: '✓', status: 'ok' });
           } else if (windSpeedKmh > 25) {
-            summaryItems.push({ label: `Strong winds ${Math.round(windSpeedKmh)} km/h`, icon: '!', status: 'warn' });
+            summaryItems.push({ label: `Strong winds ${formatWind(windSpeedKmh, units.wind)}`, icon: '!', status: 'warn' });
           } else {
-            summaryItems.push({ label: `Light winds ${Math.round(windSpeedKmh)} km/h ${windDirection}`, icon: '✓', status: 'ok' });
+            summaryItems.push({ label: `Light winds ${formatWind(windSpeedKmh, units.wind)} ${windDirection}`, icon: '✓', status: 'ok' });
           }
 
           const statusStyle = {
@@ -1383,12 +1390,13 @@ function App() {
             sprayWindowEnd={todayBestWindow?.endTime}
             isAuthenticated={!!user}
             onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
+            units={units}
           />
         </div>
 
         {/* HOURLY FORECAST */}
         <div className="mb-5">
-          <HourlyForecast forecastList={hourlyList} currentWeather={current} />
+          <HourlyForecast forecastList={hourlyList} currentWeather={current} units={units} />
         </div>
 
         {/* 5-DAY FORECAST */}
@@ -1420,18 +1428,18 @@ function App() {
                   </div>
 
                   <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-2xl font-black text-white">{Math.round(day.tempMax)}°</span>
-                    <span className="text-lg text-slate-500">{Math.round(day.tempMin)}°</span>
+                    <span className="text-2xl font-black text-white">{formatTempValue(day.tempMax, units.temp)}°</span>
+                    <span className="text-lg text-slate-500">{formatTempValue(day.tempMin, units.temp)}°</span>
                   </div>
 
                   <div className="space-y-1.5 text-xs mb-3">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Rain</span>
-                      <span className={`font-semibold ${rainPct > 70 ? 'text-blue-400' : rainPct > 40 ? 'text-sky-400' : 'text-slate-400'}`}>{rainPct}% / {day.rain.toFixed(1)}mm</span>
+                      <span className={`font-semibold ${rainPct > 70 ? 'text-blue-400' : rainPct > 40 ? 'text-sky-400' : 'text-slate-400'}`}>{rainPct}% / {formatRain(day.rain, units.rain)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Wind</span>
-                      <span className={`font-semibold ${getWindColor(day.windSpeed)}`}>{Math.round(day.windSpeed)} km/h</span>
+                      <span className={`font-semibold ${getWindColor(day.windSpeed)}`}>{formatWind(day.windSpeed, units.wind)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Humidity</span>
@@ -1458,9 +1466,9 @@ function App() {
 
           {/* Spray conditions legend */}
           <div className="px-6 py-3 border-t border-slate-700/50 flex items-center gap-6 text-xs text-slate-500">
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-green-500" /><span>Good: wind &lt;15 km/h, no rain</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-yellow-500" /><span>Moderate: wind 15–25 km/h</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-red-500" /><span>Poor: wind &gt;25 km/h or rain</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-green-500" /><span>Good: wind &lt;{formatWindValue(15, units.wind)} {windLabel(units.wind)}, no rain</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-yellow-500" /><span>Moderate: wind {formatWindValue(15, units.wind)}–{formatWindValue(25, units.wind)} {windLabel(units.wind)}</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-red-500" /><span>Poor: wind &gt;{formatWindValue(25, units.wind)} {windLabel(units.wind)} or rain</span></div>
           </div>
         </div>
 
@@ -1542,7 +1550,7 @@ function App() {
                           <span className="text-sm text-slate-400">{day.date}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {day.rainAmount > 0 && <span className="text-xs text-slate-500">{day.rainAmount.toFixed(1)}mm</span>}
+                          {day.rainAmount > 0 && <span className="text-xs text-slate-500">{formatRain(day.rainAmount, units.rain)}</span>}
                           <span className={`text-xs font-bold px-2 py-1 rounded-full ${day.level === 'High' ? 'bg-red-600 text-white' : day.level === 'Medium' ? 'bg-yellow-600 text-white' : day.level === 'Low' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-white'}`}>
                             {day.level}
                           </span>

@@ -1,6 +1,7 @@
 import { Wind, CloudRain, Thermometer, Navigation, Cloud, CloudDrizzle, Sun, Gauge } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { calculateDeltaT } from '../utils/deltaT';
+import { calculateDeltaT, getDeltaTColor } from '../utils/deltaT';
+import { formatTempValue, formatWindValue, tempLabel, windLabel, type RegionUnits } from '../utils/units';
 
 interface HourlyData {
   time: string;
@@ -26,9 +27,10 @@ interface HourlyForecastProps {
     wind_deg: number;
     weather: Array<{ icon?: string }>;
   };
+  units: RegionUnits;
 }
 
-export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastProps) {
+export function HourlyForecast({ forecastList, currentWeather, units }: HourlyForecastProps) {
   const hourlyData: HourlyData[] = [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -315,11 +317,11 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
                   </div>
                   <div className="flex items-center gap-1">
                     <Thermometer className="w-3 h-3 text-orange-400" />
-                    <span className="text-xs text-orange-300 font-medium">{hour.temp}°C</span>
+                    <span className="text-xs text-orange-300 font-medium">{formatTempValue(hour.temp, units.temp)}{tempLabel(units.temp)}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Wind className="w-3 h-3 text-white" />
-                    <span className="text-xs text-slate-300 font-medium">{hour.windSpeed}km/h</span>
+                    <span className="text-xs text-slate-300 font-medium">{formatWindValue(hour.windSpeed, units.wind)}{windLabel(units.wind)}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Navigation className="w-3 h-3 text-white" style={{ transform: `rotate(${hour.windDirection}deg)` }} />
@@ -327,11 +329,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
                   </div>
                   <div className="flex items-center gap-1">
                     <Gauge className="w-3 h-3 text-green-400" />
-                    <span className={`text-xs font-medium ${
-                      hour.deltaT >= 2 && hour.deltaT <= 8 ? 'text-green-400' :
-                      hour.deltaT > 8 && hour.deltaT <= 10 ? 'text-yellow-400' :
-                      'text-red-400'
-                    }`}>
+                    <span className="text-xs font-medium" style={{ color: getDeltaTColor(hour.deltaT) }}>
                       ΔT {hour.deltaT.toFixed(1)}
                     </span>
                   </div>
@@ -342,15 +340,15 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
 
           <div className="relative h-96">
             <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-sm text-orange-400 font-semibold pr-3 w-12 z-10 bg-slate-900">
-              <span className="text-right">{maxTemp}°C</span>
-              <span className="text-right">{Math.round((maxTemp + minTemp) / 2)}°</span>
-              <span className="text-right">{minTemp}°</span>
+              <span className="text-right">{formatTempValue(maxTemp, units.temp)}{tempLabel(units.temp)}</span>
+              <span className="text-right">{formatTempValue((maxTemp + minTemp) / 2, units.temp)}°</span>
+              <span className="text-right">{formatTempValue(minTemp, units.temp)}°</span>
             </div>
 
             <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-between text-sm text-white font-semibold pl-3 w-20 text-left z-10 bg-slate-900">
-              <span>60 km/h</span>
-              <span>30 km/h</span>
-              <span>0 km/h</span>
+              <span>{formatWindValue(60, units.wind)} {windLabel(units.wind)}</span>
+              <span>{formatWindValue(30, units.wind)} {windLabel(units.wind)}</span>
+              <span>0 {windLabel(units.wind)}</span>
             </div>
 
             <div className="mx-14" style={{ width: 'calc(100% - 8rem)' }}>
@@ -441,7 +439,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
                       textAnchor="middle"
                       pointerEvents="none"
                     >
-                      {interpolatedWeather.temp}°C | {interpolatedWeather.windSpeed}km/h | {interpolatedWeather.rainChance}%
+                      {formatTempValue(interpolatedWeather.temp, units.temp)}{tempLabel(units.temp)} | {formatWindValue(interpolatedWeather.windSpeed, units.wind)}{windLabel(units.wind)} | {interpolatedWeather.rainChance}%
                     </text>
                   </>
                 )}
@@ -559,8 +557,7 @@ export function HourlyForecast({ forecastList, currentWeather }: HourlyForecastP
               {hourlyData.map((d, i) => {
                 const x = i * (2000 / (hourlyData.length - 1));
                 const yDeltaT = 400 - normalize(d.deltaT, maxDeltaT) * 3.6;
-                const color = d.deltaT >= 2 && d.deltaT <= 8 ? '#22c55e' :
-                             d.deltaT > 8 && d.deltaT <= 10 ? '#eab308' : '#ef4444';
+                const color = getDeltaTColor(d.deltaT);
                 return (
                   <circle
                     key={`delta-${i}`}

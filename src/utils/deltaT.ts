@@ -1,5 +1,4 @@
 export function calculateDeltaT(tempC: number, humidity: number): number {
-  const dewpoint = tempC - ((100 - humidity) / 5);
   const wetBulb = tempC * Math.atan(0.151977 * Math.sqrt(humidity + 8.313659)) +
                   Math.atan(tempC + humidity) -
                   Math.atan(humidity - 1.676331) +
@@ -10,8 +9,10 @@ export function calculateDeltaT(tempC: number, humidity: number): number {
   return Math.max(0, deltaT);
 }
 
+export type DeltaTRating = 'Excellent' | 'Okay' | 'Poor';
+
 export function getDeltaTCondition(deltaT: number): {
-  rating: 'Excellent' | 'Good' | 'Marginal' | 'Poor';
+  rating: DeltaTRating;
   color: string;
   bgColor: string;
   reason: string;
@@ -21,11 +22,20 @@ export function getDeltaTCondition(deltaT: number): {
       rating: 'Poor',
       color: 'text-red-700',
       bgColor: 'bg-red-100',
-      reason: 'Temperature inversion — spray drift danger',
+      reason: 'Temperature inversion — avoid spraying',
     };
   }
 
-  if (deltaT >= 2 && deltaT <= 8) {
+  if (deltaT >= 2 && deltaT < 4) {
+    return {
+      rating: 'Okay',
+      color: 'text-amber-700',
+      bgColor: 'bg-amber-100',
+      reason: 'Monitor conditions before spraying',
+    };
+  }
+
+  if (deltaT >= 4 && deltaT <= 6) {
     return {
       rating: 'Excellent',
       color: 'text-green-700',
@@ -34,21 +44,12 @@ export function getDeltaTCondition(deltaT: number): {
     };
   }
 
-  if (deltaT > 8 && deltaT <= 10) {
+  if (deltaT > 6 && deltaT <= 8) {
     return {
-      rating: 'Good',
-      color: 'text-emerald-700',
-      bgColor: 'bg-emerald-100',
-      reason: 'Good conditions',
-    };
-  }
-
-  if (deltaT > 10 && deltaT <= 12) {
-    return {
-      rating: 'Marginal',
-      color: 'text-yellow-700',
-      bgColor: 'bg-yellow-100',
-      reason: 'High evaporation — product loss risk',
+      rating: 'Okay',
+      color: 'text-amber-700',
+      bgColor: 'bg-amber-100',
+      reason: 'Monitor conditions — rising evaporation',
     };
   }
 
@@ -58,6 +59,32 @@ export function getDeltaTCondition(deltaT: number): {
     bgColor: 'bg-red-100',
     reason: 'Too dry — avoid spraying',
   };
+}
+
+export function getDeltaTColor(deltaT: number): string {
+  if (deltaT < 2) return '#ef4444';
+  if (deltaT < 4) return '#f59e0b';
+  if (deltaT <= 6) return '#22c55e';
+  if (deltaT <= 8) return '#f59e0b';
+  return '#ef4444';
+}
+
+export function getDeltaTCardColors(rating: DeltaTRating) {
+  if (rating === 'Excellent') return { border: 'border-green-500/40', bg: 'bg-green-500/10', badge: 'bg-green-500/20 text-green-300 border-green-500/40' };
+  if (rating === 'Okay') return { border: 'border-amber-500/40', bg: 'bg-amber-500/10', badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40' };
+  return { border: 'border-red-500/40', bg: 'bg-red-500/10', badge: 'bg-red-500/20 text-red-300 border-red-500/40' };
+}
+
+export function getDeltaTIconColor(rating: DeltaTRating): string {
+  if (rating === 'Excellent') return 'text-green-400';
+  if (rating === 'Okay') return 'text-amber-400';
+  return 'text-red-400';
+}
+
+export function getDeltaTValueColor(rating: DeltaTRating): string {
+  if (rating === 'Excellent') return 'text-green-400';
+  if (rating === 'Okay') return 'text-amber-400';
+  return 'text-red-400';
 }
 
 export function getSprayCondition(windSpeedKmh: number, rainfallMm: number): {

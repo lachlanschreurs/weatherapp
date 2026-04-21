@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, FlaskConical, Clock, AlertTriangle, Shield, ExternalLink, Tag } from 'lucide-react';
 import type { Chemical } from './types';
+import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   fungicide: { bg: 'bg-emerald-900/40', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
@@ -142,6 +143,8 @@ export function ChemicalCard({ chemical }: Props) {
               </a>
             )}
           </div>
+
+          <AgronomyDisclaimer variant="short" />
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Sprout, Droplets, Tag } from 'lucide-react';
 import type { Fertiliser } from './types';
+import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 
 const TYPE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   granular:  { bg: 'bg-amber-900/40',   text: 'text-amber-300',   border: 'border-amber-500/30' },
@@ -188,6 +189,8 @@ export function FertiliserCard({ fertiliser }: Props) {
               <span>{fertiliser.registration_number}</span>
             </div>
           )}
+
+          <AgronomyDisclaimer variant="short" />
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor, Lock } from 'lucide-react';
+import { formatTemp, formatWind, formatRain, type RegionUnits } from '../utils/units';
 
 interface RecommendationProps {
   locationName: string;
@@ -17,6 +18,7 @@ interface RecommendationProps {
   sprayWindowEnd?: string;
   isAuthenticated?: boolean;
   onSignUpClick?: () => void;
+  units: RegionUnits;
 }
 
 function heatIndex(tempC: number, humidity: number): number {
@@ -50,6 +52,7 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     humidity,
     sprayWindowStart,
     sprayWindowEnd,
+    units,
   } = props;
 
   const recs: Recommendation[] = [];
@@ -58,7 +61,7 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   const moderateGust = windGustKmh !== null && windGustKmh > 25 && windGustKmh <= 40;
   const heavyRain = todayRainChance > 70 && todayExpectedRain >= 10;
   const rainLikely = todayRainChance > 70 || todayExpectedRain >= 15;
-  const excellentDeltaT = deltaTRating === 'Excellent' || deltaTRating === 'Good';
+  const excellentDeltaT = deltaTRating === 'Excellent';
   const apparentTemp = heatIndex(tempC, humidity);
 
   let sprayStatus: 'good' | 'caution' | 'risk' = 'good';
@@ -68,19 +71,19 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   if (currentRainfall > 0) {
     sprayStatus = 'risk';
     sprayStatusLabel = 'Currently raining — do not spray';
-    sprayReason = `${currentRainfall.toFixed(1)}mm falling now — product will wash off`;
+    sprayReason = `${formatRain(currentRainfall, units.rain)} falling now — product will wash off`;
   } else if (rainLikely) {
     sprayStatus = 'risk';
     sprayStatusLabel = todayRainChance > 70 ? 'Avoid spraying — rain likely' : 'High washoff risk today';
-    sprayReason = `${todayRainChance}% rain chance, ${todayExpectedRain.toFixed(1)}mm forecast`;
+    sprayReason = `${todayRainChance}% rain chance, ${formatRain(todayExpectedRain, units.rain)} forecast`;
   } else if (dangerousGust) {
     sprayStatus = 'risk';
     sprayStatusLabel = 'Do not spray — dangerous gusts';
-    sprayReason = `${windDirection} gusts ${Math.round(windGustKmh!)} km/h — unacceptable drift risk`;
+    sprayReason = `${windDirection} gusts ${formatWind(windGustKmh!, units.wind)} — unacceptable drift risk`;
   } else if (moderateGust) {
     sprayStatus = 'caution';
     sprayStatusLabel = sprayWindowStart ? `Best window ${sprayWindowStart}–${sprayWindowEnd}` : 'Delay — gusts elevated';
-    sprayReason = `${windDirection} gusts ${Math.round(windGustKmh!)} km/h — use low-drift nozzles`;
+    sprayReason = `${windDirection} gusts ${formatWind(windGustKmh!, units.wind)} — use low-drift nozzles`;
   } else if (excellentDeltaT) {
     sprayStatus = 'good';
     sprayStatusLabel = sprayWindowStart ? `Go ${sprayWindowStart}–${sprayWindowEnd}` : 'Conditions clear — proceed';
@@ -88,7 +91,7 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   } else {
     sprayStatus = 'caution';
     sprayStatusLabel = sprayWindowStart ? `Window ${sprayWindowStart}–${sprayWindowEnd}` : 'Monitor before spraying';
-    sprayReason = `Delta T ${deltaT.toFixed(1)}° (${deltaTRating}), wind ${Math.round(windSpeedKmh)} km/h`;
+    sprayReason = `Delta T ${deltaT.toFixed(1)}° (${deltaTRating}), wind ${formatWind(windSpeedKmh, units.wind)}`;
   }
 
   recs.push({
@@ -106,15 +109,15 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   if (todayExpectedRain >= 20) {
     irrigationStatus = 'good';
     irrigationStatusLabel = 'Hold off — rain covers it';
-    irrigationReason = `${todayExpectedRain.toFixed(0)}mm rainfall forecast today`;
+    irrigationReason = `${formatRain(todayExpectedRain, units.rain, 0)} rainfall forecast today`;
   } else if (todayExpectedRain >= 5) {
     irrigationStatus = 'caution';
     irrigationStatusLabel = 'Minimal required today';
-    irrigationReason = `${todayExpectedRain.toFixed(1)}mm rainfall forecast`;
+    irrigationReason = `${formatRain(todayExpectedRain, units.rain)} rainfall forecast`;
   } else if (tempC > 28) {
     irrigationStatus = 'caution';
     irrigationStatusLabel = 'Irrigate this evening';
-    irrigationReason = `Warm day ${Math.round(tempC)}°C — high evaporation loss`;
+    irrigationReason = `Warm day ${formatTemp(tempC, units.temp)} — high evaporation loss`;
   } else {
     irrigationStatus = 'good';
     irrigationStatusLabel = 'Check soil moisture first';
@@ -141,8 +144,8 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     livestockStatus = 'caution';
     livestockStatusLabel = 'Shade and water essential';
     livestockReason = apparentTemp > 32
-      ? `Apparent temp ${Math.round(apparentTemp)}°C — heat stress risk for cattle`
-      : `${Math.round(tempC)}°C at ${humidity}% humidity — heat stress conditions`;
+      ? `Apparent temp ${formatTemp(apparentTemp, units.temp)} — heat stress risk for cattle`
+      : `${formatTemp(tempC, units.temp)} at ${humidity}% humidity — heat stress conditions`;
   } else {
     livestockStatus = 'good';
     livestockStatusLabel = 'Good grazing conditions';
@@ -168,11 +171,11 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
   } else if (heavyRain) {
     croppingStatus = 'caution';
     croppingStatusLabel = 'Delay cultivation and harvest';
-    croppingReason = `${todayExpectedRain.toFixed(0)}mm expected — good for winter cereals`;
+    croppingReason = `${formatRain(todayExpectedRain, units.rain, 0)} expected — good for winter cereals`;
   } else if (dangerousGust || moderateGust) {
     croppingStatus = 'caution';
     croppingStatusLabel = 'Delay seedbed preparation';
-    croppingReason = `Gusts ${Math.round(windGustKmh!)} km/h — peak risk this afternoon`;
+    croppingReason = `Gusts ${formatWind(windGustKmh!, units.wind)} — peak risk this afternoon`;
   } else {
     croppingStatus = 'good';
     croppingStatusLabel = 'Good field conditions';

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Bug, AlertTriangle, Shield, FlaskConical, Thermometer } from 'lucide-react';
 import type { Disease } from './types';
+import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 
 const PATHOGEN_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   fungal: { bg: 'bg-emerald-900/40', text: 'text-emerald-300', border: 'border-emerald-500/30' },
@@ -93,28 +94,31 @@ export function DiseaseCard({ disease }: Props) {
 
           {disease.chemicals && disease.chemicals.length > 0 && (
             <div>
-              <div className="flex items-center gap-1.5 mb-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
                 <FlaskConical className="w-3.5 h-3.5 text-emerald-400" />
-                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Recommended Treatments</div>
+                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Possible Treatment Options</div>
               </div>
+              <p className="text-[10px] text-slate-500 mb-2.5 italic">Products containing these actives may be suitable where registered. Consider local agronomic advice before application.</p>
               <div className="space-y-2">
                 {disease.chemicals.map(({ chemical, application_notes, efficacy_rating }) => (
                   <div key={chemical.id} className="rounded-lg bg-slate-800/60 border border-slate-700/40 p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-semibold text-white">{chemical.product_name}</span>
+                      <span className="text-xs text-slate-500 font-medium">{chemical.active_ingredient} ({chemical.category})</span>
                       {efficacy_rating && (
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border capitalize ${EFFICACY_COLORS[efficacy_rating]}`}>
                           {efficacy_rating}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400">{chemical.active_ingredient} — {chemical.category}</p>
+                    <p className="text-sm text-slate-300">{chemical.product_name}</p>
                     {application_notes && <p className="text-xs text-slate-500 mt-1">{application_notes}</p>}
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          <AgronomyDisclaimer variant="short" />
         </div>
       )}
     </div>

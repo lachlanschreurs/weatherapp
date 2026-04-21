@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { AgronomyDisclaimer, DISCLAIMER_FULL } from '../AgronomyDisclaimer';
 import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab } from './types';
 import { AgronomySearch } from './AgronomySearch';
 import { ChemicalCard } from './ChemicalCard';
@@ -445,13 +446,13 @@ Respond ONLY with this exact JSON format (no other text):
                 />
               )}
 
-              <div className="mt-8 py-5 border-t border-slate-800 text-center">
+              <div className="mt-8 py-5 border-t border-slate-800">
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Database className="w-4 h-4 text-slate-600" />
                   <p className="text-xs text-slate-600 font-medium uppercase tracking-wider">FarmCast Agronomy Reference Database</p>
                 </div>
-                <p className="text-xs text-slate-700 max-w-lg mx-auto">
-                  Data is for reference and educational purposes. Always read and follow product labels. Consult an agronomist for site-specific advice. Registrations may vary by state — confirm with APVMA.
+                <p className="text-[10px] text-slate-600 max-w-2xl mx-auto text-center leading-relaxed">
+                  {DISCLAIMER_FULL}
                 </p>
               </div>
             </>
@@ -574,7 +575,7 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
 
                 {analysisResult.recommendations.length > 0 && (
                   <div>
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recommendations</div>
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Possible Recommendations</div>
                     <ul className="space-y-1.5">
                       {analysisResult.recommendations.map((rec, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -587,6 +588,8 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
                     </ul>
                   </div>
                 )}
+
+                <AgronomyDisclaimer variant="inline" />
               </div>
             )}
           </div>
