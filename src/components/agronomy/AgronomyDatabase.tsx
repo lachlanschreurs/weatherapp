@@ -564,18 +564,23 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
 
             {analysisResult && (
               <div className="space-y-3">
+                {/* Detected Issue */}
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Sparkles className="w-3.5 h-3.5 text-green-400" />
-                    <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Identified</span>
+                    <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Detected Issue</span>
                   </div>
                   <h3 className="text-base font-black text-white">{analysisResult.identification}</h3>
                   <p className="text-sm text-slate-400 mt-1 leading-relaxed">{analysisResult.details}</p>
                 </div>
 
+                {/* Common Treatment Options */}
                 {analysisResult.recommendations.length > 0 && (
                   <div>
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Possible Recommendations</div>
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Common Treatment Options</div>
+                    <p className="text-[10px] text-slate-600 mb-2 italic">
+                      Possible treatment options may include the following. Always verify with current product labels and agronomic advice before application.
+                    </p>
                     <ul className="space-y-1.5">
                       {analysisResult.recommendations.map((rec, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
@@ -589,7 +594,15 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
                   </div>
                 )}
 
-                <AgronomyDisclaimer variant="inline" />
+                {/* Monitoring & Prevention */}
+                <div className="rounded-lg bg-slate-800/40 border border-slate-700/30 p-3">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monitoring & Prevention</div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Monitor regularly for recurrence. Record observations and consult your agronomist before making treatment decisions, especially for chemical applications.
+                  </p>
+                </div>
+
+                <AgronomyDisclaimer variant="full" />
               </div>
             )}
           </div>

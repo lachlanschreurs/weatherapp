@@ -98,21 +98,31 @@ export function WeedCard({ weed }: Props) {
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <FlaskConical className="w-3.5 h-3.5 text-orange-400" />
-                <div className="text-xs font-bold text-orange-400 uppercase tracking-wider">Common Registered Herbicides</div>
+                <div className="text-xs font-bold text-orange-400 uppercase tracking-wider">Common Registered Active Ingredients</div>
               </div>
-              <p className="text-[10px] text-slate-500 mb-2.5 italic">Products containing these actives may be suitable where registered. Consider local agronomic advice before application.</p>
+              <p className="text-[10px] text-slate-500 mb-2.5 italic">
+                Common registered active ingredients include the following. Products containing these actives may be suitable where registered — always verify APVMA registration and crop label before use.
+              </p>
               <div className="space-y-2">
                 {weed.chemicals.map(({ chemical, application_notes, efficacy_rating }) => (
                   <div key={chemical.id} className="rounded-lg bg-slate-800/60 border border-slate-700/40 p-3">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-slate-500 font-medium">{chemical.active_ingredient}</span>
+                      <div>
+                        <span className="text-sm font-bold text-slate-200">{chemical.active_ingredient}</span>
+                        {chemical.chemical_group && (
+                          <span className="ml-2 text-[10px] text-slate-500">Mode of action: {chemical.chemical_group}</span>
+                        )}
+                      </div>
                       {efficacy_rating && (
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border capitalize ${EFFICACY_COLORS[efficacy_rating]}`}>
-                          {efficacy_rating}
+                          {efficacy_rating} efficacy
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-slate-300">{chemical.product_name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Found in products such as: <span className="text-slate-300">{chemical.product_name}</span></p>
+                    {chemical.withholding_period && (
+                      <p className="text-xs text-amber-400/80 mt-1">WHI: {chemical.withholding_period}</p>
+                    )}
                     {application_notes && <p className="text-xs text-slate-500 mt-1">{application_notes}</p>}
                   </div>
                 ))}
@@ -120,7 +130,7 @@ export function WeedCard({ weed }: Props) {
             </div>
           )}
 
-          <AgronomyDisclaimer variant="short" />
+          <AgronomyDisclaimer variant="card" />
         </div>
       )}
     </div>

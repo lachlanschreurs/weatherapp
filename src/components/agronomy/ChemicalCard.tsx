@@ -33,8 +33,8 @@ export function ChemicalCard({ chemical }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3 mb-1.5">
             <div>
-              <h3 className="font-bold text-white text-base leading-tight">{chemical.product_name}</h3>
-              <p className="text-sm text-slate-400 mt-0.5">{chemical.active_ingredient}</p>
+              <h3 className="font-bold text-white text-base leading-tight">{chemical.active_ingredient}</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Found in: <span className="text-slate-400">{chemical.product_name}</span></p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${style.bg} ${style.text} border ${style.border} capitalize`}>
@@ -66,6 +66,11 @@ export function ChemicalCard({ chemical }: Props) {
 
       {expanded && (
         <div className="px-5 pb-5 border-t border-slate-700/40 pt-4 space-y-4">
+          <div className="rounded-lg bg-slate-800/40 border border-slate-700/30 px-3 py-2">
+            <p className="text-[10px] text-slate-500 italic">
+              {chemical.active_ingredient} may be used where registered for the listed crops and target issues. Always verify current APVMA registration, product label, and withholding periods before use.
+            </p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <DetailBlock icon={<FlaskConical className="w-3.5 h-3.5" />} label="Mode of Action" value={chemical.mode_of_action} />
             <DetailBlock icon={<FlaskConical className="w-3.5 h-3.5" />} label="Formulation" value={chemical.formulation_type} />
@@ -144,7 +149,7 @@ export function ChemicalCard({ chemical }: Props) {
             )}
           </div>
 
-          <AgronomyDisclaimer variant="short" />
+          <AgronomyDisclaimer variant="card" />
         </div>
       )}
     </div>

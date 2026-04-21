@@ -119,12 +119,18 @@ export function FertiliserCard({ fertiliser }: Props) {
             </div>
           )}
 
+          <div className="rounded-lg bg-slate-800/40 border border-slate-700/30 px-3 py-2">
+            <p className="text-[10px] text-slate-500 italic">
+              Nutrient demand may vary under different growth conditions and soil types. Rates shown are general guidance only — consider nitrogen, phosphorus or potassium requirements depending on soil analysis. Always consult your agronomist before application.
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {fertiliser.application_rate && (
               <div>
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                   <Droplets className="w-3.5 h-3.5" />
-                  Application Rate
+                  Application Rate (General Guidance)
                 </div>
                 <p className="text-sm text-slate-300">{fertiliser.application_rate}</p>
               </div>
@@ -190,7 +196,7 @@ export function FertiliserCard({ fertiliser }: Props) {
             </div>
           )}
 
-          <AgronomyDisclaimer variant="short" />
+          <AgronomyDisclaimer variant="card" />
         </div>
       )}
     </div>
