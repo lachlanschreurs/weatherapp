@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, TrendingDown, Minus, CloudRain, Wind, Droplet } from 'lucide-react';
 import { getSprayCondition } from '../utils/deltaT';
+import { getRegionalUnits, convertTemp, convertWind, fmtWind, windThresholdInUnit } from '../utils/units';
 
 interface ExtendedForecastProps {
   location: {
     lat: number;
     lon: number;
     name: string;
+    country?: string;
   };
 }
 
@@ -14,6 +16,7 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
   const [loading, setLoading] = useState(false);
   const [forecastData, setForecastData] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const units = getRegionalUnits(location.country || '');
 
   const generate30DayForecast = async () => {
     setLoading(true);
@@ -142,15 +145,15 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-green-600 flex-shrink-0"></div>
-                <span className="text-slate-300"><strong>Good:</strong> Wind &lt;15 km/h, no rain</span>
+                <span className="text-slate-300"><strong>Good:</strong> Wind &lt;{windThresholdInUnit(15, units.wind)} {units.wind}, no rain</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-yellow-600 flex-shrink-0"></div>
-                <span className="text-slate-300"><strong>Moderate:</strong> Wind 15-25 km/h</span>
+                <span className="text-slate-300"><strong>Moderate:</strong> Wind {windThresholdInUnit(15, units.wind)}-{windThresholdInUnit(25, units.wind)} {units.wind}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-red-600 flex-shrink-0"></div>
-                <span className="text-slate-300"><strong>Poor:</strong> Wind &gt;25 km/h or rain</span>
+                <span className="text-slate-300"><strong>Poor:</strong> Wind &gt;{windThresholdInUnit(25, units.wind)} {units.wind} or rain</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded bg-slate-500 flex-shrink-0"></div>
@@ -178,17 +181,17 @@ export function ExtendedForecast({ location }: ExtendedForecastProps) {
                   <div className="text-xs text-slate-500 mb-1">Est.</div>
                 )}
                 <div className="flex items-center justify-center gap-1 mb-1">
-                  <span className="text-xl font-bold text-slate-200">{day.tempHigh}°</span>
+                  <span className="text-xl font-bold text-slate-200">{Math.round(convertTemp(day.tempHigh, units.temp))}°</span>
                   {index < forecastData.length - 1 && getTrend(day.tempHigh, forecastData[index + 1].tempHigh)}
                 </div>
-                <div className="text-xs text-slate-400 mb-2">{day.tempLow}°</div>
+                <div className="text-xs text-slate-400 mb-2">{Math.round(convertTemp(day.tempLow, units.temp))}°</div>
                 <div className="flex items-center justify-center gap-1 text-xs mb-1">
                   <CloudRain className="w-3 h-3 text-blue-400" />
                   <span className="text-slate-300">{day.rainChance}%</span>
                 </div>
                 <div className="flex items-center justify-center gap-1 text-xs mb-2">
                   <Wind className="w-3 h-3 text-slate-400" />
-                  <span className="text-slate-300">{day.windSpeed}km/h</span>
+                  <span className="text-slate-300">{fmtWind(day.windSpeed, units.wind)}</span>
                 </div>
                 <div className={`text-xs font-semibold px-2 py-1 rounded flex items-center justify-center gap-1 ${day.sprayBg} ${day.sprayColor}`}>
                   <Droplet className="w-3 h-3" />

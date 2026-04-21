@@ -1,3 +1,5 @@
+import { fmtTemp, fmtWind, fmtRain, type RegionalUnits, getRegionalUnits } from './units';
+
 export type AlertSeverity = 'safe' | 'caution' | 'warning' | 'info';
 
 export interface WeatherAlert {
@@ -34,8 +36,10 @@ export function generateWeatherAlerts(
   currentWindSpeed: number,
   currentRain: number,
   currentWeather: string,
-  forecast: ForecastItem[]
+  forecast: ForecastItem[],
+  countryCode: string = ''
 ): WeatherAlert[] {
+  const u = getRegionalUnits(countryCode);
   const alerts: WeatherAlert[] = [];
 
   const next24Hours = forecast.filter(item => {
@@ -91,7 +95,7 @@ export function generateWeatherAlerts(
         id: 'heavy-rain',
         severity: 'warning',
         title: 'Heavy Rain Alert',
-        message: `Heavy rainfall expected: ${totalRain24h.toFixed(1)}mm forecast within 24 hours. Starting around ${rainTime}.`,
+        message: `Heavy rainfall expected: ${fmtRain(totalRain24h, u.rain)} forecast within 24 hours. Starting around ${rainTime}.`,
         icon: 'cloud-rain'
       });
     } else if (totalRain24h > 10 && !next30Min) {
@@ -99,7 +103,7 @@ export function generateWeatherAlerts(
         id: 'rain',
         severity: 'caution',
         title: 'Rain Alert',
-        message: `Rain forecast within 24 hours: ${totalRain24h.toFixed(1)}mm expected. Starting around ${rainTime}.`,
+        message: `Rain forecast within 24 hours: ${fmtRain(totalRain24h, u.rain)} expected. Starting around ${rainTime}.`,
         icon: 'cloud-rain'
       });
     } else if (totalRain24h > 0 && totalRain24h <= 10 && !next30Min) {
@@ -107,7 +111,7 @@ export function generateWeatherAlerts(
         id: 'light-rain',
         severity: 'info',
         title: 'Light Rain Possible',
-        message: `Light rain possible within 24 hours: ${totalRain24h.toFixed(1)}mm forecast. Starting around ${rainTime}.`,
+        message: `Light rain possible within 24 hours: ${fmtRain(totalRain24h, u.rain)} forecast. Starting around ${rainTime}.`,
         icon: 'cloud-rain'
       });
     } else if (totalRain24h === 0 && rainForecast.pop > 0.6) {
@@ -127,7 +131,7 @@ export function generateWeatherAlerts(
       id: 'strong-wind',
       severity: 'warning',
       title: 'Strong Wind Alert',
-      message: `Strong winds: ${Math.round(windSpeedKmh)} km/h. Avoid all spraying — high drift risk. Delay field operations.`,
+      message: `Strong winds: ${fmtWind(windSpeedKmh, u.wind)}. Avoid all spraying — high drift risk. Delay field operations.`,
       icon: 'wind'
     });
   } else if (windSpeedKmh >= 15) {
@@ -135,7 +139,7 @@ export function generateWeatherAlerts(
       id: 'wind',
       severity: 'caution',
       title: 'Moderate Wind',
-      message: `Winds ${Math.round(windSpeedKmh)} km/h. Use low-drift nozzles and monitor Delta T before spraying.`,
+      message: `Winds ${fmtWind(windSpeedKmh, u.wind)}. Use low-drift nozzles and monitor Delta T before spraying.`,
       icon: 'wind'
     });
   }
