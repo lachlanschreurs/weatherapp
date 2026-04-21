@@ -504,8 +504,11 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                       <FarmerJoeAvatar size="lg" glowing />
                     </div>
                     <h4 className="text-base font-bold text-white mb-1">G'day! I'm Farmer Joe</h4>
-                    <p className="text-sm text-slate-400 mb-5 leading-relaxed max-w-xs">
+                    <p className="text-sm text-slate-400 mb-3 leading-relaxed max-w-xs">
                       Your AI farming assistant. Ask me about spray windows, soil conditions, livestock, or anything farm-related.
+                    </p>
+                    <p className="text-[10px] text-slate-600 leading-relaxed mb-4 max-w-xs italic">
+                      General guidance only. Always verify with product labels, APVMA registrations, and your agronomist before acting on any advice.
                     </p>
                     <div className="w-full space-y-2">
                       {SUGGESTION_PROMPTS.map((prompt, i) => (

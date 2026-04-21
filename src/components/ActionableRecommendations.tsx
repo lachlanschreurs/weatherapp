@@ -341,6 +341,11 @@ export function ActionableRecommendations(props: RecommendationProps) {
           </div>
         )}
       </div>
+      <div className="px-5 pb-4">
+        <p className="text-[10px] text-slate-600 leading-relaxed italic">
+          General guidance only — always verify with product label, agronomist advice and local conditions before acting.
+        </p>
+      </div>
     </div>
   );
 }
