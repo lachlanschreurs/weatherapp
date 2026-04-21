@@ -82,7 +82,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
         name: item.address?.city || item.address?.town || item.address?.village || item.address?.hamlet || item.name || item.display_name.split(',')[0],
         lat: parseFloat(item.lat),
         lon: parseFloat(item.lon),
-        country: item.address?.country || '',
+        country: (item.address?.country_code || '').toUpperCase(),
         state: item.address?.state,
         postcode: item.address?.postcode,
       }));

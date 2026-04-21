@@ -124,7 +124,7 @@ function App() {
   const [unitPrefs, setUnitPrefs] = useState<UnitPreferences>(loadUnitPrefs());
 
   const countryCode = location.country || 'AU';
-  const units: RegionUnits = resolveUnits(unitPrefs, countryCode);
+  const units: RegionUnits = resolveUnits({ country: countryCode }, unitPrefs);
 
   const handleUnitPrefsChange = (newPrefs: UnitPreferences) => {
     setUnitPrefs(newPrefs);
