@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { AgronomyDisclaimer, DISCLAIMER_FULL } from '../AgronomyDisclaimer';
 import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab } from './types';
@@ -10,6 +10,7 @@ import { PestCard } from './PestCard';
 import { WeedCard } from './WeedCard';
 import { FertiliserCard } from './FertiliserCard';
 import { AgronomyDisclaimerModal } from './AgronomyDisclaimerModal';
+import { checkDisclaimerAccepted, recordDisclaimerAcceptance } from '../../utils/agronomyDisclaimer';
 
 const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'chemicals',   label: 'Chemicals',   icon: <FlaskConical className="w-4 h-4" />, color: 'text-emerald-400' },
@@ -89,6 +90,8 @@ interface AIAnalysisResult {
 
 export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '' }: Props) {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+  const [disclaimerChecked, setDisclaimerChecked] = useState(false);
+  const [showDisclaimerView, setShowDisclaimerView] = useState(false);
   const [activeTab, setActiveTab] = useState<AgronomyTab>('chemicals');
   const [query, setQuery] = useState(initialQuery);
   const [cropFilter, setCropFilter] = useState('');
@@ -110,7 +113,16 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
 
   useEffect(() => {
     loadAll();
+    checkDisclaimerAccepted().then(accepted => {
+      setDisclaimerAccepted(accepted);
+      setDisclaimerChecked(true);
+    });
   }, []);
+
+  async function handleDisclaimerAccept() {
+    await recordDisclaimerAcceptance();
+    setDisclaimerAccepted(true);
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -292,8 +304,11 @@ Respond ONLY with this exact JSON format (no other text):
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
-      {!disclaimerAccepted && (
-        <AgronomyDisclaimerModal onAccept={() => setDisclaimerAccepted(true)} />
+      {disclaimerChecked && !disclaimerAccepted && (
+        <AgronomyDisclaimerModal mode="accept" onAccept={handleDisclaimerAccept} />
+      )}
+      {showDisclaimerView && (
+        <AgronomyDisclaimerModal mode="view" onClose={() => setShowDisclaimerView(false)} />
       )}
       <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/95 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -314,7 +329,24 @@ Respond ONLY with this exact JSON format (no other text):
                 <p className="text-xs text-slate-500 font-medium">Australian agricultural reference — chemicals, diseases, pests, weeds & fertilisers</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <a
+                href="https://www.apvma.gov.au/node/10976"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/60 bg-slate-800/50 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 text-xs font-medium transition-all duration-200"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                APVMA Label Search
+              </a>
+              <button
+                onClick={() => setShowDisclaimerView(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 text-xs font-medium transition-all duration-200"
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Agronomy Disclaimer</span>
+                <span className="sm:hidden">Disclaimer</span>
+              </button>
               <button
                 onClick={onClose}
                 className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
@@ -451,16 +483,31 @@ Respond ONLY with this exact JSON format (no other text):
                 />
               )}
 
-              <div className="mt-8 py-5 border-t border-slate-800">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Database className="w-4 h-4 text-slate-600" />
-                  <p className="text-xs text-slate-600 font-medium uppercase tracking-wider">FarmCast Agronomy Reference Database</p>
+              <div className="mt-8 border-t border-slate-800">
+                {/* Persistent warning banner */}
+                <div className="mt-5 rounded-xl bg-amber-950/25 border border-amber-500/20 px-4 py-3 flex items-start gap-3">
+                  <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-200/70 leading-relaxed">
+                    <span className="font-semibold text-amber-300/80">Guide only</span> — always check the current label, rates, WHP, regional approvals, and local agronomy advice before use.
+                  </p>
                 </div>
-                <p className="text-[10px] text-slate-600 max-w-2xl mx-auto text-center leading-relaxed">
+
+                <div className="flex items-center justify-between mt-4 pb-5 gap-4">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-3.5 h-3.5 text-slate-600" />
+                    <p className="text-[10px] text-slate-600 font-medium uppercase tracking-wider">FarmCast Agronomy Reference Database</p>
+                  </div>
+                  <button
+                    onClick={() => setShowDisclaimerView(true)}
+                    className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-amber-400 transition-colors font-medium whitespace-nowrap"
+                  >
+                    <ShieldAlert className="w-3 h-3" />
+                    Agronomy Disclaimer
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-slate-700 max-w-2xl mx-auto text-center leading-relaxed pb-5">
                   {DISCLAIMER_FULL}
-                </p>
-                <p className="text-[10px] text-slate-600 text-center mt-2 font-medium italic">
-                  Guide only — always check current label and local agronomy advice.
                 </p>
               </div>
             </>

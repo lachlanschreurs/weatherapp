@@ -1,28 +1,21 @@
-import { AlertTriangle, ExternalLink, ShieldCheck, BookOpen, ClipboardList } from 'lucide-react';
+import { AlertTriangle, ExternalLink, ShieldCheck, BookOpen, ClipboardList, X } from 'lucide-react';
+import { DISCLAIMER_VERSION } from '../../utils/agronomyDisclaimer';
 
-export function hasAcceptedAgronomyDisclaimer(): boolean {
-  return false;
-}
+const APVMA_URL = 'https://www.apvma.gov.au/node/10976';
 
 interface Props {
-  onAccept: () => void;
+  mode: 'accept' | 'view';
+  onAccept?: () => void;
+  onClose?: () => void;
 }
 
-export function AgronomyDisclaimerModal({ onAccept }: Props) {
-  function handleAccept() {
-    onAccept();
-  }
-
-  function handleViewLabel() {
-    window.open('https://www.apvma.gov.au/node/10976', '_blank', 'noopener,noreferrer');
-  }
+export function AgronomyDisclaimerModal({ mode, onAccept, onClose }: Props) {
+  const isAcceptMode = mode === 'accept';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={isAcceptMode ? undefined : onClose} />
 
-      {/* Modal */}
       <div className="relative w-full max-w-xl bg-slate-900 border border-slate-700/50 rounded-2xl shadow-2xl shadow-black/70 overflow-hidden">
 
         {/* Header */}
@@ -31,7 +24,7 @@ export function AgronomyDisclaimerModal({ onAccept }: Props) {
             <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center flex-shrink-0 mt-0.5">
               <AlertTriangle className="w-5 h-5 text-amber-400" />
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="text-xl font-black text-white leading-tight tracking-tight">
                 Agronomy Information Disclaimer
               </h2>
@@ -39,7 +32,16 @@ export function AgronomyDisclaimerModal({ onAccept }: Props) {
                 Guide only — always verify before application
               </p>
             </div>
+            {!isAcceptMode && onClose && (
+              <button
+                onClick={onClose}
+                className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
+          <p className="text-[10px] text-slate-600 mt-3 text-right">Version: {DISCLAIMER_VERSION}</p>
         </div>
 
         <div className="h-px bg-slate-800" />
@@ -105,22 +107,45 @@ export function AgronomyDisclaimerModal({ onAccept }: Props) {
           <p className="text-xs text-center text-slate-500 italic leading-relaxed">
             Always read the current label and seek local agronomy advice.
           </p>
-          <div className="flex gap-3">
-            <button
-              onClick={handleViewLabel}
-              className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700/60 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-sm font-semibold transition-all duration-200"
-            >
-              <ExternalLink className="w-4 h-4 flex-shrink-0" />
-              View Label First
-            </button>
-            <button
-              onClick={handleAccept}
-              className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 active:bg-green-700 text-white text-sm font-bold shadow-lg shadow-green-950/50 transition-all duration-200"
-            >
-              <ShieldCheck className="w-4 h-4 flex-shrink-0" />
-              I Understand
-            </button>
-          </div>
+
+          {isAcceptMode ? (
+            <div className="flex gap-3">
+              <a
+                href={APVMA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700/60 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-sm font-semibold transition-all duration-200"
+              >
+                <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                Check Product Label
+              </a>
+              <button
+                onClick={onAccept}
+                className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 active:bg-green-700 text-white text-sm font-bold shadow-lg shadow-green-950/50 transition-all duration-200"
+              >
+                <ShieldCheck className="w-4 h-4 flex-shrink-0" />
+                I Understand
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <a
+                href={APVMA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-700/60 hover:border-slate-600 text-slate-400 hover:text-slate-200 text-sm font-semibold transition-all duration-200"
+              >
+                <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                Check Product Label
+              </a>
+              <button
+                onClick={onClose}
+                className="flex items-center justify-center gap-2 flex-1 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold transition-all duration-200"
+              >
+                Close
+              </button>
+            </div>
+          )}
         </div>
 
       </div>
