@@ -137,15 +137,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    getUserLocation().then((loc) => {
-      setLocation(loc);
-      setLocationResolved(true);
-      setIsUsingCurrentLocation(true);
-      setHasLoadedInitialLocation(true);
-    }).catch(() => {
-      setLocationDenied(true);
-      setLocationResolved(false);
-    });
+    // Show the location prompt screen instead of silently requesting
+    setLocationDenied(true);
   }, []);
 
   useEffect(() => {
@@ -294,6 +287,8 @@ function App() {
       const favoriteLocation = await getFavoriteLocation(userId);
       if (favoriteLocation) {
         setLocation(favoriteLocation);
+        setLocationResolved(true);
+        setLocationDenied(false);
         setIsUsingCurrentLocation(false);
         setHasLoadedInitialLocation(true);
       }
