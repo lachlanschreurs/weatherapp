@@ -20,7 +20,7 @@ async function fetchClimateNormals(lat: string, lon: string): Promise<any[]> {
     `https://climate-api.open-meteo.com/v1/climate` +
     `?latitude=${lat}&longitude=${lon}` +
     `&start_date=${startDate}&end_date=${endDate}` +
-    `&models=CMIP6_MRI_ESM2_0` +
+    `&models=EC_Earth3P_HR` +
     `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_mean`;
 
   try {
@@ -31,6 +31,10 @@ async function fetchClimateNormals(lat: string, lon: string): Promise<any[]> {
     }
     const data = await res.json();
     const days: string[] = data.daily?.time || [];
+    if (!days.length) {
+      console.log("Climate API returned empty days");
+      return [];
+    }
     return days.map((date: string, i: number) => ({
       date,
       tempMax: data.daily.temperature_2m_max?.[i] ?? null,
