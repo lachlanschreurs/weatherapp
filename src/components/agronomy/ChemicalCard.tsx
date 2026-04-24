@@ -158,12 +158,24 @@ export function ChemicalCard({ chemical }: Props) {
 }
 
 const AU_STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
+const INTL_REGIONS = ['USA', 'NZ'];
 
 interface CropGroup {
   crop: string;
   entries: WHPEntry[];
   isUniform: boolean;
   uniformEntry?: WHPEntry;
+}
+
+function dayLabel(days: number) {
+  return days === 0 ? 'Nil' : `${days}d`;
+}
+
+function dayColor(days: number) {
+  if (days === 0) return 'text-green-400';
+  if (days <= 7) return 'text-amber-300';
+  if (days <= 14) return 'text-amber-400';
+  return 'text-orange-400';
 }
 
 function WHPTable({ entries, fallback }: { entries?: WHPEntry[]; fallback: string }) {
@@ -179,116 +191,171 @@ function WHPTable({ entries, fallback }: { entries?: WHPEntry[]; fallback: strin
     );
   }
 
-  // Group entries by crop
-  const cropMap = new Map<string, WHPEntry[]>();
-  for (const e of entries) {
-    if (!cropMap.has(e.crop)) cropMap.set(e.crop, []);
-    cropMap.get(e.crop)!.push(e);
+  // Split into AU vs international entries
+  const auEntries = entries.filter(e => e.state === 'All' || AU_STATES.includes(e.state));
+  const intlEntries = entries.filter(e => INTL_REGIONS.includes(e.state));
+
+  // Group AU entries by crop
+  const auCropMap = new Map<string, WHPEntry[]>();
+  for (const e of auEntries) {
+    if (!auCropMap.has(e.crop)) auCropMap.set(e.crop, []);
+    auCropMap.get(e.crop)!.push(e);
   }
 
-  const groups: CropGroup[] = Array.from(cropMap.entries())
+  const auGroups: CropGroup[] = Array.from(auCropMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([crop, cropEntries]) => {
       const isUniform = cropEntries.length === 1 && cropEntries[0].state === 'All';
       return { crop, entries: cropEntries, isUniform, uniformEntry: isUniform ? cropEntries[0] : undefined };
     });
 
-  // Separate registered and not-registered groups
-  const registered = groups.filter(g => g.entries.some(e => e.registered));
-  const notRegistered = groups.filter(g => g.entries.every(e => !e.registered));
+  const auRegistered = auGroups.filter(g => g.entries.some(e => e.registered));
+  const auNotRegistered = auGroups.filter(g => g.entries.every(e => !e.registered));
 
-  function dayLabel(days: number) {
-    return days === 0 ? 'Nil' : `${days}d`;
-  }
-
-  function dayColor(days: number, reg: boolean) {
-    if (!reg) return 'text-slate-500';
-    if (days === 0) return 'text-green-400';
-    if (days <= 7) return 'text-amber-300';
-    if (days <= 14) return 'text-amber-400';
-    return 'text-orange-400';
+  // Group international entries by region then crop
+  const intlByCrop = new Map<string, WHPEntry[]>();
+  for (const e of intlEntries) {
+    const key = e.crop;
+    if (!intlByCrop.has(key)) intlByCrop.set(key, []);
+    intlByCrop.get(key)!.push(e);
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-1.5">
         <Clock className="w-3.5 h-3.5 text-amber-400" />
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Withholding Period by Crop &amp; State</span>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Withholding Period by Crop &amp; Region</span>
       </div>
 
-      <div className="rounded-lg border border-amber-500/20 bg-amber-950/15 overflow-hidden">
-        {registered.map((group, gi) => (
-          <div key={group.crop} className={gi > 0 ? 'border-t border-amber-500/10' : ''}>
-            {/* Crop header row */}
-            <div className="flex items-center justify-between px-3 py-1.5 bg-amber-950/20">
-              <span className="text-xs font-bold text-slate-300">{group.crop}</span>
-              {group.isUniform && group.uniformEntry && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-slate-500 font-medium">All states</span>
-                  <span className={`text-sm font-bold tabular-nums ${dayColor(group.uniformEntry.days, true)}`}>
-                    {dayLabel(group.uniformEntry.days)}
-                  </span>
-                  {group.uniformEntry.notes && (
-                    <span className="text-[10px] text-slate-500 italic">{group.uniformEntry.notes}</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Per-state rows when not uniform */}
-            {!group.isUniform && (
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-px bg-slate-700/20 border-t border-amber-500/10">
-                {AU_STATES.map(state => {
-                  const entry = group.entries.find(e => e.state === state || e.state === 'All');
-                  if (!entry) {
-                    return (
-                      <div key={state} className="bg-slate-900/60 px-1.5 py-2 text-center">
-                        <div className="text-[9px] font-bold text-slate-600 uppercase mb-0.5">{state}</div>
-                        <div className="text-[10px] text-slate-700">—</div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={state} className={`px-1.5 py-2 text-center ${entry.registered ? 'bg-slate-900/40' : 'bg-slate-900/80'}`}>
-                      <div className="text-[9px] font-bold text-slate-500 uppercase mb-0.5">{state}</div>
-                      {entry.registered ? (
-                        <div className={`text-xs font-bold tabular-nums ${dayColor(entry.days, true)}`}>
-                          {dayLabel(entry.days)}
-                        </div>
-                      ) : (
-                        <div className="text-[9px] font-semibold text-red-500/70">N/R</div>
+      {/* Australia section */}
+      {auRegistered.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Australia (APVMA)</span>
+          </div>
+          <div className="rounded-lg border border-amber-500/20 bg-amber-950/15 overflow-hidden">
+            {auRegistered.map((group, gi) => (
+              <div key={group.crop} className={gi > 0 ? 'border-t border-amber-500/10' : ''}>
+                <div className="flex items-center justify-between px-3 py-1.5 bg-amber-950/20">
+                  <span className="text-xs font-bold text-slate-300">{group.crop}</span>
+                  {group.isUniform && group.uniformEntry && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500">All states</span>
+                      <span className={`text-sm font-bold tabular-nums ${dayColor(group.uniformEntry.days)}`}>
+                        {dayLabel(group.uniformEntry.days)}
+                      </span>
+                      {group.uniformEntry.notes && (
+                        <span className="text-[10px] text-slate-500 italic">{group.uniformEntry.notes}</span>
                       )}
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+                {!group.isUniform && (
+                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-px bg-slate-700/20 border-t border-amber-500/10">
+                    {AU_STATES.map(state => {
+                      const entry = group.entries.find(e => e.state === state || e.state === 'All');
+                      if (!entry) {
+                        return (
+                          <div key={state} className="bg-slate-900/60 px-1.5 py-2 text-center">
+                            <div className="text-[9px] font-bold text-slate-600 uppercase mb-0.5">{state}</div>
+                            <div className="text-[10px] text-slate-700">—</div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={state} className={`px-1.5 py-2 text-center ${entry.registered ? 'bg-slate-900/40' : 'bg-slate-900/80'}`}>
+                          <div className="text-[9px] font-bold text-slate-500 uppercase mb-0.5">{state}</div>
+                          {entry.registered ? (
+                            <div className={`text-xs font-bold tabular-nums ${dayColor(entry.days)}`}>
+                              {dayLabel(entry.days)}
+                            </div>
+                          ) : (
+                            <div className="text-[9px] font-semibold text-red-500/70">N/R</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {group.isUniform && group.uniformEntry?.application_notes && (
+                  <div className="px-3 py-1 text-[10px] text-slate-500 italic border-t border-amber-500/10">
+                    {group.uniformEntry.application_notes}
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Uniform state grid for registered-with-notes or mixed */}
-            {group.isUniform && group.uniformEntry && group.uniformEntry.application_notes && (
-              <div className="px-3 py-1 text-[10px] text-slate-500 italic border-t border-amber-500/10">
-                {group.uniformEntry.application_notes}
+            ))}
+            {auNotRegistered.length > 0 && (
+              <div className="border-t border-red-500/20 bg-red-950/10 px-3 py-2">
+                <div className="text-[10px] font-bold text-red-400/70 uppercase tracking-wider mb-1">Not Registered (AU)</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {auNotRegistered.map(g => (
+                    <span key={g.crop} className="text-[10px] px-1.5 py-0.5 rounded bg-red-950/40 text-red-400/70 border border-red-500/20">
+                      {g.crop}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        ))}
+        </div>
+      )}
 
-        {notRegistered.length > 0 && (
-          <div className="border-t border-red-500/20 bg-red-950/10 px-3 py-2">
-            <div className="text-[10px] font-bold text-red-400/70 uppercase tracking-wider mb-1">Not Registered</div>
-            <div className="flex flex-wrap gap-1.5">
-              {notRegistered.map(g => (
-                <span key={g.crop} className="text-[10px] px-1.5 py-0.5 rounded bg-red-950/40 text-red-400/70 border border-red-500/20">
-                  {g.crop} ({g.entries[0].state === 'All' ? 'All states' : g.entries.map(e => e.state).join(', ')})
-                </span>
-              ))}
-            </div>
+      {/* International section — USA and NZ */}
+      {intlEntries.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">International</span>
           </div>
-        )}
-      </div>
+          <div className="rounded-lg border border-slate-600/30 bg-slate-800/30 overflow-hidden">
+            {INTL_REGIONS.map((region, ri) => {
+              const regionEntries = intlEntries.filter(e => e.state === region);
+              if (regionEntries.length === 0) return null;
+
+              const regionLabel = region === 'USA' ? 'USA (EPA)' : 'New Zealand (ACVM)';
+              const registered = regionEntries.filter(e => e.registered);
+              const notReg = regionEntries.filter(e => !e.registered);
+
+              return (
+                <div key={region} className={ri > 0 ? 'border-t border-slate-600/20' : ''}>
+                  <div className="px-3 py-1.5 bg-slate-800/40">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{regionLabel}</span>
+                  </div>
+                  {registered.length > 0 && (
+                    <div className="px-3 py-2 space-y-1">
+                      {registered.map(e => (
+                        <div key={e.id} className="flex items-center justify-between gap-3">
+                          <span className="text-xs text-slate-300">{e.crop}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`text-xs font-bold tabular-nums ${dayColor(e.days)}`}>
+                              {dayLabel(e.days)}
+                            </span>
+                            {e.application_notes && (
+                              <span className="text-[10px] text-slate-500 italic truncate max-w-[140px]">{e.application_notes}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {notReg.length > 0 && (
+                    <div className="px-3 py-2 border-t border-slate-600/20">
+                      {notReg.map(e => (
+                        <div key={e.id} className="flex items-start gap-2">
+                          <span className="text-[10px] font-bold text-red-400/70 mt-0.5">N/R</span>
+                          <span className="text-[10px] text-slate-500">{e.crop}{e.notes ? ` — ${e.notes}` : ''}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="text-[10px] text-slate-600 italic">
-        N/R = Not registered. Always verify with APVMA before use. State-specific conditions may apply.
+        N/R = Not registered. AU: verify with APVMA. USA: EPA reg. NZ: ACVM reg. Always check current label before use.
       </p>
     </div>
   );
