@@ -157,48 +157,139 @@ export function ChemicalCard({ chemical }: Props) {
   );
 }
 
+const AU_STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
+
+interface CropGroup {
+  crop: string;
+  entries: WHPEntry[];
+  isUniform: boolean;
+  uniformEntry?: WHPEntry;
+}
+
 function WHPTable({ entries, fallback }: { entries?: WHPEntry[]; fallback: string }) {
-  const sorted = entries && entries.length > 0
-    ? [...entries].sort((a, b) => a.days - b.days || a.crop.localeCompare(b.crop))
-    : null;
+  if (!entries || entries.length === 0) {
+    return (
+      <div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <Clock className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Withholding Period</span>
+        </div>
+        <p className="text-sm text-amber-300 font-semibold">{fallback}</p>
+      </div>
+    );
+  }
+
+  // Group entries by crop
+  const cropMap = new Map<string, WHPEntry[]>();
+  for (const e of entries) {
+    if (!cropMap.has(e.crop)) cropMap.set(e.crop, []);
+    cropMap.get(e.crop)!.push(e);
+  }
+
+  const groups: CropGroup[] = Array.from(cropMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([crop, cropEntries]) => {
+      const isUniform = cropEntries.length === 1 && cropEntries[0].state === 'All';
+      return { crop, entries: cropEntries, isUniform, uniformEntry: isUniform ? cropEntries[0] : undefined };
+    });
+
+  // Separate registered and not-registered groups
+  const registered = groups.filter(g => g.entries.some(e => e.registered));
+  const notRegistered = groups.filter(g => g.entries.every(e => !e.registered));
+
+  function dayLabel(days: number) {
+    return days === 0 ? 'Nil' : `${days}d`;
+  }
+
+  function dayColor(days: number, reg: boolean) {
+    if (!reg) return 'text-slate-500';
+    if (days === 0) return 'text-green-400';
+    if (days <= 7) return 'text-amber-300';
+    if (days <= 14) return 'text-amber-400';
+    return 'text-orange-400';
+  }
 
   return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-2">
+    <div className="space-y-3">
+      <div className="flex items-center gap-1.5">
         <Clock className="w-3.5 h-3.5 text-amber-400" />
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Withholding Period</span>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Withholding Period by Crop &amp; State</span>
       </div>
-      {sorted ? (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-amber-500/15">
-                <th className="text-left px-3 py-1.5 text-[10px] font-bold text-amber-400/70 uppercase tracking-wider">Crop</th>
-                <th className="text-center px-3 py-1.5 text-[10px] font-bold text-amber-400/70 uppercase tracking-wider w-20">Days</th>
-                <th className="text-left px-3 py-1.5 text-[10px] font-bold text-amber-400/70 uppercase tracking-wider hidden sm:table-cell">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((entry, i) => (
-                <tr key={entry.id} className={i % 2 === 0 ? 'bg-amber-950/10' : ''}>
-                  <td className="px-3 py-1.5 text-slate-300 font-medium">{entry.crop}</td>
-                  <td className="px-3 py-1.5 text-center">
-                    <span className={`font-bold tabular-nums ${entry.days === 0 ? 'text-green-400' : entry.days <= 7 ? 'text-amber-300' : 'text-amber-400'}`}>
-                      {entry.days === 0 ? 'Nil' : `${entry.days}d`}
-                    </span>
-                  </td>
-                  <td className="px-3 py-1.5 text-slate-500 text-xs hidden sm:table-cell">
-                    {entry.state_restriction && <span className="mr-1.5 px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300 text-[10px] font-bold border border-blue-500/20">{entry.state_restriction}</span>}
-                    {entry.notes}
-                  </td>
-                </tr>
+
+      <div className="rounded-lg border border-amber-500/20 bg-amber-950/15 overflow-hidden">
+        {registered.map((group, gi) => (
+          <div key={group.crop} className={gi > 0 ? 'border-t border-amber-500/10' : ''}>
+            {/* Crop header row */}
+            <div className="flex items-center justify-between px-3 py-1.5 bg-amber-950/20">
+              <span className="text-xs font-bold text-slate-300">{group.crop}</span>
+              {group.isUniform && group.uniformEntry && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 font-medium">All states</span>
+                  <span className={`text-sm font-bold tabular-nums ${dayColor(group.uniformEntry.days, true)}`}>
+                    {dayLabel(group.uniformEntry.days)}
+                  </span>
+                  {group.uniformEntry.notes && (
+                    <span className="text-[10px] text-slate-500 italic">{group.uniformEntry.notes}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Per-state rows when not uniform */}
+            {!group.isUniform && (
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-px bg-slate-700/20 border-t border-amber-500/10">
+                {AU_STATES.map(state => {
+                  const entry = group.entries.find(e => e.state === state || e.state === 'All');
+                  if (!entry) {
+                    return (
+                      <div key={state} className="bg-slate-900/60 px-1.5 py-2 text-center">
+                        <div className="text-[9px] font-bold text-slate-600 uppercase mb-0.5">{state}</div>
+                        <div className="text-[10px] text-slate-700">—</div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={state} className={`px-1.5 py-2 text-center ${entry.registered ? 'bg-slate-900/40' : 'bg-slate-900/80'}`}>
+                      <div className="text-[9px] font-bold text-slate-500 uppercase mb-0.5">{state}</div>
+                      {entry.registered ? (
+                        <div className={`text-xs font-bold tabular-nums ${dayColor(entry.days, true)}`}>
+                          {dayLabel(entry.days)}
+                        </div>
+                      ) : (
+                        <div className="text-[9px] font-semibold text-red-500/70">N/R</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Uniform state grid for registered-with-notes or mixed */}
+            {group.isUniform && group.uniformEntry && group.uniformEntry.application_notes && (
+              <div className="px-3 py-1 text-[10px] text-slate-500 italic border-t border-amber-500/10">
+                {group.uniformEntry.application_notes}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {notRegistered.length > 0 && (
+          <div className="border-t border-red-500/20 bg-red-950/10 px-3 py-2">
+            <div className="text-[10px] font-bold text-red-400/70 uppercase tracking-wider mb-1">Not Registered</div>
+            <div className="flex flex-wrap gap-1.5">
+              {notRegistered.map(g => (
+                <span key={g.crop} className="text-[10px] px-1.5 py-0.5 rounded bg-red-950/40 text-red-400/70 border border-red-500/20">
+                  {g.crop} ({g.entries[0].state === 'All' ? 'All states' : g.entries.map(e => e.state).join(', ')})
+                </span>
               ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="text-sm text-amber-300 font-semibold">{fallback}</p>
-      )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10px] text-slate-600 italic">
+        N/R = Not registered. Always verify with APVMA before use. State-specific conditions may apply.
+      </p>
     </div>
   );
 }

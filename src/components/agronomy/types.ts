@@ -6,7 +6,9 @@ export interface WHPEntry {
   crop: string;
   days: number;
   notes: string | null;
-  state_restriction: string | null;
+  application_notes: string | null;
+  state: string;
+  registered: boolean;
 }
 
 export interface Chemical {
