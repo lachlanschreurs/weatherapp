@@ -1,6 +1,14 @@
 export type ChemicalCategory = 'fungicide' | 'insecticide' | 'herbicide' | 'miticide' | 'nematicide' | 'other';
 export type EfficacyRating = 'high' | 'moderate' | 'low' | '';
 
+export interface WHPEntry {
+  id: string;
+  crop: string;
+  days: number;
+  notes: string | null;
+  state_restriction: string | null;
+}
+
 export interface Chemical {
   id: string;
   product_name: string;
@@ -20,6 +28,7 @@ export interface Chemical {
   resistance_notes: string;
   apvma_registration: string;
   label_link: string;
+  whp_entries?: WHPEntry[];
 }
 
 export interface Disease {

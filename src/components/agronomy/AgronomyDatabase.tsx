@@ -128,7 +128,7 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
     setLoading(true);
     try {
       const [chemRes, disRes, pestRes, weedRes, fertRes] = await Promise.all([
-        supabase.from('agro_chemicals').select('*').order('product_name').limit(10000),
+        supabase.from('agro_chemicals').select('*, whp_entries:chemical_whp_entries(id, crop, days, notes, state_restriction)').order('product_name').limit(10000),
         supabase.from('agro_diseases').select(`
           *,
           chemicals:agro_disease_chemicals(

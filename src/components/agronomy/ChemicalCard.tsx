@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, FlaskConical, Clock, AlertTriangle, Shield, ExternalLink, Tag } from 'lucide-react';
-import type { Chemical } from './types';
+import type { Chemical, WHPEntry } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -74,9 +74,10 @@ export function ChemicalCard({ chemical }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <DetailBlock icon={<FlaskConical className="w-3.5 h-3.5" />} label="Mode of Action" value={chemical.mode_of_action} />
             <DetailBlock icon={<FlaskConical className="w-3.5 h-3.5" />} label="Formulation" value={chemical.formulation_type} />
-            <DetailBlock icon={<Clock className="w-3.5 h-3.5 text-amber-400" />} label="Withholding Period" value={chemical.withholding_period} highlight />
             <DetailBlock icon={<Clock className="w-3.5 h-3.5 text-blue-400" />} label="Re-entry Period" value={chemical.reentry_period} />
           </div>
+
+          <WHPTable entries={chemical.whp_entries} fallback={chemical.withholding_period} />
 
           {chemical.application_rate && (
             <DetailBlock icon={null} label="Application Rate" value={chemical.application_rate} />
@@ -151,6 +152,52 @@ export function ChemicalCard({ chemical }: Props) {
 
           <AgronomyDisclaimer variant="card" />
         </div>
+      )}
+    </div>
+  );
+}
+
+function WHPTable({ entries, fallback }: { entries?: WHPEntry[]; fallback: string }) {
+  const sorted = entries && entries.length > 0
+    ? [...entries].sort((a, b) => a.days - b.days || a.crop.localeCompare(b.crop))
+    : null;
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-2">
+        <Clock className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Withholding Period</span>
+      </div>
+      {sorted ? (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-950/20 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-amber-500/15">
+                <th className="text-left px-3 py-1.5 text-[10px] font-bold text-amber-400/70 uppercase tracking-wider">Crop</th>
+                <th className="text-center px-3 py-1.5 text-[10px] font-bold text-amber-400/70 uppercase tracking-wider w-20">Days</th>
+                <th className="text-left px-3 py-1.5 text-[10px] font-bold text-amber-400/70 uppercase tracking-wider hidden sm:table-cell">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((entry, i) => (
+                <tr key={entry.id} className={i % 2 === 0 ? 'bg-amber-950/10' : ''}>
+                  <td className="px-3 py-1.5 text-slate-300 font-medium">{entry.crop}</td>
+                  <td className="px-3 py-1.5 text-center">
+                    <span className={`font-bold tabular-nums ${entry.days === 0 ? 'text-green-400' : entry.days <= 7 ? 'text-amber-300' : 'text-amber-400'}`}>
+                      {entry.days === 0 ? 'Nil' : `${entry.days}d`}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 text-slate-500 text-xs hidden sm:table-cell">
+                    {entry.state_restriction && <span className="mr-1.5 px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300 text-[10px] font-bold border border-blue-500/20">{entry.state_restriction}</span>}
+                    {entry.notes}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-sm text-amber-300 font-semibold">{fallback}</p>
       )}
     </div>
   );
