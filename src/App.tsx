@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -30,6 +30,7 @@ import type { User } from '@supabase/supabase-js';
 import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanner';
 import { fireSubscriptionConversion } from './utils/googleAds';
 import { AgronomyNavBubble } from './components/AgronomyNavBubble';
+import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, ConnectSensorsModal } from './components/ExplainerModal';
 
 interface WeatherData {
   current: {
@@ -122,6 +123,8 @@ function App() {
   const [agronomyInitialQuery, setAgronomyInitialQuery] = useState('');
   const [showSubscriptionSuccess, setShowSubscriptionSuccess] = useState(false);
   const [unitPrefs, setUnitPrefs] = useState<UnitPreferences>(loadUnitPrefs());
+  const [explainerOpen, setExplainerOpen] = useState<string | null>(null);
+  const [showConnectSensors, setShowConnectSensors] = useState(false);
 
   const countryCode = location.country || 'AU';
   const units: RegionUnits = resolveUnits({ country: countryCode }, unitPrefs);
@@ -1036,6 +1039,7 @@ function App() {
                   <span className={`text-xs font-bold uppercase tracking-widest ${todayBestWindow.rating === 'Good' ? 'text-green-400' : 'text-yellow-400'}`}>
                     Best Spray Window
                   </span>
+                  <InfoButton onClick={() => setExplainerOpen('sprayWindow')} />
                 </div>
                 <div>
                   <div className={`text-3xl xl:text-4xl font-black leading-tight ${todayBestWindow.rating === 'Good' ? 'text-green-200' : 'text-yellow-200'}`}>
@@ -1059,6 +1063,7 @@ function App() {
                 <div className="flex items-center gap-2 mb-3">
                   <AlertTriangle className="w-5 h-5 text-red-400" />
                   <span className="text-xs font-bold uppercase tracking-widest text-red-400">No Spray Window</span>
+                  <InfoButton onClick={() => setExplainerOpen('sprayWindow')} />
                 </div>
                 <p className="text-red-200 text-sm">Conditions not suitable for spraying today</p>
               </div>
@@ -1167,7 +1172,7 @@ function App() {
                 {deltaTCondition.rating.toUpperCase()}
               </span>
             </div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Delta T</div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-2">Delta T <InfoButton onClick={() => setExplainerOpen('deltaT')} label="" /></div>
             <div className={`text-4xl font-black leading-none ${getDeltaTValueColor(deltaTCondition.rating)}`}>
               {deltaT.toFixed(1)}°
             </div>
@@ -1300,6 +1305,7 @@ function App() {
             <div className="mb-5 rounded-xl border border-slate-700/50 bg-slate-900/60 backdrop-blur-sm overflow-hidden">
               <div className="px-5 py-2.5 border-b border-slate-700/40 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Today's Farm Summary</span>
+                <InfoButton onClick={() => setExplainerOpen('forecastConfidence')} label="How does this work?" />
                 <span className="text-xs text-slate-600">{new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-slate-700/40">
@@ -1385,6 +1391,7 @@ function App() {
             isAuthenticated={!!user}
             onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
             units={units}
+            onExplainerClick={(key) => setExplainerOpen(key)}
           />
         </div>
 
@@ -1495,6 +1502,7 @@ function App() {
               <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
                 <Sprout className="w-5 h-5 text-green-400" />
                 <h3 className="text-base font-bold text-white">Best Planting Days</h3>
+                <InfoButton onClick={() => setExplainerOpen('planting')} />
               </div>
               <div className="p-4">
                 {plantingDays.length > 0 ? (
@@ -1525,6 +1533,7 @@ function App() {
                 ) : (
                   <p className="text-slate-500 text-center py-6">No favorable planting days in forecast</p>
                 )}
+                <TrustDisclaimer />
               </div>
             </div>
 
@@ -1532,6 +1541,7 @@ function App() {
               <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
                 <Droplets className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-base font-bold text-white">Irrigation Schedule</h3>
+                <InfoButton onClick={() => setExplainerOpen('irrigation')} />
               </div>
               <div className="p-4">
                 <div className="space-y-3">
@@ -1554,10 +1564,39 @@ function App() {
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-slate-600 leading-relaxed mt-3 px-1">
+                  Use as a starting guide — adjust for your soil, crop stage, and irrigation system.
+                </p>
               </div>
             </div>
           </div>
         )}
+
+        {/* UNDERSTANDING FARMCAST */}
+        <div className="mt-5 mb-5">
+          <UnderstandingFarmCast />
+        </div>
+
+        {/* CONNECT SENSORS CTA */}
+        <div className="mb-5">
+          <button
+            onClick={() => setShowConnectSensors(true)}
+            className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl p-5 flex items-center justify-between hover:bg-slate-800/70 hover:border-green-500/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-600/20 border border-green-500/30 flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
+                <Wifi className="w-5 h-5 text-green-400" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-white">Connect Your Farm Sensors / Weather Station</div>
+                <div className="text-xs text-slate-500 mt-0.5">Improve accuracy with live probe data from your paddock</div>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-green-600/20 text-green-400 border border-green-500/30 group-hover:bg-green-600/30 transition-colors flex-shrink-0">
+              Learn how
+            </span>
+          </button>
+        </div>
 
         <footer className="mt-8 pb-6">
           <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1588,6 +1627,19 @@ function App() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => setShowAuthModal(false)}
         initialMode={authMode}
+      />
+
+      {explainerOpen && (
+        <ExplainerModal
+          isOpen={true}
+          onClose={() => setExplainerOpen(null)}
+          explainerKey={explainerOpen}
+        />
+      )}
+
+      <ConnectSensorsModal
+        isOpen={showConnectSensors}
+        onClose={() => setShowConnectSensors(false)}
       />
 
       {showAgronomyDB && (

@@ -1,4 +1,4 @@
-import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor, Lock } from 'lucide-react';
+import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor, Lock, Info } from 'lucide-react';
 import { formatTemp, formatWind, formatRain, type RegionUnits } from '../utils/units';
 
 interface RecommendationProps {
@@ -19,6 +19,7 @@ interface RecommendationProps {
   isAuthenticated?: boolean;
   onSignUpClick?: () => void;
   units: RegionUnits;
+  onExplainerClick?: (key: string) => void;
 }
 
 function heatIndex(tempC: number, humidity: number): number {
@@ -263,7 +264,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
 }
 
 export function ActionableRecommendations(props: RecommendationProps) {
-  const { isAuthenticated = false, onSignUpClick } = props;
+  const { isAuthenticated = false, onSignUpClick, onExplainerClick } = props;
   const recommendations = getRecommendations(props);
   const hasRisk = recommendations.some(r => r.status === 'risk');
   const hasCaution = recommendations.some(r => r.status === 'caution');
@@ -286,7 +287,14 @@ export function ActionableRecommendations(props: RecommendationProps) {
             <AlertTriangle className={`w-5 h-5 ${headerColors[headerStatus].split(' ')[0]}`} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white tracking-tight">Today's Farm Recommendations</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-white tracking-tight">Today's Farm Recommendations</h2>
+              {onExplainerClick && (
+                <button onClick={() => onExplainerClick('forecastConfidence')} className="text-slate-500 hover:text-green-400 transition-colors" title="How does this work?">
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">{props.locationName} — decision guide based on current conditions</p>
           </div>
         </div>
@@ -342,8 +350,8 @@ export function ActionableRecommendations(props: RecommendationProps) {
         )}
       </div>
       <div className="px-5 pb-4">
-        <p className="text-[10px] text-slate-600 leading-relaxed italic">
-          General guidance only — always verify with product label, agronomist advice and local conditions before acting.
+        <p className="text-[10px] text-slate-600 leading-relaxed">
+          FarmCast combines forecast models, environmental data and available sensor inputs to provide practical farm guidance. Final decisions should always consider local conditions, product labels, and agronomist advice.
         </p>
       </div>
     </div>
