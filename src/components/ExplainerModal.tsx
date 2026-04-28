@@ -566,7 +566,7 @@ export function ConnectSensorsModal({ isOpen, onClose }: ConnectSensorsModalProp
 
           <div className="rounded-xl bg-amber-950/20 border border-amber-600/20 p-4">
             <p className="text-xs text-amber-300/80 leading-relaxed">
-              Need help connecting? Contact FarmCast support and we can walk you through the process for your specific station.
+              Need help connecting? Contact us at <a href="mailto:support@farmcastweather.com" className="text-amber-400 underline hover:text-amber-300 transition-colors">support@farmcastweather.com</a> and we can walk you through the process for your specific station.
             </p>
           </div>
         </div>
