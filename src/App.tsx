@@ -1371,6 +1371,32 @@ function App() {
           );
         })()}
 
+        {/* UNDERSTANDING FARMCAST */}
+        <div className="mb-5">
+          <UnderstandingFarmCast />
+        </div>
+
+        {/* CONNECT SENSORS CTA */}
+        <div className="mb-5">
+          <button
+            onClick={() => setShowConnectSensors(true)}
+            className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl p-5 flex items-center justify-between hover:bg-slate-800/70 hover:border-green-500/30 transition-all duration-200 group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-600/20 border border-green-500/30 flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
+                <Wifi className="w-5 h-5 text-green-400" />
+              </div>
+              <div className="text-left">
+                <div className="text-sm font-bold text-white">Connect Your Farm Sensors / Weather Station</div>
+                <div className="text-xs text-slate-500 mt-0.5">Improve accuracy with live probe data from your paddock</div>
+              </div>
+            </div>
+            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-green-600/20 text-green-400 border border-green-500/30 group-hover:bg-green-600/30 transition-colors flex-shrink-0">
+              Learn how
+            </span>
+          </button>
+        </div>
+
         {/* ACTIONABLE RECOMMENDATIONS */}
         <div className="mb-5">
           <ActionableRecommendations
@@ -1571,32 +1597,6 @@ function App() {
             </div>
           </div>
         )}
-
-        {/* UNDERSTANDING FARMCAST */}
-        <div className="mt-5 mb-5">
-          <UnderstandingFarmCast />
-        </div>
-
-        {/* CONNECT SENSORS CTA */}
-        <div className="mb-5">
-          <button
-            onClick={() => setShowConnectSensors(true)}
-            className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl p-5 flex items-center justify-between hover:bg-slate-800/70 hover:border-green-500/30 transition-all duration-200 group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-600/20 border border-green-500/30 flex items-center justify-center group-hover:bg-green-600/30 transition-colors">
-                <Wifi className="w-5 h-5 text-green-400" />
-              </div>
-              <div className="text-left">
-                <div className="text-sm font-bold text-white">Connect Your Farm Sensors / Weather Station</div>
-                <div className="text-xs text-slate-500 mt-0.5">Improve accuracy with live probe data from your paddock</div>
-              </div>
-            </div>
-            <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-green-600/20 text-green-400 border border-green-500/30 group-hover:bg-green-600/30 transition-colors flex-shrink-0">
-              Learn how
-            </span>
-          </button>
-        </div>
 
         <footer className="mt-8 pb-6">
           <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
