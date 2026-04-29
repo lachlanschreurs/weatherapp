@@ -1661,6 +1661,20 @@ function App() {
           isPremium={hasActiveSubscription || (!!user && !trialExpired)}
           onSignUp={() => { setShowAgronomyDB(false); setAgronomyInitialQuery(''); setAuthMode('signup'); setShowAuthModal(true); }}
           initialQuery={agronomyInitialQuery}
+          weatherContext={{
+            tempC,
+            humidity,
+            windSpeedKmh,
+            windGustKmh,
+            windDirection,
+            deltaT,
+            deltaTRating: deltaTCondition.rating,
+            todayRainChance,
+            todayExpectedRain,
+            currentRainfall: rainfall,
+            sprayWindowStart: todayBestWindow?.startTime,
+            sprayWindowEnd: todayBestWindow?.endTime,
+          }}
         />
       )}
 

@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Bug, AlertTriangle, Shield, FlaskConical, Thermometer, Eye, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bug, AlertTriangle, FlaskConical, Thermometer, Eye } from 'lucide-react';
 import type { Disease } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
+import { IPMPlanCard } from './IPMPlanCard';
+import type { IPMWeatherContext } from '../../utils/ipm';
+import { generateDiseaseIPM } from '../../utils/ipm';
 
 const PATHOGEN_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   fungal:        { bg: 'bg-emerald-900/40', text: 'text-emerald-300', border: 'border-emerald-500/30' },
@@ -22,9 +25,10 @@ const EFFICACY_COLORS = {
 
 interface Props {
   disease: Disease;
+  weatherContext?: IPMWeatherContext;
 }
 
-export function DiseaseCard({ disease }: Props) {
+export function DiseaseCard({ disease, weatherContext }: Props) {
   const [expanded, setExpanded] = useState(false);
   const style = PATHOGEN_STYLES[disease.pathogen_type] || PATHOGEN_STYLES[''];
 
@@ -146,12 +150,17 @@ export function DiseaseCard({ disease }: Props) {
             </p>
           </Section>
 
-          {/* 4. Prevention Notes */}
-          {disease.prevention_notes && (
-            <Section icon={<Shield className="w-3.5 h-3.5 text-green-400" />} label="Prevention Notes" color="text-green-400">
-              <p className="text-sm text-slate-300 leading-relaxed">{disease.prevention_notes}</p>
-            </Section>
-          )}
+          {/* 4. IPM Management Plan */}
+          <IPMPlanCard
+            plan={generateDiseaseIPM(
+              disease.common_name || disease.disease_name,
+              disease.affected_crops,
+              disease.symptoms,
+              disease.conditions_favouring,
+              !!(disease.chemicals && disease.chemicals.length > 0),
+              weatherContext,
+            )}
+          />
 
           <AgronomyDisclaimer variant="card" />
         </div>

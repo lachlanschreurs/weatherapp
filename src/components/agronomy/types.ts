@@ -104,7 +104,7 @@ export interface Fertiliser {
   registration_number: string;
 }
 
-export type AgronomyTab = 'chemicals' | 'diseases' | 'pests' | 'weeds' | 'fertilisers';
+export type AgronomyTab = 'chemicals' | 'diseases' | 'pests' | 'weeds' | 'fertilisers' | 'ipm';
 
 export interface SearchState {
   query: string;

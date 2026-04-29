@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink, Shield } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { AgronomyDisclaimer, DISCLAIMER_FULL } from '../AgronomyDisclaimer';
 import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab } from './types';
@@ -9,8 +9,11 @@ import { DiseaseCard } from './DiseaseCard';
 import { PestCard } from './PestCard';
 import { WeedCard } from './WeedCard';
 import { FertiliserCard } from './FertiliserCard';
+import { IPMPlanCard } from './IPMPlanCard';
 import { AgronomyDisclaimerModal } from './AgronomyDisclaimerModal';
 import { checkDisclaimerAccepted, recordDisclaimerAcceptance } from '../../utils/agronomyDisclaimer';
+import type { IPMWeatherContext, IPMPlan } from '../../utils/ipm';
+import { generatePestIPM, generateDiseaseIPM, generateWeedIPM, generateGenericIPM, IPM_DISCLAIMER } from '../../utils/ipm';
 
 const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'chemicals',   label: 'Chemicals',   icon: <FlaskConical className="w-4 h-4" />, color: 'text-emerald-400' },
@@ -18,6 +21,7 @@ const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: stri
   { id: 'pests',       label: 'Pests',       icon: <Bug className="w-4 h-4" />,          color: 'text-amber-400' },
   { id: 'weeds',       label: 'Weeds',       icon: <Leaf className="w-4 h-4" />,         color: 'text-orange-400' },
   { id: 'fertilisers', label: 'Fertilisers', icon: <Sprout className="w-4 h-4" />,       color: 'text-lime-400' },
+  { id: 'ipm',         label: 'IPM',         icon: <Shield className="w-4 h-4" />,       color: 'text-sky-400' },
 ];
 
 const FREE_PREVIEW_COUNT = 3;
@@ -80,15 +84,19 @@ interface Props {
   isPremium?: boolean;
   onSignUp?: () => void;
   initialQuery?: string;
+  weatherContext?: IPMWeatherContext;
 }
 
 interface AIAnalysisResult {
   identification: string;
   details: string;
   recommendations: string[];
+  issueType?: 'pest' | 'disease' | 'weed' | 'deficiency' | 'general';
+  confidence?: string;
+  riskLevel?: string;
 }
 
-export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '' }: Props) {
+export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '', weatherContext }: Props) {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [disclaimerChecked, setDisclaimerChecked] = useState(false);
   const [showDisclaimerView, setShowDisclaimerView] = useState(false);
@@ -222,12 +230,60 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
       && (!cropFilter || f.suitable_crops.includes(cropFilter));
   }), [fertilisers, query, cropFilter]);
 
+  const ipmPlans = useMemo(() => {
+    const plans: IPMPlan[] = [];
+    const q = query.toLowerCase();
+
+    filteredPests.forEach(p => {
+      if (!q || p.pest_name.toLowerCase().includes(q) || p.common_name.toLowerCase().includes(q)) {
+        plans.push(generatePestIPM(
+          p.common_name || p.pest_name,
+          p.affected_crops,
+          p.damage_caused,
+          p.spray_threshold,
+          p.monitoring_notes,
+          !!(p.chemicals && p.chemicals.length > 0),
+          weatherContext,
+        ));
+      }
+    });
+
+    filteredDiseases.forEach(d => {
+      if (!q || d.disease_name.toLowerCase().includes(q) || d.common_name.toLowerCase().includes(q)) {
+        plans.push(generateDiseaseIPM(
+          d.common_name || d.disease_name,
+          d.affected_crops,
+          d.symptoms,
+          d.conditions_favouring,
+          !!(d.chemicals && d.chemicals.length > 0),
+          weatherContext,
+        ));
+      }
+    });
+
+    filteredWeeds.forEach(w => {
+      if (!q || w.weed_name.toLowerCase().includes(q) || w.common_name.toLowerCase().includes(q)) {
+        plans.push(generateWeedIPM(
+          w.common_name || w.weed_name,
+          w.affected_environments,
+          w.control_methods,
+          w.resistance_group,
+          !!(w.chemicals && w.chemicals.length > 0),
+          weatherContext,
+        ));
+      }
+    });
+
+    return plans;
+  }, [filteredPests, filteredDiseases, filteredWeeds, query, weatherContext]);
+
   const counts = {
     chemicals: filteredChemicals.length,
     diseases: filteredDiseases.length,
     pests: filteredPests.length,
     weeds: filteredWeeds.length,
     fertilisers: filteredFertilisers.length,
+    ipm: ipmPlans.length,
   };
 
   const currentCount = counts[activeTab];
@@ -264,16 +320,21 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
           'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          message: `You are an Australian agricultural expert. Analyse this photo and:
+          message: `You are an Australian agricultural expert specialising in Integrated Pest Management. Analyse this photo and:
 1. Identify what you see (crop, pest, disease, weed, nutrient deficiency, etc.)
 2. Provide a brief description
 3. Give 2-4 specific recommendations
+4. Classify the issue type and confidence level
+5. Assess the risk level
 
 Respond ONLY with this exact JSON format (no other text):
 {
   "identification": "What this is (e.g. Aphid infestation on wheat)",
   "details": "2-3 sentence description of what you see and why it matters",
-  "recommendations": ["First recommendation", "Second recommendation", "Third recommendation"]
+  "recommendations": ["First recommendation", "Second recommendation", "Third recommendation"],
+  "issueType": "pest|disease|weed|deficiency|general",
+  "confidence": "High|Moderate|Low",
+  "riskLevel": "low|moderate|high|severe"
 }`,
           imageData: base64,
         }),
@@ -420,6 +481,7 @@ Respond ONLY with this exact JSON format (no other text):
               analysisError={analysisError}
               onAnalyse={analysePhoto}
               onClear={clearPhoto}
+              weatherContext={weatherContext}
             />
           )}
 
@@ -447,7 +509,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredDiseases}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(d) => <DiseaseCard key={d.id} disease={d} />}
+                  renderItem={(d) => <DiseaseCard key={d.id} disease={d} weatherContext={weatherContext} />}
                   tab="diseases"
                   lockedCount={lockedCount}
                 />
@@ -457,7 +519,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredPests}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(p) => <PestCard key={p.id} pest={p} />}
+                  renderItem={(p) => <PestCard key={p.id} pest={p} weatherContext={weatherContext} />}
                   tab="pests"
                   lockedCount={lockedCount}
                 />
@@ -467,7 +529,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredWeeds}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(w) => <WeedCard key={w.id} weed={w} />}
+                  renderItem={(w) => <WeedCard key={w.id} weed={w} weatherContext={weatherContext} />}
                   tab="weeds"
                   lockedCount={lockedCount}
                 />
@@ -480,6 +542,16 @@ Respond ONLY with this exact JSON format (no other text):
                   renderItem={(f) => <FertiliserCard key={f.id} fertiliser={f} />}
                   tab="fertilisers"
                   lockedCount={lockedCount}
+                />
+              )}
+              {activeTab === 'ipm' && (
+                <ResultsWithPaywall
+                  items={ipmPlans}
+                  isPremium={isPremium}
+                  onSignUp={onSignUp}
+                  renderItem={(plan, i) => <IPMPlanCard key={`ipm-${i}`} plan={plan} />}
+                  tab="IPM plans"
+                  lockedCount={isPremium ? 0 : Math.max(0, ipmPlans.length - FREE_PREVIEW_COUNT)}
                 />
               )}
 
@@ -525,9 +597,10 @@ interface PhotoAnalysisPanelProps {
   analysisError: string | null;
   onAnalyse: () => void;
   onClear: () => void;
+  weatherContext?: IPMWeatherContext;
 }
 
-function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisError, onAnalyse, onClear }: PhotoAnalysisPanelProps) {
+function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisError, onAnalyse, onClear, weatherContext }: PhotoAnalysisPanelProps) {
   return (
     <div className="mb-6 rounded-2xl border border-green-600/30 bg-green-950/20 overflow-hidden">
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-green-700/20">
@@ -618,47 +691,10 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
             )}
 
             {analysisResult && (
-              <div className="space-y-3">
-                {/* Detected Issue */}
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="w-3.5 h-3.5 text-green-400" />
-                    <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Detected Issue</span>
-                  </div>
-                  <h3 className="text-base font-black text-white">{analysisResult.identification}</h3>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">{analysisResult.details}</p>
-                </div>
-
-                {/* Common Treatment Options */}
-                {analysisResult.recommendations.length > 0 && (
-                  <div>
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Common Treatment Options</div>
-                    <p className="text-[10px] text-slate-600 mb-2 italic">
-                      Possible treatment options may include the following. Always verify with current product labels and agronomic advice before application.
-                    </p>
-                    <ul className="space-y-1.5">
-                      {analysisResult.recommendations.map((rec, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-900/50 border border-green-600/30 text-green-400 text-[10px] font-black flex items-center justify-center mt-0.5">
-                            {i + 1}
-                          </span>
-                          {rec}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Monitoring & Prevention */}
-                <div className="rounded-lg bg-slate-800/40 border border-slate-700/30 p-3">
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Monitoring & Prevention</div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Monitor regularly for recurrence. Record observations and consult your agronomist before making treatment decisions, especially for chemical applications.
-                  </p>
-                </div>
-
-                <AgronomyDisclaimer variant="full" />
-              </div>
+              <PhotoAnalysisIPMResult
+                result={analysisResult}
+                weatherContext={weatherContext}
+              />
             )}
           </div>
         </div>
@@ -671,7 +707,7 @@ interface ResultsWithPaywallProps<T> {
   items: T[];
   isPremium: boolean;
   onSignUp?: () => void;
-  renderItem: (item: T) => React.ReactNode;
+  renderItem: (item: T, index: number) => React.ReactNode;
   tab: string;
   lockedCount: number;
 }
@@ -682,7 +718,7 @@ function ResultsWithPaywall<T>({ items, isPremium, onSignUp, renderItem, tab, lo
   }
 
   if (isPremium) {
-    return <div className="space-y-3">{items.map(renderItem)}</div>;
+    return <div className="space-y-3">{items.map((item, i) => renderItem(item, i))}</div>;
   }
 
   const visibleItems = items.slice(0, FREE_PREVIEW_COUNT);
@@ -690,14 +726,14 @@ function ResultsWithPaywall<T>({ items, isPremium, onSignUp, renderItem, tab, lo
 
   return (
     <div className="space-y-3">
-      {visibleItems.map(renderItem)}
+      {visibleItems.map((item, i) => renderItem(item, i))}
 
       {hiddenItems.length > 0 && (
         <div className="relative mt-1">
           <div className="space-y-3 pointer-events-none select-none" aria-hidden="true">
             {hiddenItems.slice(0, 3).map((item, i) => (
               <div key={i} className="blur-sm opacity-40">
-                {renderItem(item)}
+                {renderItem(item, FREE_PREVIEW_COUNT + i)}
               </div>
             ))}
           </div>
@@ -727,6 +763,73 @@ function ResultsWithPaywall<T>({ items, isPremium, onSignUp, renderItem, tab, lo
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PhotoAnalysisIPMResult({ result, weatherContext }: { result: AIAnalysisResult; weatherContext?: IPMWeatherContext }) {
+  const issueType = result.issueType || 'general';
+  let plan: IPMPlan;
+
+  if (issueType === 'pest') {
+    plan = generatePestIPM(result.identification, [], result.details, '', '', result.recommendations.length > 0, weatherContext);
+  } else if (issueType === 'disease') {
+    plan = generateDiseaseIPM(result.identification, [], result.details, '', result.recommendations.length > 0, weatherContext);
+  } else if (issueType === 'weed') {
+    plan = generateWeedIPM(result.identification, [], '', '', result.recommendations.length > 0, weatherContext);
+  } else {
+    plan = generateGenericIPM(result.identification, issueType === 'deficiency' ? 'deficiency' : 'general', weatherContext);
+  }
+
+  if (result.riskLevel && ['low', 'moderate', 'high', 'severe'].includes(result.riskLevel)) {
+    plan.riskLevel = result.riskLevel as IPMPlan['riskLevel'];
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Detected Issue */}
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="w-3.5 h-3.5 text-green-400" />
+          <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Detected Issue</span>
+          {result.confidence && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              result.confidence === 'High' ? 'bg-green-500/10 text-green-300 border-green-500/30' :
+              result.confidence === 'Moderate' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
+              'bg-slate-800 text-slate-400 border-slate-600/40'
+            }`}>
+              {result.confidence} confidence
+            </span>
+          )}
+        </div>
+        <h3 className="text-base font-black text-white">{result.identification}</h3>
+        <p className="text-sm text-slate-400 mt-1 leading-relaxed">{result.details}</p>
+      </div>
+
+      {/* Common Treatment Options */}
+      {result.recommendations.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Common Treatment Options</div>
+          <p className="text-[10px] text-slate-600 mb-2 italic">
+            Possible treatment options may include the following. Always verify with current product labels and agronomic advice before application.
+          </p>
+          <ul className="space-y-1.5">
+            {result.recommendations.map((rec, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-900/50 border border-green-600/30 text-green-400 text-[10px] font-black flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                {rec}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* IPM Management Plan - Automatically included */}
+      <IPMPlanCard plan={plan} defaultExpanded />
+
+      <AgronomyDisclaimer variant="full" />
     </div>
   );
 }

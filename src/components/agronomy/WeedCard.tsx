@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Leaf, Eye, AlertTriangle, FlaskConical, Activity } from 'lucide-react';
 import type { Weed } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
+import { IPMPlanCard } from './IPMPlanCard';
+import type { IPMWeatherContext } from '../../utils/ipm';
+import { generateWeedIPM } from '../../utils/ipm';
 
 const EFFICACY_COLORS = {
   high: 'bg-green-900/40 text-green-300 border-green-500/30',
@@ -12,9 +15,10 @@ const EFFICACY_COLORS = {
 
 interface Props {
   weed: Weed;
+  weatherContext?: IPMWeatherContext;
 }
 
-export function WeedCard({ weed }: Props) {
+export function WeedCard({ weed, weatherContext }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -129,6 +133,18 @@ export function WeedCard({ weed }: Props) {
               </div>
             </div>
           )}
+
+          {/* IPM Management Plan */}
+          <IPMPlanCard
+            plan={generateWeedIPM(
+              weed.common_name || weed.weed_name,
+              weed.affected_environments,
+              weed.control_methods,
+              weed.resistance_group,
+              !!(weed.chemicals && weed.chemicals.length > 0),
+              weatherContext,
+            )}
+          />
 
           <AgronomyDisclaimer variant="card" />
         </div>

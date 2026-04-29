@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Bug, Eye, AlertTriangle, FlaskConical, Activity, Shield } from 'lucide-react';
 import type { Pest } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
+import { IPMPlanCard } from './IPMPlanCard';
+import type { IPMWeatherContext } from '../../utils/ipm';
+import { generatePestIPM } from '../../utils/ipm';
 
 const PEST_TYPE_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   insect:     { bg: 'bg-amber-900/40',  text: 'text-amber-300',  border: 'border-amber-500/30' },
@@ -22,9 +25,10 @@ const EFFICACY_COLORS = {
 
 interface Props {
   pest: Pest;
+  weatherContext?: IPMWeatherContext;
 }
 
-export function PestCard({ pest }: Props) {
+export function PestCard({ pest, weatherContext }: Props) {
   const [expanded, setExpanded] = useState(false);
   const style = PEST_TYPE_STYLES[pest.pest_type] || PEST_TYPE_STYLES[''];
 
@@ -161,12 +165,18 @@ export function PestCard({ pest }: Props) {
             )}
           </Section>
 
-          {/* 4. Prevention Notes */}
-          <Section icon={<Shield className="w-3.5 h-3.5 text-green-400" />} label="Prevention Notes" color="text-green-400">
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Integrated pest management (IPM) strategies — including crop rotation, beneficial insect conservation, and targeted monitoring — may reduce reliance on chemical treatments. Consult your agronomist for a tailored prevention plan.
-            </p>
-          </Section>
+          {/* 4. IPM Management Plan */}
+          <IPMPlanCard
+            plan={generatePestIPM(
+              pest.common_name || pest.pest_name,
+              pest.affected_crops,
+              pest.damage_caused,
+              pest.spray_threshold,
+              pest.monitoring_notes,
+              !!(pest.chemicals && pest.chemicals.length > 0),
+              weatherContext,
+            )}
+          />
 
           <AgronomyDisclaimer variant="card" />
         </div>

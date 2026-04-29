@@ -1,4 +1,4 @@
-import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor, Lock, Info } from 'lucide-react';
+import { Sprout, Droplets, Wind, AlertTriangle, Sun, Tractor, Lock, Info, Shield } from 'lucide-react';
 import { formatTemp, formatWind, formatRain, type RegionUnits } from '../utils/units';
 
 interface RecommendationProps {
@@ -208,6 +208,43 @@ function getRecommendations(props: RecommendationProps): Recommendation[] {
     status: generalStatus,
     statusLabel: generalStatusLabel,
     reason: generalReason,
+  });
+
+  // IPM / Pest & Disease Pressure
+  let ipmStatus: 'good' | 'caution' | 'risk' = 'good';
+  let ipmStatusLabel = '';
+  let ipmReason = '';
+
+  const warmHumid = tempC > 15 && tempC < 30 && humidity > 75;
+  const veryHumid = humidity > 85;
+  const wetConditions = todayRainChance > 70 && todayExpectedRain > 5;
+
+  if (warmHumid && wetConditions) {
+    ipmStatus = 'risk';
+    ipmStatusLabel = 'High disease pressure — scout before spraying';
+    ipmReason = `${Math.round(tempC)}°C at ${humidity}% humidity with ${todayRainChance}% rain risk favours fungal development`;
+  } else if (veryHumid || wetConditions) {
+    ipmStatus = 'caution';
+    ipmStatusLabel = 'Monitor pest and disease pressure';
+    ipmReason = veryHumid
+      ? `Humidity ${humidity}% — conditions may favour disease. Scout crops and check thresholds`
+      : `Wet conditions expected — monitor for disease onset after rainfall`;
+  } else if (tempC > 20 && tempC < 35 && humidity > 50) {
+    ipmStatus = 'caution';
+    ipmStatusLabel = 'Moderate pest activity conditions';
+    ipmReason = `Warm conditions (${Math.round(tempC)}°C) may increase pest activity. Routine IPM scouting advised`;
+  } else {
+    ipmStatus = 'good';
+    ipmStatusLabel = 'Low pest and disease pressure';
+    ipmReason = 'Current conditions do not strongly favour pest or disease development. Continue routine monitoring';
+  }
+
+  recs.push({
+    icon: <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" />,
+    category: 'IPM',
+    status: ipmStatus,
+    statusLabel: ipmStatusLabel,
+    reason: ipmReason,
   });
 
   return recs;
