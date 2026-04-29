@@ -31,6 +31,7 @@ import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanne
 import { fireSubscriptionConversion } from './utils/googleAds';
 import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, ConnectSensorsModal } from './components/ExplainerModal';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 
 interface WeatherData {
   current: {
@@ -125,6 +126,7 @@ function App() {
   const [unitPrefs, setUnitPrefs] = useState<UnitPreferences>(loadUnitPrefs());
   const [explainerOpen, setExplainerOpen] = useState<string | null>(null);
   const [showConnectSensors, setShowConnectSensors] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const countryCode = location.country || 'AU';
   const units: RegionUnits = resolveUnits({ country: countryCode }, unitPrefs);
@@ -1609,12 +1611,19 @@ function App() {
                 <div className="text-xs text-slate-600">Powered by on-farm probes + BOM + OpenWeather</div>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-xs text-slate-600">
+            <div className="flex items-center flex-wrap justify-center sm:justify-end gap-x-4 gap-y-1 text-xs text-slate-600">
               {lastUpdated && (
                 <span>Last updated: {lastUpdated.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
               )}
               <span>•</span>
               <span>Data refreshes hourly</span>
+              <span>•</span>
+              <button
+                onClick={() => setShowPrivacyPolicy(true)}
+                className="text-slate-500 hover:text-green-400 transition-colors"
+              >
+                Privacy Policy
+              </button>
               <span>•</span>
               <span>© {new Date().getFullYear()} FarmCast</span>
             </div>
@@ -1641,6 +1650,10 @@ function App() {
         isOpen={showConnectSensors}
         onClose={() => setShowConnectSensors(false)}
       />
+
+      {showPrivacyPolicy && (
+        <PrivacyPolicy onClose={() => setShowPrivacyPolicy(false)} />
+      )}
 
       {showAgronomyDB && (
         <AgronomyDatabase
