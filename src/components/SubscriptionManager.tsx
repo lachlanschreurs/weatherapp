@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, Leaf, Brain, FileText, Bell, Droplets, FlaskConical, Check } from 'lucide-react';
+import { Loader2, Leaf, Brain, FileText, Bell, Droplets, FlaskConical, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface SubscriptionManagerProps {
@@ -45,7 +45,7 @@ const BENEFITS = [
   },
 ];
 
-export default function SubscriptionManager({ onClose }: SubscriptionManagerProps) {
+export default function SubscriptionManager(_props: SubscriptionManagerProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,13 +108,6 @@ export default function SubscriptionManager({ onClose }: SubscriptionManagerProp
           }}
         />
 
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/60 transition-all"
-          disabled={isLoading}
-        >
-          <X className="w-4 h-4" />
-        </button>
 
         <div className="relative px-6 pt-6 pb-2">
           <div className="flex items-center gap-3 mb-1">
