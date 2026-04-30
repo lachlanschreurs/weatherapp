@@ -929,10 +929,10 @@ function App() {
         )}
 
         {/* HERO CURRENT CONDITIONS */}
-        <div className="mb-5 grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div className="mb-5">
 
           {/* Main Temp Card */}
-          <div className="xl:col-span-2 relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl farmcast-hero-glow hover:border-slate-600/80 transition-all duration-300">
+          <div className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl farmcast-hero-glow hover:border-slate-600/80 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-800/40 via-transparent to-green-950/30" />
             <div className="relative z-10 p-6 xl:p-8">
               <div className="flex items-start justify-between gap-4 mb-6">
@@ -1053,103 +1053,6 @@ function App() {
             </div>
           </div>
 
-          {/* Spray Window + Alerts Panel */}
-          <div className="flex flex-col gap-4">
-            {/* Best Spray Window */}
-            {todayBestWindow ? (
-              <div className={`rounded-2xl border p-5 flex-1 flex flex-col justify-between backdrop-blur-sm shadow-xl transition-all duration-300 hover:scale-[1.01] ${todayBestWindow.rating === 'Good' ? 'bg-green-950/70 border-green-500/40 farmcast-spray-glow-good' : 'bg-yellow-950/70 border-yellow-500/40 farmcast-spray-glow-moderate'}`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${todayBestWindow.rating === 'Good' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                  <span className={`text-xs font-bold uppercase tracking-widest ${todayBestWindow.rating === 'Good' ? 'text-green-400' : 'text-yellow-400'}`}>
-                    Best Spray Window
-                  </span>
-                  <InfoButton onClick={() => setExplainerOpen('sprayWindow')} />
-                </div>
-                <div>
-                  <div className={`text-3xl xl:text-4xl font-black leading-tight ${todayBestWindow.rating === 'Good' ? 'text-green-200' : 'text-yellow-200'}`}>
-                    {todayBestWindow.startTime}
-                  </div>
-                  <div className={`text-xl font-semibold ${todayBestWindow.rating === 'Good' ? 'text-green-400' : 'text-yellow-400'}`}>
-                    to {todayBestWindow.endTime}
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className={`text-sm ${todayBestWindow.rating === 'Good' ? 'text-green-300' : 'text-yellow-300'}`}>
-                    {todayBestWindow.duration.toFixed(1)}h window
-                  </span>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full border ${todayBestWindow.rating === 'Good' ? 'bg-green-500/20 text-green-300 border-green-500/40' : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'}`}>
-                    {todayBestWindow.conditions}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-red-500/40 bg-red-950/70 backdrop-blur-sm p-5 flex-1 flex flex-col justify-center shadow-xl">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-5 h-5 text-red-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-red-400">No Spray Window</span>
-                  <InfoButton onClick={() => setExplainerOpen('sprayWindow')} />
-                </div>
-                <p className="text-red-200 text-sm">Conditions not suitable for spraying today</p>
-              </div>
-            )}
-
-            {/* Active Alerts */}
-            <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm p-5 shadow-xl">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Active Alerts</span>
-              </div>
-              <div className="space-y-2">
-                {windGustKmh && windGustKmh > 50 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0 animate-pulse" />
-                    <span className="text-red-300">Wind gusts {formatWind(windGustKmh, units.wind)} — Spray risk</span>
-                  </div>
-                )}
-                {todayRainChance > 70 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
-                    <span className="text-blue-300">Heavy rain likely — {formatRain(todayExpectedRain, units.rain)} expected</span>
-                  </div>
-                )}
-                {frostWarning && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0" />
-                    <span className="text-blue-200">Frost risk — min {formatTemp(minTempNext24h, units.temp)} overnight</span>
-                  </div>
-                )}
-                {deltaTCondition.rating === 'Excellent' && !frostWarning && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 farmcast-pulse-green" />
-                    <span className="text-green-300">Delta T ideal — excellent spray conditions</span>
-                  </div>
-                )}
-                {!windGustKmh || windGustKmh <= 50 && todayRainChance <= 70 && !frostWarning && deltaTCondition.rating !== 'Excellent' && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
-                    <span className="text-slate-400">No critical alerts at this time</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Frost / Inversion Risk Indicator */}
-            <div className={`rounded-2xl border p-4 shadow-xl backdrop-blur-sm ${frostRisk ? 'bg-blue-950/80 border-blue-400/50' : frostWarning ? 'bg-blue-950/60 border-blue-500/30' : 'bg-slate-900/50 border-slate-700/40'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Thermometer className={`w-4 h-4 flex-shrink-0 ${frostRisk ? 'text-blue-300' : frostWarning ? 'text-blue-400' : 'text-slate-500'}`} />
-                <span className={`text-xs font-bold uppercase tracking-widest ${frostRisk ? 'text-blue-300' : frostWarning ? 'text-blue-400' : 'text-slate-500'}`}>
-                  Frost / Inversion Risk
-                </span>
-              </div>
-              {frostRisk ? (
-                <p className="text-blue-200 text-xs">Min {formatTemp(minTempNext24h, units.temp)} — frost risk. Protect crops.</p>
-              ) : frostWarning ? (
-                <p className="text-blue-300 text-xs">Min {formatTemp(minTempNext24h, units.temp)} — monitor overnight.</p>
-              ) : (
-                <p className="text-slate-500 text-xs">Min {formatTemp(minTempNext24h, units.temp)} — no frost risk tonight.</p>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* DECISION ENGINE — Compact expandable cards */}
