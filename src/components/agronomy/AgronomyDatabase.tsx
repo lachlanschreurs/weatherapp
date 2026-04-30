@@ -79,10 +79,17 @@ function ScanAIButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-const REGION_OPTIONS: { code: CountryCode; label: string; flag: string; regBody: string; regLink: string }[] = [
-  { code: 'AU', label: 'Australia', flag: 'AU', regBody: 'APVMA', regLink: 'https://www.apvma.gov.au/node/10976' },
-  { code: 'US', label: 'United States', flag: 'US', regBody: 'EPA', regLink: 'https://www.epa.gov/pesticide-registration' },
-  { code: 'NZ', label: 'New Zealand', flag: 'NZ', regBody: 'ACVM / EPA NZ', regLink: 'https://www.epa.govt.nz/industry-areas/hazardous-substances/' },
+interface RegionConfig {
+  code: CountryCode;
+  label: string;
+  authority: string;
+  labelSearchUrl: string;
+}
+
+const REGION_OPTIONS: RegionConfig[] = [
+  { code: 'AU', label: 'Australia', authority: 'APVMA', labelSearchUrl: 'https://www.apvma.gov.au/node/10976' },
+  { code: 'US', label: 'United States', authority: 'EPA', labelSearchUrl: 'https://www.epa.gov/pesticide-registration' },
+  { code: 'NZ', label: 'New Zealand', authority: 'ACVM', labelSearchUrl: 'https://www.epa.govt.nz/industry-areas/hazardous-substances/' },
 ];
 
 function getRegionFromCountry(country: string): CountryCode {
@@ -335,10 +342,10 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
           'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          message: `You are a ${region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : 'Australian'} agricultural expert specialising in Integrated Pest Management. Use ${region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM/EPA NZ-registered products and NZ crop terminology' : 'APVMA-registered products and Australian crop terminology'}. Analyse this photo and:
+          message: `You are a ${region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : 'Australian'} agricultural expert specialising in Integrated Pest Management. Use ${region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM-registered products and NZ crop terminology' : 'APVMA-registered products and Australian crop terminology'}. Analyse this photo and:
 1. Identify what you see (crop, pest, disease, weed, nutrient deficiency, etc.)
 2. Provide a brief description
-3. Give 2-4 specific recommendations using products registered in ${region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM/EPA NZ)' : 'Australia (APVMA)'}
+3. Give 2-4 specific recommendations using products registered in ${region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM)' : 'Australia (APVMA)'}
 4. Classify the issue type and confidence level
 5. Assess the risk level
 
@@ -403,21 +410,19 @@ Respond ONLY with this exact JSON format (no other text):
                   )}
                 </div>
                 <p className="text-xs text-slate-500 font-medium">
-                  {region === 'AU' && 'Australian agricultural reference — APVMA registered chemicals, diseases, pests, weeds & fertilisers'}
-                  {region === 'US' && 'US agricultural reference — EPA registered chemicals, diseases, pests, weeds & fertilisers'}
-                  {region === 'NZ' && 'New Zealand agricultural reference — ACVM/EPA NZ registered chemicals, diseases, pests, weeds & fertilisers'}
+                  Global agronomy database — region-specific registered chemicals, pests, diseases, weeds & fertilisers
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <a
-                href={REGION_OPTIONS.find(r => r.code === region)?.regLink || '#'}
+                href={REGION_OPTIONS.find(r => r.code === region)?.labelSearchUrl || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/60 bg-slate-800/50 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 text-xs font-medium transition-all duration-200"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                {REGION_OPTIONS.find(r => r.code === region)?.regBody} Label Search
+                Chemical Label Search
               </a>
               <button
                 onClick={() => setShowDisclaimerView(true)}
@@ -480,7 +485,7 @@ Respond ONLY with this exact JSON format (no other text):
                       : 'bg-slate-800/50 text-slate-500 border border-slate-700/40 hover:text-slate-300 hover:bg-slate-800'
                   }`}
                 >
-                  {opt.label} ({opt.regBody})
+                  {opt.label} ({opt.authority})
                 </button>
               ))}
             </div>
@@ -599,7 +604,7 @@ Respond ONLY with this exact JSON format (no other text):
                 <div className="mt-5 rounded-xl bg-amber-950/25 border border-amber-500/20 px-4 py-3 flex items-start gap-3">
                   <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-200/70 leading-relaxed">
-                    <span className="font-semibold text-amber-300/80">Guide only</span> — always check the current label, rates, WHP, regional approvals ({region === 'AU' ? 'APVMA' : region === 'US' ? 'EPA' : 'ACVM/EPA NZ'}), and local agronomy advice before use.
+                    <span className="font-semibold text-amber-300/80">Guide only</span> — chemical registrations, labels, and permitted uses vary by region. Always refer to the official label ({REGION_OPTIONS.find(r => r.code === region)?.authority}) and consult a qualified agronomist before application.
                   </p>
                 </div>
 

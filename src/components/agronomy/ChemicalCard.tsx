@@ -12,10 +12,10 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string
   other: { bg: 'bg-slate-800/40', text: 'text-slate-300', border: 'border-slate-500/30', dot: 'bg-slate-400' },
 };
 
-const REG_BODY_INFO: Record<CountryCode, { name: string; label: string }> = {
-  AU: { name: 'APVMA', label: 'APVMA registration' },
-  US: { name: 'EPA', label: 'EPA Reg. No.' },
-  NZ: { name: 'ACVM', label: 'ACVM/EPA NZ' },
+const REG_BODY_INFO: Record<CountryCode, { name: string; label: string; badge: string }> = {
+  AU: { name: 'APVMA', label: 'APVMA Reg.', badge: 'APVMA' },
+  US: { name: 'EPA', label: 'EPA Reg. No.', badge: 'EPA' },
+  NZ: { name: 'ACVM', label: 'ACVM Reg.', badge: 'ACVM' },
 };
 
 interface Props {
@@ -44,7 +44,10 @@ export function ChemicalCard({ chemical, region = 'AU' }: Props) {
               <h3 className="font-bold text-white text-base leading-tight">{chemical.active_ingredient}</h3>
               <p className="text-xs text-slate-500 mt-0.5">Found in: <span className="text-slate-400">{chemical.product_name}</span></p>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-600/40 uppercase tracking-wider">
+                {regBody.badge}
+              </span>
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${style.bg} ${style.text} border ${style.border} capitalize`}>
                 {chemical.category}
               </span>
