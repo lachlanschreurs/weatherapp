@@ -108,9 +108,9 @@ export function PestCard({ pest, weatherContext }: Props) {
 
               {pest.chemicals && pest.chemicals.length > 0 && (
                 <div>
-                  <div className="text-xs font-bold text-amber-400/70 uppercase tracking-wider mb-2 mt-1">Common Registered Active Ingredients</div>
+                  <div className="text-xs font-bold text-amber-400/70 uppercase tracking-wider mb-2 mt-1">Registered Spray Options</div>
                   <p className="text-[10px] text-slate-500 mb-2 italic">
-                    Products containing these actives may be suitable where registered — always verify APVMA registration and crop label before use.
+                    Active ingredients that may be suitable where registered. Always verify APVMA registration, crop label, rates, and withholding periods before use.
                   </p>
                   <div className="space-y-2">
                     {pest.chemicals.map(({ chemical, application_notes, efficacy_rating }) => (
@@ -128,7 +128,7 @@ export function PestCard({ pest, weatherContext }: Props) {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">Found in products such as: <span className="text-slate-300">{chemical.product_name}</span></p>
+                        <p className="text-xs text-slate-400 mt-0.5">Used in: <span className="text-slate-300 font-medium">{chemical.product_name}</span></p>
                         {chemical.withholding_period && (
                           <p className="text-xs text-amber-400/80 mt-1">WHI: {chemical.withholding_period}</p>
                         )}

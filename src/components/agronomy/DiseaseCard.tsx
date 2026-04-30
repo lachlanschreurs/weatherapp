@@ -99,7 +99,7 @@ export function DiseaseCard({ disease, weatherContext }: Props) {
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <FlaskConical className="w-3.5 h-3.5 text-emerald-400" />
-                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Common Registered Active Ingredients</div>
+                <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Registered Spray Options</div>
               </div>
               <p className="text-[10px] text-slate-500 mb-2.5 italic">
                 Common registered active ingredients include the following. Products containing these actives may be suitable where registered — always verify APVMA registration and crop label before use.
@@ -120,7 +120,7 @@ export function DiseaseCard({ disease, weatherContext }: Props) {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">Found in products such as: <span className="text-slate-300">{chemical.product_name}</span></p>
+                    <p className="text-xs text-slate-400 mt-0.5">Used in: <span className="text-slate-300 font-medium">{chemical.product_name}</span></p>
                     {chemical.withholding_period && (
                       <p className="text-xs text-amber-400/80 mt-1">WHI: {chemical.withholding_period}</p>
                     )}
