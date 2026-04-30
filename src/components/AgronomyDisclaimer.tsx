@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 
 export const DISCLAIMER_FULL =
-  'FarmCast provides general agricultural information only and does not constitute chemical, agronomic, fertiliser, or legal application advice. Chemical registrations, labels, and permitted uses vary by region. Users must independently verify current registrations (APVMA in Australia, EPA in USA, ACVM in New Zealand), product labels, crop suitability, withholding periods, application rates, and local conditions before use. Always refer to the official label and consult a qualified agronomist before application.';
+  'FarmCast provides general agricultural information only and does not constitute chemical, agronomic, fertiliser, or legal application advice. Chemical registrations, labels, and permitted uses vary by region. Users must independently verify current registrations (APVMA in Australia, EPA in USA, ACVM in New Zealand, PMRA in Canada), product labels, crop suitability, withholding periods, application rates, and local conditions before use. Always refer to the official label and consult a qualified agronomist before application.';
 
 export const DISCLAIMER_SHORT =
   'General guidance only. Always verify current label directions and local agronomic advice before application.';

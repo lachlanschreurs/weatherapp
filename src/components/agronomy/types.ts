@@ -11,7 +11,7 @@ export interface WHPEntry {
   registered: boolean;
 }
 
-export type CountryCode = 'AU' | 'US' | 'NZ';
+export type CountryCode = 'AU' | 'US' | 'NZ' | 'CA';
 
 export interface Chemical {
   id: string;

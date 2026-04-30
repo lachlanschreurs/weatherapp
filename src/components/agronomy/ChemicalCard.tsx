@@ -16,6 +16,7 @@ const REG_BODY_INFO: Record<CountryCode, { name: string; label: string; badge: s
   AU: { name: 'APVMA', label: 'APVMA Reg.', badge: 'APVMA' },
   US: { name: 'EPA', label: 'EPA Reg. No.', badge: 'EPA' },
   NZ: { name: 'ACVM', label: 'ACVM Reg.', badge: 'ACVM' },
+  CA: { name: 'PMRA', label: 'PCP No.', badge: 'PMRA' },
 };
 
 interface Props {
@@ -169,7 +170,7 @@ export function ChemicalCard({ chemical, region = 'AU' }: Props) {
 }
 
 const AU_STATES = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
-const INTL_REGIONS = ['USA', 'NZ'];
+const INTL_REGIONS = ['USA', 'NZ', 'CA'];
 
 interface CropGroup {
   crop: string;
@@ -322,7 +323,7 @@ function WHPTable({ entries, fallback }: { entries?: WHPEntry[]; fallback: strin
               const regionEntries = intlEntries.filter(e => e.state === region);
               if (regionEntries.length === 0) return null;
 
-              const regionLabel = region === 'USA' ? 'USA (EPA)' : 'New Zealand (ACVM)';
+              const regionLabel = region === 'USA' ? 'USA (EPA)' : region === 'CA' ? 'Canada (PMRA)' : 'New Zealand (ACVM)';
               const registered = regionEntries.filter(e => e.registered);
               const notReg = regionEntries.filter(e => !e.registered);
 
@@ -366,7 +367,7 @@ function WHPTable({ entries, fallback }: { entries?: WHPEntry[]; fallback: strin
       )}
 
       <p className="text-[10px] text-slate-600 italic">
-        N/R = Not registered. AU: verify with APVMA. USA: EPA reg. NZ: ACVM reg. Always check current label before use.
+        N/R = Not registered. AU: APVMA. US: EPA. NZ: ACVM. CA: PMRA. Always check current label before use.
       </p>
     </div>
   );

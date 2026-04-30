@@ -90,11 +90,13 @@ const REGION_OPTIONS: RegionConfig[] = [
   { code: 'AU', label: 'Australia', authority: 'APVMA', labelSearchUrl: 'https://www.apvma.gov.au/node/10976' },
   { code: 'US', label: 'United States', authority: 'EPA', labelSearchUrl: 'https://www.epa.gov/pesticide-registration' },
   { code: 'NZ', label: 'New Zealand', authority: 'ACVM', labelSearchUrl: 'https://www.epa.govt.nz/industry-areas/hazardous-substances/' },
+  { code: 'CA', label: 'Canada', authority: 'PMRA', labelSearchUrl: 'https://pr-rp.hc-sc.gc.ca/ls-re/index-eng.php' },
 ];
 
 function getRegionFromCountry(country: string): CountryCode {
   if (country === 'US') return 'US';
   if (country === 'NZ') return 'NZ';
+  if (country === 'CA') return 'CA';
   return 'AU';
 }
 
@@ -342,10 +344,10 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
           'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          message: `You are a ${region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : 'Australian'} agricultural expert specialising in Integrated Pest Management. Use ${region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM-registered products and NZ crop terminology' : 'APVMA-registered products and Australian crop terminology'}. Analyse this photo and:
+          message: `You are a ${region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : region === 'CA' ? 'Canadian' : 'Australian'} agricultural expert specialising in Integrated Pest Management. Use ${region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM-registered products and NZ crop terminology' : region === 'CA' ? 'PMRA-registered products and Canadian crop terminology' : 'APVMA-registered products and Australian crop terminology'}. Analyse this photo and:
 1. Identify what you see (crop, pest, disease, weed, nutrient deficiency, etc.)
 2. Provide a brief description
-3. Give 2-4 specific recommendations using products registered in ${region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM)' : 'Australia (APVMA)'}
+3. Give 2-4 specific recommendations using products registered in ${region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM)' : region === 'CA' ? 'Canada (PMRA)' : 'Australia (APVMA)'}
 4. Classify the issue type and confidence level
 5. Assess the risk level
 

@@ -23,7 +23,7 @@ const EFFICACY_COLORS = {
   '':       'bg-slate-800 text-slate-400 border-slate-600/40',
 };
 
-const REG_BODY_NAMES: Record<CountryCode, string> = { AU: 'APVMA', US: 'EPA', NZ: 'ACVM' };
+const REG_BODY_NAMES: Record<CountryCode, string> = { AU: 'APVMA', US: 'EPA', NZ: 'ACVM', CA: 'PMRA' };
 
 interface Props {
   disease: Disease;
