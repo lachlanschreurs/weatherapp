@@ -1,7 +1,7 @@
 {
-  "name": "FarmCast - Agricultural Weather Intelligence",
+  "name": "FarmCast - Your Daily Farm Decision Engine",
   "short_name": "FarmCast",
-  "description": "Professional weather forecasting, spray advice, and farming insights for agricultural operations with real-time data and AI recommendations",
+  "description": "Know exactly what to do on your farm, every day. Daily decisions, spray windows, disease alerts, irrigation recommendations, and AI-powered agronomy — all in one place.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e40af",

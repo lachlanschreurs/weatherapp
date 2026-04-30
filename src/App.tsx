@@ -32,6 +32,7 @@ import { fireSubscriptionConversion } from './utils/googleAds';
 import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, ConnectSensorsModal } from './components/ExplainerModal';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TodayOnYourFarm } from './components/TodayOnYourFarm';
 
 interface WeatherData {
   current: {
@@ -927,6 +928,25 @@ function App() {
           </div>
         )}
 
+        {/* DAILY DECISION ENGINE */}
+        <TodayOnYourFarm
+          tempC={tempC}
+          humidity={humidity}
+          windSpeedKmh={windSpeedKmh}
+          windGustKmh={windGustKmh}
+          deltaT={deltaT}
+          deltaTRating={deltaTCondition.rating}
+          todayBestWindow={todayBestWindow}
+          todayRainChance={todayRainChance}
+          todayExpectedRain={todayExpectedRain}
+          rainfall={rainfall}
+          frostRisk={frostRisk}
+          frostWarning={frostWarning}
+          soilMoisture={probeReading?.moisture_percent ?? Number(soilMoisture)}
+          soilTempC={probeReading?.soil_temp_c ?? Number(soilTempC)}
+          uvIndex={uvIndex}
+        />
+
         {/* HERO CURRENT CONDITIONS */}
         <div className="mb-5 grid grid-cols-1 xl:grid-cols-3 gap-5">
 
@@ -1631,8 +1651,8 @@ function App() {
                 <Sprout className="w-4 h-4 text-green-400" />
               </div>
               <div>
-                <div className="text-sm font-bold text-slate-300">FarmCast — Agricultural Weather Intelligence</div>
-                <div className="text-xs text-slate-600">Powered by on-farm probes + BOM + OpenWeather</div>
+                <div className="text-sm font-bold text-slate-300">FarmCast — Your Daily Farm Decision Engine</div>
+                <div className="text-xs text-slate-600">Know exactly what to do on your farm, every day.</div>
               </div>
             </div>
             <div className="flex items-center flex-wrap justify-center sm:justify-end gap-x-4 gap-y-1 text-xs text-slate-600">

@@ -610,6 +610,12 @@ Respond ONLY with this exact JSON format (no other text):
                   </p>
                 </div>
 
+                <div className="mt-4 text-center">
+                  <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                    Data aligned to regional chemical registrations and label requirements (APVMA, EPA, ACVM, PMRA)
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between mt-4 pb-5 gap-4">
                   <div className="flex items-center gap-2">
                     <Database className="w-3.5 h-3.5 text-slate-600" />
