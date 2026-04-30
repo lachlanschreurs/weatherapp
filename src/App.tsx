@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -91,6 +91,27 @@ interface WeatherData {
   }>;
   timezone?: string;
   timezone_offset?: number;
+}
+
+function LockedOverlay({ label, onSubscribe }: { label: string; onSubscribe: () => void }) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl" style={{ background: 'linear-gradient(to bottom, rgba(15,23,42,0.7), rgba(15,23,42,0.92))' }}>
+      <div className="text-center px-6 py-6 max-w-sm">
+        <div className="w-11 h-11 rounded-2xl bg-green-600/20 border border-green-500/30 flex items-center justify-center mx-auto mb-3">
+          <Lock className="w-5 h-5 text-green-400" />
+        </div>
+        <h3 className="text-base font-bold text-white mb-1">{label}</h3>
+        <p className="text-sm text-slate-400 mb-4">Subscribe to unlock this feature and all premium tools.</p>
+        <button
+          onClick={onSubscribe}
+          className="bg-green-600 hover:bg-green-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all duration-200 shadow-lg shadow-green-900/40 hover:scale-[1.02]"
+        >
+          Start Free Trial
+        </button>
+        <p className="text-xs text-slate-600 mt-2">$2.99/mo after 30-day free trial</p>
+      </div>
+    </div>
+  );
 }
 
 function App() {
@@ -1502,11 +1523,12 @@ function App() {
         </div>
 
         {/* PROBE SECTION */}
-        {user && !trialExpired && (
-          <div id="probe-section" className="mt-5 mb-5">
+        <div id="probe-section" className="mt-5 mb-5 relative">
+          {(!user || trialExpired) && <LockedOverlay label="Soil Probe Connection" onSubscribe={() => { setAuthMode('signup'); setShowAuthModal(true); }} />}
+          <div className={(!user || trialExpired) ? 'pointer-events-none' : ''}>
             <ProbeConnectionManager />
           </div>
-        )}
+        </div>
 
         {/* RADAR */}
         <div id="radar-section" className="mb-5">
@@ -1517,15 +1539,17 @@ function App() {
           />
         </div>
 
-        {user && !trialExpired && (
-          <div className="mb-5">
+        <div className="mb-5 relative">
+          {(!user || trialExpired) && <LockedOverlay label="30-Day Extended Forecast" onSubscribe={() => { setAuthMode('signup'); setShowAuthModal(true); }} />}
+          <div className={(!user || trialExpired) ? 'pointer-events-none' : ''}>
             <ExtendedForecast location={location} />
           </div>
-        )}
+        </div>
 
         {/* PLANTING + IRRIGATION */}
-        {user && !trialExpired && (
-          <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="mt-5 relative">
+          {(!user || trialExpired) && <LockedOverlay label="Planting & Irrigation Insights" onSubscribe={() => { setAuthMode('signup'); setShowAuthModal(true); }} />}
+          <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${(!user || trialExpired) ? 'pointer-events-none' : ''}`}>
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
                 <Sprout className="w-5 h-5 text-green-400" />
@@ -1598,7 +1622,7 @@ function App() {
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         <footer className="mt-8 pb-6">
           <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">

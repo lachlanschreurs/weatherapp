@@ -721,47 +721,57 @@ function ResultsWithPaywall<T>({ items, isPremium, onSignUp, renderItem, tab, lo
     return <div className="space-y-3">{items.map((item, i) => renderItem(item, i))}</div>;
   }
 
+  const VISIBLE_LOCKED_COUNT = 6;
   const visibleItems = items.slice(0, FREE_PREVIEW_COUNT);
-  const hiddenItems = items.slice(FREE_PREVIEW_COUNT);
+  const lockedVisible = items.slice(FREE_PREVIEW_COUNT, FREE_PREVIEW_COUNT + VISIBLE_LOCKED_COUNT);
+  const remainingCount = Math.max(0, items.length - FREE_PREVIEW_COUNT - VISIBLE_LOCKED_COUNT);
 
   return (
     <div className="space-y-3">
       {visibleItems.map((item, i) => renderItem(item, i))}
 
-      {hiddenItems.length > 0 && (
-        <div className="relative mt-1">
-          <div className="space-y-3 pointer-events-none select-none" aria-hidden="true">
-            {hiddenItems.slice(0, 3).map((item, i) => (
-              <div key={i} className="blur-sm opacity-40">
+      {lockedVisible.length > 0 && (
+        <>
+          {lockedVisible.map((item, i) => (
+            <div key={i} className="relative">
+              <div className="pointer-events-none select-none opacity-75">
                 {renderItem(item, FREE_PREVIEW_COUNT + i)}
               </div>
-            ))}
-          </div>
-
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent absolute inset-0 rounded-xl" />
-            <div className="relative z-10 text-center px-6 py-8 max-w-sm mx-auto">
-              <div className="w-12 h-12 rounded-2xl bg-green-600/20 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-6 h-6 text-green-400" />
+              <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-slate-950/50 backdrop-blur-[1px]">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 border border-slate-600/60 shadow-lg">
+                  <Lock className="w-3 h-3 text-green-400" />
+                  <span className="text-xs font-semibold text-slate-300">Subscribe to view</span>
+                </div>
               </div>
-              <h3 className="text-lg font-black text-white mb-1">
-                {lockedCount} more {tab} locked
-              </h3>
-              <p className="text-sm text-slate-400 mb-5 leading-relaxed">
-                Subscribe to unlock the full agronomy database — chemicals, diseases, pests, weeds and fertilisers.
-              </p>
-              {onSignUp && (
-                <button
-                  onClick={onSignUp}
-                  className="bg-green-600 hover:bg-green-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all duration-200 shadow-lg shadow-green-900/40 hover:scale-[1.02]"
-                >
-                  Start Free Trial — Unlock Full Access
-                </button>
-              )}
-              <p className="text-xs text-slate-600 mt-3">$2.99/mo after free trial</p>
             </div>
+          ))}
+
+          <div className="text-center py-6">
+            <div className="w-12 h-12 rounded-2xl bg-green-600/20 border border-green-500/30 flex items-center justify-center mx-auto mb-3">
+              <Lock className="w-6 h-6 text-green-400" />
+            </div>
+            <h3 className="text-base font-black text-white mb-1">
+              {lockedCount} more {tab} available
+            </h3>
+            <p className="text-sm text-slate-400 mb-4 leading-relaxed max-w-sm mx-auto">
+              Subscribe to unlock the full agronomy database — chemicals, diseases, pests, weeds, fertilisers and IPM plans.
+            </p>
+            {onSignUp && (
+              <button
+                onClick={onSignUp}
+                className="bg-green-600 hover:bg-green-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-all duration-200 shadow-lg shadow-green-900/40 hover:scale-[1.02]"
+              >
+                Start Free Trial — Unlock Full Access
+              </button>
+            )}
+            {remainingCount > 0 && (
+              <p className="text-xs text-slate-600 mt-3">+ {remainingCount} more not shown | $2.99/mo after free trial</p>
+            )}
+            {remainingCount === 0 && (
+              <p className="text-xs text-slate-600 mt-3">$2.99/mo after 30-day free trial</p>
+            )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

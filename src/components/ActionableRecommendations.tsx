@@ -313,9 +313,6 @@ export function ActionableRecommendations(props: RecommendationProps) {
     risk: 'text-red-400 border-red-500/30',
   };
 
-  const visibleRecs = isAuthenticated ? recommendations : recommendations.slice(0, 1);
-  const lockedRecs = isAuthenticated ? [] : recommendations.slice(1);
-
   return (
     <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl overflow-hidden farmcast-card-glow">
       <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
@@ -344,45 +341,30 @@ export function ActionableRecommendations(props: RecommendationProps) {
 
       <div className="p-5">
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-          {visibleRecs.map((rec, i) => (
-            <RecommendationCard key={i} rec={rec} />
+          {recommendations.map((rec, i) => (
+            <div key={i} className="relative">
+              <RecommendationCard rec={rec} />
+              {!isAuthenticated && i > 0 && (
+                <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-slate-900/60 backdrop-blur-[1px]">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 border border-slate-600/60">
+                    <Lock className="w-3 h-3 text-green-400" />
+                    <span className="text-xs font-semibold text-slate-300">Subscribe</span>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
-        {!isAuthenticated && lockedRecs.length > 0 && (
-          <div className="relative mt-3">
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 select-none pointer-events-none" aria-hidden="true">
-              {lockedRecs.map((rec, i) => (
-                <div key={i} className="rounded-xl border border-slate-700/30 bg-slate-800/20 p-4 blur-[3px]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex-shrink-0 text-slate-500">{rec.icon}</div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{rec.category}</span>
-                  </div>
-                  <div className="text-sm font-semibold mb-1 text-slate-400">{rec.statusLabel}</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{rec.reason}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative z-10 bg-slate-900/95 border border-slate-600/60 rounded-2xl p-6 shadow-2xl backdrop-blur-sm max-w-sm w-full mx-4 text-center">
-                <div className="flex items-center justify-center mb-3">
-                  <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-green-400" />
-                  </div>
-                </div>
-                <h3 className="text-white font-bold text-base mb-1">Unlock All Recommendations</h3>
-                <p className="text-slate-400 text-xs mb-4 leading-relaxed">
-                  Sign up free to access irrigation, livestock, cropping, and general farm recommendations tailored to your conditions.
-                </p>
-                <button
-                  onClick={onSignUpClick}
-                  className="w-full bg-green-600 hover:bg-green-500 text-white font-semibold py-2.5 px-4 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-green-900/30 hover:shadow-green-900/50"
-                >
-                  Sign Up Free
-                </button>
-              </div>
-            </div>
+        {!isAuthenticated && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={onSignUpClick}
+              className="bg-green-600 hover:bg-green-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all duration-200 shadow-lg shadow-green-900/40 hover:scale-[1.02]"
+            >
+              Start Free Trial — Unlock All Recommendations
+            </button>
+            <p className="text-xs text-slate-600 mt-2">$2.99/mo after 30-day free trial</p>
           </div>
         )}
       </div>
