@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { CheckCircle, AlertTriangle, Clock, Droplets, Wind, Thermometer, Sun, Sprout, TrendingUp, Shield, Zap } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { CheckCircle, AlertTriangle, Clock, Droplets, Wind, Thermometer, Sun, Sprout, TrendingUp, Shield, Zap, ChevronDown } from 'lucide-react';
 import type { SprayWindow } from '../utils/sprayWindow';
 
 interface TodayAction {
@@ -35,6 +35,8 @@ interface Props {
   daysWithoutRain?: number;
 }
 
+type ExpandedPanel = 'spray' | 'farm' | null;
+
 function getTimeUntilWindow(windowStart: string): { hours: number; minutes: number } | null {
   const now = new Date();
   const match = windowStart.match(/(\d+):(\d+)\s*(am|pm)/i);
@@ -61,7 +63,7 @@ function getTimeUntilWindow(windowStart: string): { hours: number; minutes: numb
 
 function generateActions(props: Props): TodayAction[] {
   const actions: TodayAction[] = [];
-  const { tempC, windSpeedKmh, windGustKmh, deltaT, deltaTRating, todayBestWindow, todayRainChance, todayExpectedRain, rainfall, frostRisk, soilMoisture, uvIndex } = props;
+  const { tempC, windSpeedKmh, windGustKmh, deltaTRating, todayBestWindow, todayRainChance, todayExpectedRain, frostRisk, soilMoisture, uvIndex } = props;
 
   if (todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate')) {
     actions.push({
@@ -221,91 +223,244 @@ function generateRiskAlerts(props: Props): RiskAlert[] {
   return alerts;
 }
 
+function getChipSummaries(actions: TodayAction[], props: Props): string[] {
+  const chips: string[] = [];
+
+  if (props.todayBestWindow) {
+    chips.push(`Spray after ${props.todayBestWindow.startTime}`);
+  }
+
+  if (props.soilMoisture !== null && props.soilMoisture < 25) {
+    chips.push('Irrigation may be needed');
+  }
+
+  if (props.todayRainChance < 20) {
+    chips.push('Dry day forecast');
+  } else if (props.todayRainChance > 60) {
+    chips.push(`${props.todayRainChance}% rain risk`);
+  }
+
+  if (props.windSpeedKmh < 15) {
+    chips.push(`Light winds ${Math.round(props.windSpeedKmh)} km/h`);
+  } else if (props.windGustKmh > 30) {
+    chips.push(`Gusts ${Math.round(props.windGustKmh)} km/h`);
+  }
+
+  if (props.frostRisk) {
+    chips.push('Frost risk tonight');
+  }
+
+  return chips.slice(0, 4);
+}
+
 export function TodayOnYourFarm(props: Props) {
+  const [expanded, setExpanded] = useState<ExpandedPanel>(null);
+
   const actions = useMemo(() => generateActions(props), [props.tempC, props.humidity, props.windSpeedKmh, props.windGustKmh, props.deltaT, props.deltaTRating, props.todayBestWindow, props.todayRainChance, props.todayExpectedRain, props.rainfall, props.frostRisk, props.soilMoisture, props.uvIndex]);
   const alerts = useMemo(() => generateRiskAlerts(props), [props.tempC, props.humidity, props.frostRisk, props.frostWarning, props.windGustKmh, props.daysWithoutRain]);
-
-  const doActions = actions.filter(a => a.type === 'do');
-  const avoidActions = actions.filter(a => a.type === 'avoid');
-  const nextActions = actions.filter(a => a.type === 'next');
+  const chips = useMemo(() => getChipSummaries(actions, props), [actions, props]);
 
   const timeUntil = props.todayBestWindow ? getTimeUntilWindow(props.todayBestWindow.startTime) : null;
 
+  const toggle = (panel: ExpandedPanel) => {
+    setExpanded(prev => prev === panel ? null : panel);
+  };
+
   return (
-    <div className="mb-5 space-y-4">
-      {/* Daily Decision Engine Header */}
-      <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/40 bg-slate-800/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-green-600/20 border border-green-500/30 flex items-center justify-center">
-                <Zap className="w-4.5 h-4.5 text-green-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black text-white tracking-tight">Today on Your Farm</h2>
-                <p className="text-[11px] text-slate-500 font-medium">Your daily farm decision engine</p>
-              </div>
+    <div className="mb-5 space-y-3">
+      {/* Spray Window Card */}
+      <div className="rounded-xl border border-slate-700/50 bg-slate-900/70 backdrop-blur-sm shadow-lg overflow-hidden transition-all duration-200 hover:border-slate-600/60">
+        <button
+          onClick={() => toggle('spray')}
+          className="w-full px-4 py-3.5 flex items-center justify-between cursor-pointer text-left"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              props.todayBestWindow?.rating === 'Good' ? 'bg-green-600/15 border border-green-500/30' :
+              props.todayBestWindow?.rating === 'Moderate' ? 'bg-amber-600/15 border border-amber-500/30' :
+              'bg-slate-800 border border-slate-700/50'
+            }`}>
+              <Clock className={`w-4 h-4 ${
+                props.todayBestWindow?.rating === 'Good' ? 'text-green-400' :
+                props.todayBestWindow?.rating === 'Moderate' ? 'text-amber-400' :
+                'text-slate-500'
+              }`} />
             </div>
-            {timeUntil && (
-              <SprayCountdownBadge hours={timeUntil.hours} minutes={timeUntil.minutes} window={props.todayBestWindow!} />
-            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-white">Best Spray Window</h3>
+                {props.todayBestWindow && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                    props.todayBestWindow.rating === 'Good' ? 'text-green-400 bg-green-500/10 border-green-500/30' :
+                    'text-amber-400 bg-amber-500/10 border-amber-500/30'
+                  }`}>
+                    {props.todayBestWindow.rating === 'Good' ? 'Ideal' : props.todayBestWindow.rating}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
+                {props.todayBestWindow
+                  ? `${props.todayBestWindow.startTime} – ${props.todayBestWindow.endTime} (${props.todayBestWindow.duration.toFixed(0)}h window)`
+                  : 'No safe window today'
+                }
+                {timeUntil && <span className="text-green-400 font-medium ml-2">Starts in {timeUntil.hours > 0 ? `${timeUntil.hours}h ${timeUntil.minutes}m` : `${timeUntil.minutes}m`}</span>}
+              </p>
+            </div>
           </div>
-        </div>
-
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Best actions */}
-            <ActionColumn
-              title="Best actions today"
-              items={doActions}
-              emptyText="No specific actions recommended"
-              accentColor="green"
-            />
-
-            {/* Avoid today */}
-            <ActionColumn
-              title="Avoid today"
-              items={avoidActions}
-              emptyText="No restrictions — clear for all activities"
-              accentColor="amber"
-            />
-
-            {/* Next opportunity */}
-            <ActionColumn
-              title="Next key opportunity"
-              items={nextActions}
-              emptyText="Check back tomorrow for updates"
-              accentColor="blue"
-            />
+          <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+            <span className="text-[10px] text-slate-600 hidden sm:block">Click for full spray analysis</span>
+            <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${expanded === 'spray' ? 'rotate-180' : ''}`} />
           </div>
+        </button>
 
-          {/* Why it matters */}
-          <div className="mt-4 pt-3 border-t border-slate-700/30">
-            <p className="text-[10px] text-slate-600 leading-relaxed">
-              <span className="font-semibold text-slate-500">Why this matters:</span> Spraying outside optimal conditions reduces product effectiveness by up to 50% and increases drift risk. Timing decisions to weather windows maximises ROI on chemical inputs.
-            </p>
+        {/* Expanded spray content */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded === 'spray' ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="px-4 pb-4 pt-1 border-t border-slate-700/30">
+            <SprayExpandedContent props={props} timeUntil={timeUntil} />
           </div>
         </div>
       </div>
 
-      {/* Spray Window Countdown (only if upcoming) */}
-      {timeUntil && props.todayBestWindow && (
-        <SprayCountdownCard hours={timeUntil.hours} minutes={timeUntil.minutes} window={props.todayBestWindow} deltaTRating={props.deltaTRating} windSpeedKmh={props.windSpeedKmh} todayRainChance={props.todayRainChance} />
-      )}
+      {/* Farm Summary Card */}
+      <div className="rounded-xl border border-slate-700/50 bg-slate-900/70 backdrop-blur-sm shadow-lg overflow-hidden transition-all duration-200 hover:border-slate-600/60">
+        <button
+          onClick={() => toggle('farm')}
+          className="w-full px-4 py-3.5 cursor-pointer text-left"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-green-600/15 border border-green-500/25 flex items-center justify-center flex-shrink-0">
+                <Zap className="w-4 h-4 text-green-400" />
+              </div>
+              <h3 className="text-sm font-bold text-white">Today's Farm Summary</h3>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+              <span className="text-[10px] text-slate-600 hidden sm:block">Click for full recommendations</span>
+              <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${expanded === 'farm' ? 'rotate-180' : ''}`} />
+            </div>
+          </div>
+          {/* Action chips strip */}
+          <div className="flex items-center gap-2 mt-2.5 ml-11 flex-wrap">
+            {chips.map((chip, i) => (
+              <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700/40 text-slate-300">
+                {chip}
+              </span>
+            ))}
+          </div>
+        </button>
 
-      {/* Risk Alerts */}
-      {alerts.length > 0 && (
+        {/* Expanded farm content */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded === 'farm' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className="px-4 pb-4 pt-1 border-t border-slate-700/30">
+            <FarmExpandedContent actions={actions} alerts={alerts} props={props} />
+          </div>
+        </div>
+      </div>
+
+      {/* Critical alerts always visible */}
+      {alerts.filter(a => a.severity === 'danger').length > 0 && (
         <div className="space-y-2">
-          {alerts.map((alert, i) => (
+          {alerts.filter(a => a.severity === 'danger').map((alert, i) => (
+            <RiskAlertCard key={i} alert={alert} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SprayExpandedContent({ props, timeUntil }: { props: Props; timeUntil: { hours: number; minutes: number } | null }) {
+  const confidence = props.todayBestWindow?.rating === 'Good' ? 'High' : 'Moderate';
+
+  return (
+    <div className="space-y-4 pt-3">
+      {props.todayBestWindow ? (
+        <>
+          {timeUntil && (
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-black text-white tabular-nums">
+                {timeUntil.hours > 0 ? `${timeUntil.hours}h ` : ''}{timeUntil.minutes}m
+              </span>
+              <span className="text-sm text-slate-500">until window opens</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <ReasonChip
+              icon={<Wind className="w-3 h-3" />}
+              label="Wind"
+              value={`${Math.round(props.windSpeedKmh)} km/h`}
+              good={props.windSpeedKmh < 15}
+            />
+            <ReasonChip
+              icon={<Droplets className="w-3 h-3" />}
+              label="Rain risk"
+              value={`${props.todayRainChance}%`}
+              good={props.todayRainChance < 30}
+            />
+            <ReasonChip
+              icon={<Thermometer className="w-3 h-3" />}
+              label="Delta T"
+              value={props.deltaTRating}
+              good={props.deltaTRating === 'Ideal' || props.deltaTRating === 'Good'}
+            />
+          </div>
+
+          <div className="rounded-lg bg-slate-800/50 border border-slate-700/30 px-3 py-2.5">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="w-3 h-3 text-slate-400" />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Analysis</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {confidence === 'High'
+                ? `Conditions are ideal for spraying between ${props.todayBestWindow.startTime} – ${props.todayBestWindow.endTime}. Wind below threshold, low rain probability, and Delta T in optimal range for droplet performance.`
+                : `Moderate spray conditions between ${props.todayBestWindow.startTime} – ${props.todayBestWindow.endTime}. Some factors are marginal — monitor wind gusts and consider drift-reducing nozzles.`
+              }
+            </p>
+          </div>
+
+          <p className="text-[10px] text-slate-600 leading-relaxed">
+            <span className="font-semibold text-slate-500">Why this matters:</span> Timing applications to optimal windows reduces drift, improves coverage, and maximises product efficacy.
+          </p>
+        </>
+      ) : (
+        <div className="py-3">
+          <p className="text-sm text-slate-400">No safe spray window available today.</p>
+          <p className="text-xs text-slate-600 mt-1">Wind speeds or rain risk are too high for effective application. Check tomorrow's forecast.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FarmExpandedContent({ actions, alerts, props }: { actions: TodayAction[]; alerts: RiskAlert[]; props: Props }) {
+  const doActions = actions.filter(a => a.type === 'do');
+  const avoidActions = actions.filter(a => a.type === 'avoid');
+  const nextActions = actions.filter(a => a.type === 'next');
+
+  return (
+    <div className="space-y-4 pt-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <ActionColumn title="Best actions today" items={doActions} emptyText="No specific actions recommended" accentColor="green" />
+        <ActionColumn title="Avoid today" items={avoidActions} emptyText="No restrictions — all clear" accentColor="amber" />
+        <ActionColumn title="Next opportunity" items={nextActions} emptyText="Check back tomorrow" accentColor="blue" />
+      </div>
+
+      {alerts.filter(a => a.severity !== 'danger').length > 0 && (
+        <div className="space-y-2">
+          {alerts.filter(a => a.severity !== 'danger').map((alert, i) => (
             <RiskAlertCard key={i} alert={alert} />
           ))}
         </div>
       )}
 
-      {/* Irrigation Recommendation */}
       {props.soilMoisture !== null && (
-        <IrrigationCard soilMoisture={props.soilMoisture} soilTempC={props.soilTempC} todayExpectedRain={props.todayExpectedRain} />
+        <IrrigationSection soilMoisture={props.soilMoisture} soilTempC={props.soilTempC} todayExpectedRain={props.todayExpectedRain} />
       )}
+
+      <p className="text-[10px] text-slate-600 leading-relaxed pt-2 border-t border-slate-700/30">
+        <span className="font-semibold text-slate-500">Why this matters:</span> Spraying outside optimal conditions reduces product effectiveness by up to 50% and increases drift risk. Timing decisions to weather windows maximises ROI on chemical inputs.
+      </p>
     </div>
   );
 }
@@ -319,96 +474,26 @@ function ActionColumn({ title, items, emptyText, accentColor }: { title: string;
   const c = colorMap[accentColor];
 
   return (
-    <div className={`rounded-xl border ${c.border} ${c.bg} p-4`}>
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`w-2 h-2 rounded-full ${c.dot}`} />
-        <span className={`text-xs font-bold ${c.text} uppercase tracking-wider`}>{title}</span>
+    <div className={`rounded-xl border ${c.border} ${c.bg} p-3`}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+        <span className={`text-[10px] font-bold ${c.text} uppercase tracking-wider`}>{title}</span>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-slate-600 italic">{emptyText}</p>
+        <p className="text-[11px] text-slate-600 italic">{emptyText}</p>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {items.map((item, i) => (
             <div key={i} className="flex items-start gap-2">
               <span className={`mt-0.5 flex-shrink-0 ${c.text}`}>{item.icon}</span>
               <div className="min-w-0">
-                <p className="text-sm text-slate-200 font-medium leading-snug">{item.text}</p>
-                {item.detail && <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{item.detail}</p>}
+                <p className="text-xs text-slate-200 font-medium leading-snug">{item.text}</p>
+                {item.detail && <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{item.detail}</p>}
               </div>
             </div>
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function SprayCountdownBadge({ hours, minutes, window }: { hours: number; minutes: number; window: SprayWindow }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-950/40 border border-green-500/30">
-      <Clock className="w-3.5 h-3.5 text-green-400" />
-      <div className="text-right">
-        <div className="text-xs font-bold text-green-300">
-          {hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`}
-        </div>
-        <div className="text-[9px] text-green-500/70 font-medium">until spray window</div>
-      </div>
-    </div>
-  );
-}
-
-function SprayCountdownCard({ hours, minutes, window, deltaTRating, windSpeedKmh, todayRainChance }: { hours: number; minutes: number; window: SprayWindow; deltaTRating: string; windSpeedKmh: number; todayRainChance: number }) {
-  const confidence = window.rating === 'Good' ? 'High' : 'Moderate';
-  const confidenceColor = confidence === 'High' ? 'text-green-400 bg-green-500/10 border-green-500/30' : 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-
-  return (
-    <div className="rounded-2xl border border-green-500/20 bg-green-950/15 backdrop-blur-sm overflow-hidden">
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-green-400" />
-            <span className="text-sm font-bold text-green-300">Next Safe Spray Window</span>
-          </div>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${confidenceColor}`}>
-            {confidence} confidence
-          </span>
-        </div>
-
-        <div className="flex items-baseline gap-3 mb-4">
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-black text-white tabular-nums">{hours > 0 ? `${hours}h` : ''}</span>
-            <span className="text-4xl font-black text-white tabular-nums">{minutes}m</span>
-          </div>
-          <span className="text-sm text-slate-500">
-            {window.startTime} – {window.endTime}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <ReasonChip
-            icon={<Wind className="w-3 h-3" />}
-            label="Wind"
-            value={`${Math.round(windSpeedKmh)} km/h`}
-            good={windSpeedKmh < 15}
-          />
-          <ReasonChip
-            icon={<Droplets className="w-3 h-3" />}
-            label="Rain risk"
-            value={`${todayRainChance}%`}
-            good={todayRainChance < 30}
-          />
-          <ReasonChip
-            icon={<Thermometer className="w-3 h-3" />}
-            label="Delta T"
-            value={deltaTRating}
-            good={deltaTRating === 'Ideal' || deltaTRating === 'Good'}
-          />
-        </div>
-
-        <p className="text-[10px] text-slate-600 mt-3 leading-relaxed">
-          <span className="font-semibold text-slate-500">Why this matters:</span> Timing applications to optimal spray windows reduces drift, improves coverage, and ensures maximum product efficacy.
-        </p>
-      </div>
     </div>
   );
 }
@@ -434,17 +519,17 @@ function RiskAlertCard({ alert }: { alert: RiskAlert }) {
   const s = styles[alert.severity];
 
   return (
-    <div className={`rounded-xl border ${s.border} ${s.bg} p-4`}>
-      <div className="flex items-start gap-3">
+    <div className={`rounded-xl border ${s.border} ${s.bg} p-3`}>
+      <div className="flex items-start gap-2.5">
         <div className={`mt-0.5 ${s.icon}`}>
-          {alert.severity === 'danger' ? <AlertTriangle className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+          {alert.severity === 'danger' ? <AlertTriangle className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className={`text-sm font-bold ${s.title}`}>{alert.title}</h4>
-          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{alert.description}</p>
-          <div className="mt-2 flex items-start gap-1.5">
+          <h4 className={`text-xs font-bold ${s.title}`}>{alert.title}</h4>
+          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{alert.description}</p>
+          <div className="mt-1.5 flex items-start gap-1.5">
             <CheckCircle className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-slate-300 font-medium leading-relaxed">{alert.action}</p>
+            <p className="text-[11px] text-slate-300 font-medium leading-relaxed">{alert.action}</p>
           </div>
         </div>
       </div>
@@ -452,21 +537,19 @@ function RiskAlertCard({ alert }: { alert: RiskAlert }) {
   );
 }
 
-function IrrigationCard({ soilMoisture, soilTempC, todayExpectedRain }: { soilMoisture: number; soilTempC: number | null; todayExpectedRain: number }) {
+function IrrigationSection({ soilMoisture, soilTempC, todayExpectedRain }: { soilMoisture: number; soilTempC: number | null; todayExpectedRain: number }) {
   const needsIrrigation = soilMoisture < 25;
   const adequate = soilMoisture >= 40;
-  const marginal = !needsIrrigation && !adequate;
-
   const rainWillHelp = todayExpectedRain > 3 && soilMoisture < 40;
 
   return (
-    <div className={`rounded-2xl border ${needsIrrigation ? 'border-amber-500/25 bg-amber-950/10' : 'border-green-500/20 bg-green-950/10'} p-5`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`rounded-xl border ${needsIrrigation ? 'border-amber-500/25 bg-amber-950/10' : 'border-green-500/20 bg-green-950/10'} p-3`}>
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Droplets className={`w-4 h-4 ${needsIrrigation ? 'text-amber-400' : 'text-green-400'}`} />
-          <span className="text-sm font-bold text-white">Irrigation Recommendation</span>
+          <Droplets className={`w-3.5 h-3.5 ${needsIrrigation ? 'text-amber-400' : 'text-green-400'}`} />
+          <span className="text-xs font-bold text-white">Irrigation</span>
         </div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
           needsIrrigation ? 'text-amber-300 bg-amber-500/10 border-amber-500/30' :
           adequate ? 'text-green-300 bg-green-500/10 border-green-500/30' :
           'text-slate-300 bg-slate-800 border-slate-600/40'
@@ -474,53 +557,20 @@ function IrrigationCard({ soilMoisture, soilTempC, todayExpectedRain }: { soilMo
           {needsIrrigation ? 'Action needed' : adequate ? 'Adequate' : 'Monitor'}
         </span>
       </div>
-
-      <div className="flex items-center gap-4 mb-3">
-        <div>
-          <div className="text-2xl font-black text-white tabular-nums">{soilMoisture.toFixed(0)}%</div>
-          <div className="text-[10px] text-slate-500 font-medium uppercase">Soil moisture</div>
+      <div className="flex items-center gap-4">
+        <div className="flex items-baseline gap-1">
+          <span className="text-lg font-black text-white tabular-nums">{soilMoisture.toFixed(0)}%</span>
+          <span className="text-[10px] text-slate-500">moisture</span>
         </div>
         {soilTempC !== null && (
-          <div>
-            <div className="text-2xl font-black text-white tabular-nums">{soilTempC.toFixed(1)}°</div>
-            <div className="text-[10px] text-slate-500 font-medium uppercase">Soil temp</div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-black text-white tabular-nums">{soilTempC.toFixed(1)}°</span>
+            <span className="text-[10px] text-slate-500">soil</span>
           </div>
         )}
       </div>
-
-      {needsIrrigation && (
-        <div className="rounded-lg bg-amber-950/30 border border-amber-500/20 px-3 py-2 mb-2">
-          <p className="text-xs text-amber-200 font-medium">
-            Soil moisture dropping below optimal range. Irrigation recommended within 24–48 hours.
-          </p>
-        </div>
-      )}
-
-      {adequate && (
-        <div className="rounded-lg bg-green-950/30 border border-green-500/20 px-3 py-2 mb-2">
-          <p className="text-xs text-green-200 font-medium">
-            Soil profile adequate — no irrigation required today.
-          </p>
-        </div>
-      )}
-
-      {marginal && (
-        <div className="rounded-lg bg-slate-800/50 border border-slate-700/30 px-3 py-2 mb-2">
-          <p className="text-xs text-slate-300 font-medium">
-            Moisture levels marginal. Monitor over next 24 hours and assess crop demand.
-          </p>
-        </div>
-      )}
-
-      {rainWillHelp && (
-        <p className="text-[11px] text-blue-400 mt-1">
-          {todayExpectedRain.toFixed(1)} mm rain forecast — may reduce irrigation need.
-        </p>
-      )}
-
-      <p className="text-[10px] text-slate-600 mt-2 leading-relaxed">
-        <span className="font-semibold text-slate-500">Why this matters:</span> Timely irrigation prevents yield loss from water stress while avoiding over-watering that increases disease pressure and input costs.
-      </p>
+      {needsIrrigation && <p className="text-[11px] text-amber-200/80 mt-1.5">Irrigation recommended within 24–48 hours.</p>}
+      {rainWillHelp && <p className="text-[10px] text-blue-400 mt-1">{todayExpectedRain.toFixed(1)} mm rain forecast — may reduce need.</p>}
     </div>
   );
 }

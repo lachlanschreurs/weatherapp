@@ -928,25 +928,6 @@ function App() {
           </div>
         )}
 
-        {/* DAILY DECISION ENGINE */}
-        <TodayOnYourFarm
-          tempC={tempC}
-          humidity={humidity}
-          windSpeedKmh={windSpeedKmh}
-          windGustKmh={windGustKmh}
-          deltaT={deltaT}
-          deltaTRating={deltaTCondition.rating}
-          todayBestWindow={todayBestWindow}
-          todayRainChance={todayRainChance}
-          todayExpectedRain={todayExpectedRain}
-          rainfall={rainfall}
-          frostRisk={frostRisk}
-          frostWarning={frostWarning}
-          soilMoisture={probeReading?.moisture_percent ?? Number(soilMoisture)}
-          soilTempC={probeReading?.soil_temp_c ?? Number(soilTempC)}
-          uvIndex={uvIndex}
-        />
-
         {/* HERO CURRENT CONDITIONS */}
         <div className="mb-5 grid grid-cols-1 xl:grid-cols-3 gap-5">
 
@@ -1170,6 +1151,25 @@ function App() {
             </div>
           </div>
         </div>
+
+        {/* DECISION ENGINE — Compact expandable cards */}
+        <TodayOnYourFarm
+          tempC={tempC}
+          humidity={humidity}
+          windSpeedKmh={windSpeedKmh}
+          windGustKmh={windGustKmh}
+          deltaT={deltaT}
+          deltaTRating={deltaTCondition.rating}
+          todayBestWindow={todayBestWindow}
+          todayRainChance={todayRainChance}
+          todayExpectedRain={todayExpectedRain}
+          rainfall={rainfall}
+          frostRisk={frostRisk}
+          frostWarning={frostWarning}
+          soilMoisture={probeReading?.moisture_percent ?? Number(soilMoisture)}
+          soilTempC={probeReading?.soil_temp_c ?? Number(soilTempC)}
+          uvIndex={uvIndex}
+        />
 
         {/* BIG METRIC CARDS ROW */}
         <div className="mb-5 grid grid-cols-2 lg:grid-cols-5 gap-4">
