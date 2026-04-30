@@ -11,6 +11,8 @@ export interface WHPEntry {
   registered: boolean;
 }
 
+export type CountryCode = 'AU' | 'US' | 'NZ';
+
 export interface Chemical {
   id: string;
   product_name: string;
@@ -29,7 +31,9 @@ export interface Chemical {
   label_notes: string;
   resistance_notes: string;
   apvma_registration: string;
+  registration_number: string;
   label_link: string;
+  country: CountryCode;
   whp_entries?: WHPEntry[];
 }
 

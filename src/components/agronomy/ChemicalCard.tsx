@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, FlaskConical, Clock, AlertTriangle, Shield, ExternalLink, Tag } from 'lucide-react';
-import type { Chemical, WHPEntry } from './types';
+import type { Chemical, WHPEntry, CountryCode } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
@@ -8,17 +8,25 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string
   insecticide: { bg: 'bg-amber-900/40', text: 'text-amber-300', border: 'border-amber-500/30', dot: 'bg-amber-400' },
   herbicide: { bg: 'bg-orange-900/40', text: 'text-orange-300', border: 'border-orange-500/30', dot: 'bg-orange-400' },
   miticide: { bg: 'bg-rose-900/40', text: 'text-rose-300', border: 'border-rose-500/30', dot: 'bg-rose-400' },
-  nematicide: { bg: 'bg-purple-900/40', text: 'text-purple-300', border: 'border-purple-500/30', dot: 'bg-purple-400' },
+  nematicide: { bg: 'bg-rose-900/40', text: 'text-rose-300', border: 'border-rose-500/30', dot: 'bg-rose-400' },
   other: { bg: 'bg-slate-800/40', text: 'text-slate-300', border: 'border-slate-500/30', dot: 'bg-slate-400' },
+};
+
+const REG_BODY_INFO: Record<CountryCode, { name: string; label: string }> = {
+  AU: { name: 'APVMA', label: 'APVMA registration' },
+  US: { name: 'EPA', label: 'EPA Reg. No.' },
+  NZ: { name: 'ACVM', label: 'ACVM/EPA NZ' },
 };
 
 interface Props {
   chemical: Chemical;
+  region?: CountryCode;
 }
 
-export function ChemicalCard({ chemical }: Props) {
+export function ChemicalCard({ chemical, region = 'AU' }: Props) {
   const [expanded, setExpanded] = useState(false);
   const style = CATEGORY_STYLES[chemical.category] || CATEGORY_STYLES.other;
+  const regBody = REG_BODY_INFO[chemical.country || region];
 
   return (
     <div className={`rounded-xl border ${style.border} bg-slate-900/60 overflow-hidden transition-all duration-200 hover:bg-slate-900/80`}>
@@ -68,7 +76,7 @@ export function ChemicalCard({ chemical }: Props) {
         <div className="px-5 pb-5 border-t border-slate-700/40 pt-4 space-y-4">
           <div className="rounded-lg bg-slate-800/40 border border-slate-700/30 px-3 py-2">
             <p className="text-[10px] text-slate-500 italic">
-              {chemical.active_ingredient} may be used where registered for the listed crops and target issues. Always verify current APVMA registration, product label, and withholding periods before use.
+              {chemical.active_ingredient} may be used where registered for the listed crops and target issues. Always verify current {regBody.name} registration, product label, and withholding periods before use.
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -130,10 +138,10 @@ export function ChemicalCard({ chemical }: Props) {
           )}
 
           <div className="flex flex-wrap gap-3 pt-1">
-            {chemical.apvma_registration && (
+            {(chemical.apvma_registration || chemical.registration_number) && (
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Tag className="w-3 h-3" />
-                <span>APVMA: <span className="text-slate-400 font-mono">{chemical.apvma_registration}</span></span>
+                <span>{regBody.label}: <span className="text-slate-400 font-mono">{chemical.registration_number || chemical.apvma_registration}</span></span>
               </div>
             )}
             {chemical.label_link && (

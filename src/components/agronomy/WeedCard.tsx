@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Leaf, Eye, AlertTriangle, FlaskConical, Activity } from 'lucide-react';
-import type { Weed } from './types';
+import type { Weed, CountryCode } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 import { IPMPlanCard } from './IPMPlanCard';
 import type { IPMWeatherContext } from '../../utils/ipm';
@@ -13,12 +13,15 @@ const EFFICACY_COLORS = {
   '': 'bg-slate-800 text-slate-400 border-slate-600/40',
 };
 
+const REG_BODY_NAMES: Record<CountryCode, string> = { AU: 'APVMA', US: 'EPA', NZ: 'ACVM/EPA NZ' };
+
 interface Props {
   weed: Weed;
   weatherContext?: IPMWeatherContext;
+  region?: CountryCode;
 }
 
-export function WeedCard({ weed, weatherContext }: Props) {
+export function WeedCard({ weed, weatherContext, region = 'AU' }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -105,7 +108,7 @@ export function WeedCard({ weed, weatherContext }: Props) {
                 <div className="text-xs font-bold text-orange-400 uppercase tracking-wider">Registered Spray Options</div>
               </div>
               <p className="text-[10px] text-slate-500 mb-2.5 italic">
-                Common registered active ingredients include the following. Products containing these actives may be suitable where registered — always verify APVMA registration and crop label before use.
+                Common registered active ingredients include the following. Products containing these actives may be suitable where registered — always verify {REG_BODY_NAMES[region]} registration and crop label before use.
               </p>
               <div className="space-y-2">
                 {weed.chemicals.map(({ chemical, application_notes, efficacy_rating }) => (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Bug, Eye, AlertTriangle, FlaskConical, Activity, Shield } from 'lucide-react';
-import type { Pest } from './types';
+import type { Pest, CountryCode } from './types';
 import { AgronomyDisclaimer } from '../AgronomyDisclaimer';
 import { IPMPlanCard } from './IPMPlanCard';
 import type { IPMWeatherContext } from '../../utils/ipm';
@@ -23,12 +23,15 @@ const EFFICACY_COLORS = {
   '':       'bg-slate-800 text-slate-400 border-slate-600/40',
 };
 
+const REG_BODY_NAMES: Record<CountryCode, string> = { AU: 'APVMA', US: 'EPA', NZ: 'ACVM/EPA NZ' };
+
 interface Props {
   pest: Pest;
   weatherContext?: IPMWeatherContext;
+  region?: CountryCode;
 }
 
-export function PestCard({ pest, weatherContext }: Props) {
+export function PestCard({ pest, weatherContext, region = 'AU' }: Props) {
   const [expanded, setExpanded] = useState(false);
   const style = PEST_TYPE_STYLES[pest.pest_type] || PEST_TYPE_STYLES[''];
 
@@ -110,7 +113,7 @@ export function PestCard({ pest, weatherContext }: Props) {
                 <div>
                   <div className="text-xs font-bold text-amber-400/70 uppercase tracking-wider mb-2 mt-1">Registered Spray Options</div>
                   <p className="text-[10px] text-slate-500 mb-2 italic">
-                    Active ingredients that may be suitable where registered. Always verify APVMA registration, crop label, rates, and withholding periods before use.
+                    Active ingredients that may be suitable where registered. Always verify {REG_BODY_NAMES[region]} registration, crop label, rates, and withholding periods before use.
                   </p>
                   <div className="space-y-2">
                     {pest.chemicals.map(({ chemical, application_notes, efficacy_rating }) => (

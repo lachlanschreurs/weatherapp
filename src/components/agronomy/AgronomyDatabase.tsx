@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink, Shield } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink, Shield, Globe } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { AgronomyDisclaimer, DISCLAIMER_FULL } from '../AgronomyDisclaimer';
-import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab } from './types';
+import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab, CountryCode } from './types';
 import { AgronomySearch } from './AgronomySearch';
 import { ChemicalCard } from './ChemicalCard';
 import { DiseaseCard } from './DiseaseCard';
@@ -79,12 +79,25 @@ function ScanAIButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+const REGION_OPTIONS: { code: CountryCode; label: string; flag: string; regBody: string; regLink: string }[] = [
+  { code: 'AU', label: 'Australia', flag: 'AU', regBody: 'APVMA', regLink: 'https://www.apvma.gov.au/node/10976' },
+  { code: 'US', label: 'United States', flag: 'US', regBody: 'EPA', regLink: 'https://www.epa.gov/pesticide-registration' },
+  { code: 'NZ', label: 'New Zealand', flag: 'NZ', regBody: 'ACVM / EPA NZ', regLink: 'https://www.epa.govt.nz/industry-areas/hazardous-substances/' },
+];
+
+function getRegionFromCountry(country: string): CountryCode {
+  if (country === 'US') return 'US';
+  if (country === 'NZ') return 'NZ';
+  return 'AU';
+}
+
 interface Props {
   onClose: () => void;
   isPremium?: boolean;
   onSignUp?: () => void;
   initialQuery?: string;
   weatherContext?: IPMWeatherContext;
+  userCountry?: string;
 }
 
 interface AIAnalysisResult {
@@ -96,7 +109,7 @@ interface AIAnalysisResult {
   riskLevel?: string;
 }
 
-export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '', weatherContext }: Props) {
+export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '', weatherContext, userCountry = 'AU' }: Props) {
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [disclaimerChecked, setDisclaimerChecked] = useState(false);
   const [showDisclaimerView, setShowDisclaimerView] = useState(false);
@@ -106,6 +119,7 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
   const [categoryFilter, setCategoryFilter] = useState('');
   const [activeIngredient, setActiveIngredient] = useState('');
   const [loading, setLoading] = useState(true);
+  const [region, setRegion] = useState<CountryCode>(() => getRegionFromCountry(userCountry));
 
   const [chemicals, setChemicals] = useState<Chemical[]>([]);
   const [diseases, setDiseases] = useState<Disease[]>([]);
@@ -200,11 +214,12 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
 
   const filteredChemicals = useMemo(() => chemicals.filter(c => {
     const q = query.toLowerCase();
-    return (!q || c.product_name.toLowerCase().includes(q) || c.active_ingredient.toLowerCase().includes(q) || c.chemical_group.toLowerCase().includes(q) || c.target_issues.some(t => t.toLowerCase().includes(q)))
+    return (c.country === region || !c.country)
+      && (!q || c.product_name.toLowerCase().includes(q) || c.active_ingredient.toLowerCase().includes(q) || c.chemical_group.toLowerCase().includes(q) || c.target_issues.some(t => t.toLowerCase().includes(q)))
       && (!cropFilter || c.registered_crops.includes(cropFilter))
       && (!categoryFilter || c.category === categoryFilter)
       && (!activeIngredient || c.active_ingredient === activeIngredient);
-  }), [chemicals, query, cropFilter, categoryFilter, activeIngredient]);
+  }), [chemicals, query, cropFilter, categoryFilter, activeIngredient, region]);
 
   const filteredDiseases = useMemo(() => diseases.filter(d => {
     const q = query.toLowerCase();
@@ -320,10 +335,10 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
           'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          message: `You are an Australian agricultural expert specialising in Integrated Pest Management. Analyse this photo and:
+          message: `You are a ${region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : 'Australian'} agricultural expert specialising in Integrated Pest Management. Use ${region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM/EPA NZ-registered products and NZ crop terminology' : 'APVMA-registered products and Australian crop terminology'}. Analyse this photo and:
 1. Identify what you see (crop, pest, disease, weed, nutrient deficiency, etc.)
 2. Provide a brief description
-3. Give 2-4 specific recommendations
+3. Give 2-4 specific recommendations using products registered in ${region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM/EPA NZ)' : 'Australia (APVMA)'}
 4. Classify the issue type and confidence level
 5. Assess the risk level
 
@@ -387,18 +402,22 @@ Respond ONLY with this exact JSON format (no other text):
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 font-medium">Australian agricultural reference — chemicals, diseases, pests, weeds & fertilisers</p>
+                <p className="text-xs text-slate-500 font-medium">
+                  {region === 'AU' && 'Australian agricultural reference — APVMA registered chemicals, diseases, pests, weeds & fertilisers'}
+                  {region === 'US' && 'US agricultural reference — EPA registered chemicals, diseases, pests, weeds & fertilisers'}
+                  {region === 'NZ' && 'New Zealand agricultural reference — ACVM/EPA NZ registered chemicals, diseases, pests, weeds & fertilisers'}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <a
-                href="https://www.apvma.gov.au/node/10976"
+                href={REGION_OPTIONS.find(r => r.code === region)?.regLink || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700/60 bg-slate-800/50 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 text-xs font-medium transition-all duration-200"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                APVMA Label Search
+                {REGION_OPTIONS.find(r => r.code === region)?.regBody} Label Search
               </a>
               <button
                 onClick={() => setShowDisclaimerView(true)}
@@ -444,6 +463,26 @@ Respond ONLY with this exact JSON format (no other text):
                 onChange={handleFileSelect}
               />
               <ScanAIButton onClick={() => fileInputRef.current?.click()} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mb-3">
+            <Globe className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Region:</span>
+            <div className="flex gap-1">
+              {REGION_OPTIONS.map(opt => (
+                <button
+                  key={opt.code}
+                  onClick={() => setRegion(opt.code)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    region === opt.code
+                      ? 'bg-green-600/20 text-green-300 border border-green-500/40'
+                      : 'bg-slate-800/50 text-slate-500 border border-slate-700/40 hover:text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  {opt.label} ({opt.regBody})
+                </button>
+              ))}
             </div>
           </div>
 
@@ -499,7 +538,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredChemicals}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(c) => <ChemicalCard key={c.id} chemical={c} />}
+                  renderItem={(c) => <ChemicalCard key={c.id} chemical={c} region={region} />}
                   tab="chemicals"
                   lockedCount={lockedCount}
                 />
@@ -509,7 +548,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredDiseases}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(d) => <DiseaseCard key={d.id} disease={d} weatherContext={weatherContext} />}
+                  renderItem={(d) => <DiseaseCard key={d.id} disease={d} weatherContext={weatherContext} region={region} />}
                   tab="diseases"
                   lockedCount={lockedCount}
                 />
@@ -519,7 +558,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredPests}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(p) => <PestCard key={p.id} pest={p} weatherContext={weatherContext} />}
+                  renderItem={(p) => <PestCard key={p.id} pest={p} weatherContext={weatherContext} region={region} />}
                   tab="pests"
                   lockedCount={lockedCount}
                 />
@@ -529,7 +568,7 @@ Respond ONLY with this exact JSON format (no other text):
                   items={filteredWeeds}
                   isPremium={isPremium}
                   onSignUp={onSignUp}
-                  renderItem={(w) => <WeedCard key={w.id} weed={w} weatherContext={weatherContext} />}
+                  renderItem={(w) => <WeedCard key={w.id} weed={w} weatherContext={weatherContext} region={region} />}
                   tab="weeds"
                   lockedCount={lockedCount}
                 />
@@ -560,7 +599,7 @@ Respond ONLY with this exact JSON format (no other text):
                 <div className="mt-5 rounded-xl bg-amber-950/25 border border-amber-500/20 px-4 py-3 flex items-start gap-3">
                   <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-200/70 leading-relaxed">
-                    <span className="font-semibold text-amber-300/80">Guide only</span> — always check the current label, rates, WHP, regional approvals, and local agronomy advice before use.
+                    <span className="font-semibold text-amber-300/80">Guide only</span> — always check the current label, rates, WHP, regional approvals ({region === 'AU' ? 'APVMA' : region === 'US' ? 'EPA' : 'ACVM/EPA NZ'}), and local agronomy advice before use.
                   </p>
                 </div>
 

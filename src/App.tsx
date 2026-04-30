@@ -1685,6 +1685,7 @@ function App() {
           isPremium={hasActiveSubscription || (!!user && !trialExpired)}
           onSignUp={() => { setShowAgronomyDB(false); setAgronomyInitialQuery(''); setAuthMode('signup'); setShowAuthModal(true); }}
           initialQuery={agronomyInitialQuery}
+          userCountry={countryCode}
           weatherContext={{
             tempC,
             humidity,
