@@ -1157,7 +1157,7 @@ function App() {
           tempC={tempC}
           humidity={humidity}
           windSpeedKmh={windSpeedKmh}
-          windGustKmh={windGustKmh}
+          windGustKmh={windGustKmh ?? windSpeedKmh}
           deltaT={deltaT}
           deltaTRating={deltaTCondition.rating}
           todayBestWindow={todayBestWindow}
