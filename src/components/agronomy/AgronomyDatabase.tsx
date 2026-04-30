@@ -207,13 +207,13 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
 
   const allCrops = useMemo(() => {
     const crops = new Set<string>();
-    chemicals.forEach(c => c.registered_crops.forEach(crop => crops.add(crop)));
-    diseases.forEach(d => d.affected_crops.forEach(crop => crops.add(crop)));
-    pests.forEach(p => p.affected_crops.forEach(crop => crops.add(crop)));
-    weeds.forEach(w => w.affected_environments.forEach(env => crops.add(env)));
-    fertilisers.forEach(f => f.suitable_crops.forEach(crop => crops.add(crop)));
+    chemicals.filter(c => c.country === region || !c.country).forEach(c => c.registered_crops.forEach(crop => crops.add(crop)));
+    diseases.filter(d => !d.regions || d.regions.length === 0 || d.regions.includes(region)).forEach(d => d.affected_crops.forEach(crop => crops.add(crop)));
+    pests.filter(p => !p.regions || p.regions.length === 0 || p.regions.includes(region)).forEach(p => p.affected_crops.forEach(crop => crops.add(crop)));
+    weeds.filter(w => !w.regions || w.regions.length === 0 || w.regions.includes(region)).forEach(w => w.affected_environments.forEach(env => crops.add(env)));
+    fertilisers.filter(f => !f.regions || f.regions.length === 0 || f.regions.includes(region)).forEach(f => f.suitable_crops.forEach(crop => crops.add(crop)));
     return Array.from(crops).sort();
-  }, [chemicals, diseases, pests, weeds, fertilisers]);
+  }, [chemicals, diseases, pests, weeds, fertilisers, region]);
 
   const allActiveIngredients = useMemo(() => {
     const ais = new Set<string>();
@@ -232,27 +232,35 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
 
   const filteredDiseases = useMemo(() => diseases.filter(d => {
     const q = query.toLowerCase();
-    return (!q || d.disease_name.toLowerCase().includes(q) || d.common_name.toLowerCase().includes(q) || d.pathogen_type.toLowerCase().includes(q) || d.symptoms.toLowerCase().includes(q))
+    const regionMatch = !d.regions || d.regions.length === 0 || d.regions.includes(region);
+    return regionMatch
+      && (!q || d.disease_name.toLowerCase().includes(q) || d.common_name.toLowerCase().includes(q) || d.pathogen_type.toLowerCase().includes(q) || d.symptoms.toLowerCase().includes(q))
       && (!cropFilter || d.affected_crops.includes(cropFilter));
-  }), [diseases, query, cropFilter]);
+  }), [diseases, query, cropFilter, region]);
 
   const filteredPests = useMemo(() => pests.filter(p => {
     const q = query.toLowerCase();
-    return (!q || p.pest_name.toLowerCase().includes(q) || p.common_name.toLowerCase().includes(q) || p.pest_type.toLowerCase().includes(q) || p.damage_caused.toLowerCase().includes(q))
+    const regionMatch = !p.regions || p.regions.length === 0 || p.regions.includes(region);
+    return regionMatch
+      && (!q || p.pest_name.toLowerCase().includes(q) || p.common_name.toLowerCase().includes(q) || p.pest_type.toLowerCase().includes(q) || p.damage_caused.toLowerCase().includes(q))
       && (!cropFilter || p.affected_crops.includes(cropFilter));
-  }), [pests, query, cropFilter]);
+  }), [pests, query, cropFilter, region]);
 
   const filteredWeeds = useMemo(() => weeds.filter(w => {
     const q = query.toLowerCase();
-    return (!q || w.weed_name.toLowerCase().includes(q) || w.common_name.toLowerCase().includes(q) || w.weed_family.toLowerCase().includes(q) || w.growth_habit.toLowerCase().includes(q))
+    const regionMatch = !w.regions || w.regions.length === 0 || w.regions.includes(region);
+    return regionMatch
+      && (!q || w.weed_name.toLowerCase().includes(q) || w.common_name.toLowerCase().includes(q) || w.weed_family.toLowerCase().includes(q) || w.growth_habit.toLowerCase().includes(q))
       && (!cropFilter || w.affected_environments.includes(cropFilter));
-  }), [weeds, query, cropFilter]);
+  }), [weeds, query, cropFilter, region]);
 
   const filteredFertilisers = useMemo(() => fertilisers.filter(f => {
     const q = query.toLowerCase();
-    return (!q || f.product_name.toLowerCase().includes(q) || f.fertiliser_type.toLowerCase().includes(q) || f.notes.toLowerCase().includes(q) || f.brand.toLowerCase().includes(q))
+    const regionMatch = !f.regions || f.regions.length === 0 || f.regions.includes(region);
+    return regionMatch
+      && (!q || f.product_name.toLowerCase().includes(q) || f.fertiliser_type.toLowerCase().includes(q) || f.notes.toLowerCase().includes(q) || f.brand.toLowerCase().includes(q))
       && (!cropFilter || f.suitable_crops.includes(cropFilter));
-  }), [fertilisers, query, cropFilter]);
+  }), [fertilisers, query, cropFilter, region]);
 
   const ipmPlans = useMemo(() => {
     const plans: IPMPlan[] = [];

@@ -48,6 +48,7 @@ export interface Disease {
   weather_favourable_conditions: string;
   management_options: string;
   prevention_notes: string;
+  regions?: string[];
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
 }
 
@@ -64,6 +65,7 @@ export interface Pest {
   monitoring_notes: string;
   spray_threshold: string;
   treatment_options: string;
+  regions?: string[];
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
 }
 
@@ -78,6 +80,7 @@ export interface Weed {
   control_methods: string;
   resistance_notes: string;
   resistance_group: string;
+  regions?: string[];
   chemicals?: Array<{ chemical: Chemical; application_notes: string; efficacy_rating: EfficacyRating }>;
 }
 
@@ -106,6 +109,7 @@ export interface Fertiliser {
   notes: string;
   compatibility_notes: string;
   registration_number: string;
+  regions?: string[];
 }
 
 export type AgronomyTab = 'chemicals' | 'diseases' | 'pests' | 'weeds' | 'fertilisers' | 'ipm';
