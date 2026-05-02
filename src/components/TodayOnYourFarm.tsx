@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { CheckCircle, AlertTriangle, Clock, Droplets, Wind, Thermometer, Sun, Sprout, TrendingUp, Shield, Zap, ChevronDown } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Clock, Droplets, Wind, Thermometer, Sun, Sprout, TrendingUp, Shield, Zap, ChevronDown, Bug } from 'lucide-react';
 import type { SprayWindow } from '../utils/sprayWindow';
+import { assessDiseaseRisk, type DiseaseRiskLevel } from '../utils/diseaseRisk';
 
 interface TodayAction {
   type: 'do' | 'avoid' | 'next';
@@ -438,6 +439,15 @@ function FarmExpandedContent({ actions, alerts, props }: { actions: TodayAction[
   const avoidActions = actions.filter(a => a.type === 'avoid');
   const nextActions = actions.filter(a => a.type === 'next');
 
+  const diseaseRisk = useMemo(() => assessDiseaseRisk({
+    tempC: props.tempC,
+    humidity: props.humidity,
+    rainChance: props.todayRainChance,
+    todayExpectedRain: props.todayExpectedRain,
+    windSpeedKmh: props.windSpeedKmh,
+    soilMoisture: props.soilMoisture,
+  }), [props.tempC, props.humidity, props.todayRainChance, props.todayExpectedRain, props.windSpeedKmh, props.soilMoisture]);
+
   return (
     <div className="space-y-4 pt-3">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -453,6 +463,8 @@ function FarmExpandedContent({ actions, alerts, props }: { actions: TodayAction[
           ))}
         </div>
       )}
+
+      <DiseaseRiskSection assessment={diseaseRisk} />
 
       {props.soilMoisture !== null && (
         <IrrigationSection soilMoisture={props.soilMoisture} soilTempC={props.soilTempC} todayExpectedRain={props.todayExpectedRain} />
@@ -533,6 +545,71 @@ function RiskAlertCard({ alert }: { alert: RiskAlert }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DiseaseRiskSection({ assessment }: { assessment: { level: DiseaseRiskLevel; warnings: string[]; guidance: string[]; factors: { label: string; contributing: boolean }[] } }) {
+  const levelStyles: Record<DiseaseRiskLevel, { border: string; bg: string; badge: string; badgeText: string; icon: string; glow: string }> = {
+    LOW: { border: 'border-green-500/20', bg: 'bg-green-950/10', badge: 'bg-green-500/15 border-green-500/30', badgeText: 'text-green-300', icon: 'text-green-400', glow: '' },
+    MODERATE: { border: 'border-amber-500/25', bg: 'bg-amber-950/10', badge: 'bg-amber-500/15 border-amber-500/30', badgeText: 'text-amber-300', icon: 'text-amber-400', glow: '' },
+    HIGH: { border: 'border-red-500/25', bg: 'bg-red-950/10', badge: 'bg-red-500/15 border-red-500/30', badgeText: 'text-red-300', icon: 'text-red-400', glow: 'shadow-[0_0_12px_-4px_rgba(239,68,68,0.15)]' },
+  };
+  const s = levelStyles[assessment.level];
+
+  return (
+    <div className={`rounded-xl border ${s.border} ${s.bg} ${s.glow} p-3.5`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Bug className={`w-4 h-4 ${s.icon}`} />
+          <span className="text-xs font-bold text-white">Disease Risk &amp; Control Warnings</span>
+        </div>
+        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${s.badge} ${s.badgeText} tracking-wider`}>
+          {assessment.level} RISK
+        </span>
+      </div>
+
+      {/* Contributing factors */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {assessment.factors.map((f, i) => (
+          <span
+            key={i}
+            className={`text-[10px] px-2 py-0.5 rounded-full border ${
+              f.contributing ? `${s.badge} ${s.badgeText}` : 'bg-white/[0.03] border-white/[0.06] text-white/40'
+            }`}
+          >
+            {f.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Warnings */}
+      <div className="space-y-1.5 mb-3">
+        {assessment.warnings.map((w, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <AlertTriangle className={`w-3 h-3 mt-0.5 flex-shrink-0 ${s.icon}`} />
+            <p className="text-[11px] text-white/70 leading-relaxed">{w}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Guidance */}
+      <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] p-2.5 mb-3">
+        <span className="text-[9px] font-bold text-white/40 uppercase tracking-wider">Practical Guidance</span>
+        <div className="mt-1.5 space-y-1">
+          {assessment.guidance.map((g, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <CheckCircle className="w-3 h-3 mt-0.5 flex-shrink-0 text-white/30" />
+              <p className="text-[11px] text-white/60 leading-relaxed">{g}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Disclaimer */}
+      <p className="text-[9px] text-white/30 leading-relaxed">
+        FarmCast disease warnings are a guide only. Always check product labels, local regulations and speak with a qualified agronomist before making spray decisions.
+      </p>
     </div>
   );
 }
