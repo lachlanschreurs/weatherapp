@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, X, Trash2, Loader2, Camera, XCircle, Wheat, ChevronDown } from 'lucide-react';
+import { Send, X, Trash2, Loader2, Camera, XCircle, Wheat, ChevronDown, Mic } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import FarmerJoeVoiceSession from './FarmerJoeVoiceSession';
 
 interface Message {
   id: string;
@@ -132,6 +133,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const [hasEngaged, setHasEngaged] = useState(false);
   const [showIntroTooltip, setShowIntroTooltip] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [voiceSessionOpen, setVoiceSessionOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const MAX_GUEST_QUESTIONS = 3;
@@ -211,6 +213,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
   const handleClose = () => {
     setIsOpen(false);
     setIsMinimized(false);
+    setVoiceSessionOpen(false);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -347,6 +350,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       alert('Failed to clear history');
     }
   };
+
 
   return (
     <>
@@ -488,6 +492,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
             </div>
           </div>
 
+
           {!isMinimized && (
             <>
               <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ background: 'linear-gradient(to bottom, #0d1a10, #091209)' }}>
@@ -587,73 +592,90 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
                   </button>
                 </div>
               ) : (
-                <form
-                  onSubmit={handleSubmit}
-                  className="p-3 border-t border-green-900/30"
-                  style={{ background: 'rgba(13,26,16,0.95)' }}
-                >
-                  {imagePreview && (
-                    <div className="mb-2 relative inline-block">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-16 h-16 object-cover rounded-xl border border-green-600/50"
+                <div className="border-t border-green-900/30" style={{ background: 'rgba(13,26,16,0.95)' }}>
+                  <form onSubmit={handleSubmit} className="p-3">
+                    {imagePreview && (
+                      <div className="mb-2 relative inline-block">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-16 h-16 object-cover rounded-xl border border-green-600/50"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-400 transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 items-end">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        className="hidden"
                       />
                       <button
                         type="button"
-                        onClick={removeImage}
-                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-400 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-green-400 border border-slate-700/60 rounded-xl transition-all flex-shrink-0"
+                        title="Upload image for pest identification"
                       >
-                        <XCircle className="w-3.5 h-3.5" />
+                        <Camera className="w-4 h-4" />
+                      </button>
+
+                      <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Ask Farmer Joe anything..."
+                        className="flex-1 bg-slate-800/60 border border-slate-700/60 text-slate-200 placeholder-slate-500 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-green-600/60 focus:ring-1 focus:ring-green-600/30 transition-all"
+                        disabled={isLoading}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setVoiceSessionOpen(true)}
+                        disabled={isLoading}
+                        className="p-2.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 text-slate-400 hover:text-green-400 rounded-xl transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Talk to Farmer Joe (voice conversation)"
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={isLoading || (!input.trim() && !selectedImage)}
+                        className="p-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-all flex-shrink-0 shadow-lg shadow-green-900/30"
+                      >
+                        <Send className="w-4 h-4" />
                       </button>
                     </div>
-                  )}
 
-                  <div className="flex gap-2 items-end">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-green-400 border border-slate-700/60 rounded-xl transition-all flex-shrink-0"
-                      title="Upload image for pest identification"
-                    >
-                      <Camera className="w-4 h-4" />
-                    </button>
-
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="Ask Farmer Joe anything..."
-                      className="flex-1 bg-slate-800/60 border border-slate-700/60 text-slate-200 placeholder-slate-500 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-green-600/60 focus:ring-1 focus:ring-green-600/30 transition-all"
-                      disabled={isLoading}
-                    />
-
-                    <button
-                      type="submit"
-                      disabled={isLoading || (!input.trim() && !selectedImage)}
-                      className="p-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl transition-all flex-shrink-0 shadow-lg shadow-green-900/30"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {!isAuthenticated && (
-                    <p className="text-xs text-slate-600 mt-2 text-center">
-                      {MAX_GUEST_QUESTIONS - guestQuestionCount} free question{MAX_GUEST_QUESTIONS - guestQuestionCount !== 1 ? 's' : ''} remaining — sign up for unlimited access
-                    </p>
-                  )}
-                </form>
+                    {!isAuthenticated && (
+                      <div className="mt-2 px-0.5">
+                        <p className="text-[10px] text-slate-600">
+                          {MAX_GUEST_QUESTIONS - guestQuestionCount} free question{MAX_GUEST_QUESTIONS - guestQuestionCount !== 1 ? 's' : ''} left
+                        </p>
+                      </div>
+                    )}
+                  </form>
+                </div>
               )}
             </>
           )}
         </div>
+      )}
+
+      {isOpen && voiceSessionOpen && (
+        <FarmerJoeVoiceSession
+          onClose={() => setVoiceSessionOpen(false)}
+          weatherContext={weatherContext}
+        />
       )}
     </>
   );

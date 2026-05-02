@@ -2,158 +2,253 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Premium Font Stack ─────────────────────────────────────── */
+:root {
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Page Background ────────────────────────────────────────── */
 .farmcast-bg {
-  background-color: #111d16;
-  background-image:
-    url("https://images.pexels.com/photos/1282310/pexels-photo-1282310.jpeg?auto=compress&cs=tinysrgb&w=1920&q=60");
-  background-size: cover;
-  background-position: center 40%;
-  background-attachment: fixed;
+  background: linear-gradient(135deg, #0b3a2e 0%, #07271f 100%);
+  min-height: 100vh;
 }
 
 .farmcast-bg-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(8, 22, 12, 0.72) 0%,
-    rgba(10, 25, 14, 0.62) 35%,
-    rgba(8, 20, 12, 0.74) 100%
-  );
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.35) 100%),
+    radial-gradient(ellipse 60% 45% at 50% 20%, rgba(34, 197, 94, 0.08) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
 
-/* Grain texture overlay for depth */
+.farmcast-bg-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.25) 100%);
+  pointer-events: none;
+}
+
 .farmcast-bg-overlay::after {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 200px 200px;
-  opacity: 0.4;
+  opacity: 1;
   pointer-events: none;
 }
 
-/* Premium card glow effects */
+/* ── Card System ────────────────────────────────────────────── */
+.farmcast-card {
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: all 0.2s ease-in-out;
+}
+
+.farmcast-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
 .farmcast-hero-glow {
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(74, 222, 128, 0.04),
+    0 10px 35px rgba(0, 0, 0, 0.45),
+    0 0 50px -15px rgba(34, 197, 94, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.farmcast-metric-card {
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: all 0.2s ease-in-out;
+}
+
+.farmcast-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Status glow variants */
+.farmcast-glow-green {
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(34, 197, 94, 0.18);
+}
+
+.farmcast-glow-yellow {
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(250, 204, 21, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(250, 204, 21, 0.18);
+}
+
+.farmcast-glow-red {
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.farmcast-glow-blue {
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(56, 189, 248, 0.18);
 }
 
 .farmcast-spray-glow-good {
   box-shadow:
-    0 20px 40px -8px rgba(0, 0, 0, 0.4),
-    0 0 30px -10px rgba(74, 222, 128, 0.25),
-    inset 0 1px 0 rgba(74, 222, 128, 0.08);
+    0 10px 35px rgba(0, 0, 0, 0.45),
+    0 0 35px rgba(34, 197, 94, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-spray-glow-moderate {
   box-shadow:
-    0 20px 40px -8px rgba(0, 0, 0, 0.4),
-    0 0 30px -10px rgba(250, 204, 21, 0.2),
-    inset 0 1px 0 rgba(250, 204, 21, 0.06);
+    0 10px 35px rgba(0, 0, 0, 0.45),
+    0 0 35px rgba(250, 204, 21, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-deltat-glow {
   box-shadow:
-    0 20px 40px -8px rgba(0, 0, 0, 0.4),
-    0 0 25px -8px rgba(74, 222, 128, 0.3),
-    inset 0 1px 0 rgba(74, 222, 128, 0.1);
+    0 10px 35px rgba(0, 0, 0, 0.45),
+    0 0 20px -4px rgba(34, 197, 94, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-card-glow {
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    0 10px 35px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-logo-glow {
   box-shadow:
-    0 8px 20px -4px rgba(22, 163, 74, 0.5),
-    0 0 0 1px rgba(74, 222, 128, 0.2);
+    0 6px 20px -4px rgba(34, 197, 94, 0.35),
+    0 0 12px rgba(34, 197, 94, 0.2);
 }
 
-/* ── Global readability tweaks ────────────────────────────────── */
+/* ── Nav Button System ──────────────────────────────────────── */
+.farmcast-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease-in-out;
+}
 
-/* Card backgrounds — graphite-slate feel, clearly separate from page */
+.farmcast-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transform: scale(1.02);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.farmcast-nav-btn-primary {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.15);
+}
+
+.farmcast-nav-btn-primary:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.5);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.25);
+}
+
+/* ── Global Color Overrides ─────────────────────────────────── */
 .bg-slate-900\/70 {
-  background-color: rgba(34, 50, 40, 0.82) !important;
+  background-color: rgba(7, 39, 31, 0.7) !important;
 }
 
-/* Hover state for interactive cards */
-.bg-slate-800\/70,
-.hover\:bg-slate-800\/70:hover {
-  background-color: rgba(44, 62, 50, 0.85) !important;
+.hover\:bg-slate-800\/70:hover,
+.bg-slate-800\/70 {
+  background-color: rgba(11, 58, 46, 0.7) !important;
 }
 
-/* Inner sub-cards / list items */
 .bg-slate-800\/60 {
-  background-color: rgba(44, 62, 50, 0.76) !important;
+  background-color: rgba(11, 58, 46, 0.6) !important;
 }
 .hover\:bg-slate-700\/60:hover {
-  background-color: rgba(54, 74, 60, 0.80) !important;
+  background-color: rgba(16, 70, 55, 0.7) !important;
 }
 
-/* Card borders — crisp separation without harshness */
 .border-slate-700\/60 {
-  border-color: rgba(95, 120, 105, 0.60) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
 }
 .border-slate-700\/50 {
-  border-color: rgba(95, 120, 105, 0.50) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
 }
 .border-slate-700\/40 {
-  border-color: rgba(95, 120, 105, 0.40) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
 }
 
-/* Secondary / muted text — comfortable to read */
 .text-slate-400 {
   --tw-text-opacity: 1;
-  color: rgba(182, 204, 190, var(--tw-text-opacity)) !important;
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 .text-slate-500 {
   --tw-text-opacity: 1;
-  color: rgba(148, 172, 158, var(--tw-text-opacity)) !important;
+  color: rgba(255, 255, 255, 0.4) !important;
 }
 
-/* Primary readable text */
 .text-slate-200 {
   --tw-text-opacity: 1;
-  color: rgba(236, 245, 240, var(--tw-text-opacity)) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
 }
 .text-slate-300 {
   --tw-text-opacity: 1;
-  color: rgba(218, 232, 224, var(--tw-text-opacity)) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
 }
 
-/* Solid full-opacity backgrounds used in loading/error screens */
 .bg-slate-900 {
-  background-color: #1e2e24 !important;
+  background-color: #07271f !important;
 }
 .bg-slate-800 {
-  background-color: #263c2e !important;
+  background-color: #0b3a2e !important;
 }
 .border-slate-700 {
-  border-color: #456050 !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
 }
 .border-slate-600 {
-  border-color: #567860 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 .hover\:bg-slate-700:hover {
-  background-color: #2e4838 !important;
+  background-color: #0e4a3a !important;
 }
 
-/* Premium green pulse animation for Delta T excellent badge */
+/* ── Animations ─────────────────────────────────────────────── */
 @keyframes pulse-green {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.4);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
     opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
     opacity: 0.9;
   }
 }
@@ -162,10 +257,9 @@
   animation: pulse-green 2s ease-in-out infinite;
 }
 
-/* Card lift on hover */
 .farmcast-card-hover:hover {
   transform: translateY(-2px);
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease-in-out;
 }
 
 @keyframes rain {
@@ -219,11 +313,9 @@
   40% {
     transform: translateY(0);
   }
-  /* Pause flat */
   40%, 50% {
     transform: translateY(0);
   }
-  /* Second drop from halfway */
   50% {
     transform: translateY(-50vh);
     animation-timing-function: ease-in;
