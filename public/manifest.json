@@ -4,8 +4,8 @@
   "description": "Know exactly what to do on your farm, every day. Daily decisions, spray windows, disease alerts, irrigation recommendations, and AI-powered agronomy — all in one place.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e40af",
-  "theme_color": "#1e40af",
+  "background_color": "#07271f",
+  "theme_color": "#0b3a2e",
   "orientation": "portrait-primary",
   "icons": [
     {
