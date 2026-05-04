@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight, Clock } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -995,69 +995,170 @@ function App() {
             </div>
           </div>
 
-          {/* CARD 2 — SPRAY WINDOW (4 cols, priority card) */}
+          {/* CARD 2 — SPRAY WINDOW DECISION PANEL (4 cols) */}
           <div
             className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
             style={{
-              background: '#1e2937',
-              border: '1px solid rgba(34,197,94,0.3)',
-              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
+              background: 'linear-gradient(160deg, #1e2937 0%, #162220 100%)',
+              border: '1px solid rgba(34,197,94,0.25)',
+              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5), 0 0 40px rgba(34,197,94,0.04)',
             }}
           >
-            <div className="relative z-10 p-8 xl:p-10 flex flex-col flex-1">
-              {/* Heading block */}
-              <div className="mb-6">
-                <div className="uppercase text-green-400 text-xs font-semibold tracking-[3px] mb-1">Spray Window</div>
-                <div className="text-2xl xl:text-3xl font-bold text-white">
-                  {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Period` : 'No Window Today'}
-                </div>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/30 to-transparent" />
+            <div className="relative z-10 p-7 xl:p-8 flex flex-col flex-1">
+              {/* Header */}
+              <div className="mb-4">
+                <div className="uppercase text-green-400/80 text-[10px] font-semibold tracking-[3px]">FarmCast Spray Window</div>
+                <div className="mt-0.5 h-px bg-gradient-to-r from-green-500/20 via-green-500/10 to-transparent w-2/3" />
               </div>
 
-              {/* Big time display */}
+              {/* Status line */}
+              <div className="text-xl xl:text-2xl font-bold text-white mb-4">
+                {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Spray Period` : 'No Spray Window Today'}
+              </div>
+
+              {/* Time range */}
               {todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
-                <>
-                  <p className="text-3xl xl:text-4xl font-bold text-white leading-tight tracking-tight">
-                    {todayBestWindow.startTime} &ndash; {todayBestWindow.endTime}
-                  </p>
-                  <p className="text-base text-green-400 font-medium mt-1.5 uppercase tracking-wide">
-                    {todayBestWindow.rating === 'Good' ? 'Excellent' : 'Moderate'} Conditions
-                  </p>
-                </>
+                <div className="mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <Clock className="w-4 h-4 text-green-400/70 flex-shrink-0" />
+                    <span className="text-2xl xl:text-3xl font-bold text-white tracking-tight">
+                      {todayBestWindow.startTime} &ndash; {todayBestWindow.endTime}
+                    </span>
+                  </div>
+                  {/* Status badge */}
+                  <div className="mt-2">
+                    <span className={`inline-flex items-center text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
+                      todayBestWindow.rating === 'Good'
+                        ? 'bg-green-500/15 text-green-300 border border-green-500/30'
+                        : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                    }`}>
+                      {todayBestWindow.rating === 'Good' ? 'Excellent Conditions' : 'Moderate Conditions'}
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <p className="text-base text-slate-400">Conditions not favourable for spraying today</p>
+                <div className="mb-3">
+                  <span className="inline-flex items-center text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30">
+                    Avoid Spraying
+                  </span>
+                </div>
               )}
 
-              {/* Key metrics — oversized */}
-              <div className="grid grid-cols-2 gap-x-8 mt-10">
-                <div>
-                  <div className="text-sm text-slate-400 mb-1">DELTA T</div>
-                  <div className={`text-5xl xl:text-6xl font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-white' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>
-                    {deltaT.toFixed(1)}&deg;
+              {/* 2x2 Metrics grid */}
+              <div className="grid grid-cols-2 gap-4 mt-4 mb-5">
+                <div className="bg-slate-800/40 rounded-xl p-3.5 border border-slate-700/40">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Thermometer className="w-3 h-3 text-slate-500" />
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Delta T</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl xl:text-3xl font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-green-400' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>
+                      {deltaT.toFixed(1)}
+                    </span>
+                    <span className="text-sm text-slate-500">&deg;C</span>
                   </div>
                 </div>
-                <div>
-                  <div className="text-sm text-slate-400 mb-1">WIND</div>
-                  <div className={`text-5xl xl:text-6xl font-bold ${windSpeedKmh <= 15 ? 'text-white' : windSpeedKmh <= 25 ? 'text-amber-300' : 'text-red-400'}`}>
-                    {Math.round(windSpeedKmh)} <span className="text-xl font-normal text-slate-400">km/h</span>
+                <div className="bg-slate-800/40 rounded-xl p-3.5 border border-slate-700/40">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Wind className="w-3 h-3 text-slate-500" />
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Wind</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl xl:text-3xl font-bold ${windSpeedKmh <= 15 ? 'text-green-400' : windSpeedKmh <= 25 ? 'text-amber-300' : 'text-red-400'}`}>
+                      {Math.round(windSpeedKmh)}
+                    </span>
+                    <span className="text-sm text-slate-500">km/h</span>
+                  </div>
+                </div>
+                <div className="bg-slate-800/40 rounded-xl p-3.5 border border-slate-700/40">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Droplets className="w-3 h-3 text-slate-500" />
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Humidity</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl xl:text-3xl font-bold ${humidity <= 60 ? 'text-green-400' : humidity <= 80 ? 'text-amber-300' : 'text-red-400'}`}>
+                      {humidity}
+                    </span>
+                    <span className="text-sm text-slate-500">%</span>
+                  </div>
+                </div>
+                <div className="bg-slate-800/40 rounded-xl p-3.5 border border-slate-700/40">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <CloudRain className="w-3 h-3 text-slate-500" />
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Rain</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl xl:text-3xl font-bold ${todayRainChance <= 20 ? 'text-green-400' : todayRainChance <= 50 ? 'text-amber-300' : 'text-red-400'}`}>
+                      {todayRainChance}
+                    </span>
+                    <span className="text-sm text-slate-500">%</span>
                   </div>
                 </div>
               </div>
 
-              {/* Progress bar */}
-              <div className="h-3 bg-slate-700/60 rounded-full overflow-hidden mt-10">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-green-400 via-teal-400 to-cyan-400 transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(10, todayBestWindow ? (todayBestWindow.rating === 'Good' ? 90 : todayBestWindow.rating === 'Moderate' ? 70 : 20) : 10))}%` }}
-                />
+              {/* Spray Quality Score */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-slate-400 font-medium">Spray Quality</span>
+                  <span className="text-sm font-bold text-white">
+                    {(() => {
+                      const score = Math.min(10, Math.max(0,
+                        (deltaT >= 4 && deltaT <= 6 ? 3 : deltaT >= 2 && deltaT <= 8 ? 1.5 : 0) +
+                        (windSpeedKmh <= 15 ? 3 : windSpeedKmh <= 25 ? 1.5 : 0) +
+                        (humidity >= 40 && humidity <= 70 ? 2 : humidity >= 30 && humidity <= 80 ? 1 : 0) +
+                        (todayRainChance <= 20 ? 2 : todayRainChance <= 40 ? 1 : 0)
+                      ));
+                      return score.toFixed(1);
+                    })()}
+                    <span className="text-slate-500 font-normal"> / 10</span>
+                  </span>
+                </div>
+                <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(5, (() => {
+                        const score = Math.min(10, Math.max(0,
+                          (deltaT >= 4 && deltaT <= 6 ? 3 : deltaT >= 2 && deltaT <= 8 ? 1.5 : 0) +
+                          (windSpeedKmh <= 15 ? 3 : windSpeedKmh <= 25 ? 1.5 : 0) +
+                          (humidity >= 40 && humidity <= 70 ? 2 : humidity >= 30 && humidity <= 80 ? 1 : 0) +
+                          (todayRainChance <= 20 ? 2 : todayRainChance <= 40 ? 1 : 0)
+                        ));
+                        return score * 10;
+                      })()))}%`,
+                      background: (() => {
+                        const score = Math.min(10, Math.max(0,
+                          (deltaT >= 4 && deltaT <= 6 ? 3 : deltaT >= 2 && deltaT <= 8 ? 1.5 : 0) +
+                          (windSpeedKmh <= 15 ? 3 : windSpeedKmh <= 25 ? 1.5 : 0) +
+                          (humidity >= 40 && humidity <= 70 ? 2 : humidity >= 30 && humidity <= 80 ? 1 : 0) +
+                          (todayRainChance <= 20 ? 2 : todayRainChance <= 40 ? 1 : 0)
+                        ));
+                        if (score >= 7) return 'linear-gradient(90deg, #22c55e, #14b8a6)';
+                        if (score >= 4) return 'linear-gradient(90deg, #f59e0b, #eab308)';
+                        return 'linear-gradient(90deg, #ef4444, #f97316)';
+                      })(),
+                    }}
+                  />
+                </div>
               </div>
 
-              {/* CTA */}
+              {/* Short advisory */}
+              <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                {todayBestWindow?.rating === 'Good'
+                  ? 'Excellent conditions for application \u2013 low drift risk with stable air.'
+                  : todayBestWindow?.rating === 'Moderate'
+                  ? 'Moderate conditions \u2013 monitor wind gusts and consider drift-reducing nozzles.'
+                  : 'Conditions unfavourable \u2013 high drift risk or washoff likely. Delay application.'}
+              </p>
+
+              {/* Subtle CTA button */}
               <button
                 onClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
-                className="mt-8 w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-slate-900 font-bold px-5 py-5 rounded-2xl text-lg transition-all duration-200 hover:shadow-[0_0_24px_rgba(34,197,94,0.4)]"
+                className="mt-auto w-full flex items-center justify-center gap-2 border border-green-500/40 hover:border-green-400/60 bg-green-500/10 hover:bg-green-500/15 text-green-300 hover:text-green-200 font-medium px-4 py-3 rounded-xl text-sm transition-all duration-200"
               >
                 View Full Analysis
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
