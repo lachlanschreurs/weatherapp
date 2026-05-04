@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight, Clock } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight, Clock, SprayCan, UserCheck } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -1231,10 +1231,13 @@ function App() {
 
               {/* Product Recommendation */}
               {whiteLabelConfig.productRecommendation.enabled && (
-                <div className="mb-3 p-2.5 bg-slate-800/50 border border-slate-700/30 rounded-lg">
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1">{whiteLabelConfig.productRecommendation.title}</p>
-                  <p className="text-[10px] text-slate-400 leading-relaxed mb-2">{whiteLabelConfig.productRecommendation.description}</p>
-                  <button className="text-[10px] text-green-400 hover:text-green-300 font-medium transition-colors flex items-center gap-1">
+                <div className="mb-3 p-3 bg-green-500/[0.04] border border-green-500/15 rounded-lg">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <SprayCan className="w-3 h-3 text-green-400/70" />
+                    <p className="text-[9px] text-green-300/70 uppercase tracking-wider font-semibold">{whiteLabelConfig.productRecommendation.title}</p>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5">{whiteLabelConfig.productRecommendation.description}</p>
+                  <button className="text-[11px] text-green-400 hover:text-green-300 font-semibold transition-colors flex items-center gap-1">
                     {whiteLabelConfig.productRecommendation.buttonText}
                     <ChevronRight className="w-3 h-3" />
                   </button>
@@ -1250,8 +1253,11 @@ function App() {
                 <ChevronRight className="w-3 h-3" />
               </button>
 
-              {/* Powered by footer */}
-              <p className="text-center text-[9px] text-slate-600 mt-2.5">Insights powered by {whiteLabelConfig.poweredBy} AI</p>
+              {/* Authority footer */}
+              <div className="mt-3 pt-2.5 border-t border-slate-700/20 text-center">
+                <p className="text-[9px] text-slate-600">Insights powered by {whiteLabelConfig.poweredBy} AI</p>
+                <p className="text-[9px] text-slate-600 mt-0.5">Built for farmers. Designed for real on-farm decisions.</p>
+              </div>
             </div>
           </div>
 
@@ -1320,11 +1326,18 @@ function App() {
               </div>
 
               {/* Connect with Agronomist */}
-              <div className="mt-auto pt-4 border-t border-slate-700/30">
-                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1">{whiteLabelConfig.agronomistContact.label}</p>
-                <p className="text-[10px] text-slate-400 mb-2">{whiteLabelConfig.agronomistContact.description}</p>
-                <button className="w-full text-[11px] font-medium text-slate-300 hover:text-white border border-slate-600/50 hover:border-slate-500 bg-slate-800/30 hover:bg-slate-700/40 px-3 py-2 rounded-lg transition-all duration-200">
+              <div className="mt-auto pt-3 border-t border-slate-700/30">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <UserCheck className="w-3 h-3 text-green-400/70" />
+                  <p className="text-[9px] text-green-300/70 uppercase tracking-wider font-semibold">{whiteLabelConfig.agronomistContact.label}</p>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed mb-3">{whiteLabelConfig.agronomistContact.description}</p>
+                <button
+                  onClick={() => window.open('https://www.google.com/search?q=agronomist+near+me', '_blank', 'noopener')}
+                  className="w-full text-[11px] font-semibold text-white bg-slate-700/60 hover:bg-slate-600/70 border border-slate-600/50 hover:border-slate-500 px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5"
+                >
                   {whiteLabelConfig.agronomistContact.buttonText}
+                  <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
             </div>
