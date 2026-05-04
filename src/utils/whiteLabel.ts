@@ -28,12 +28,7 @@ export const defaultConfig: WhiteLabelConfig = {
   poweredByUrl: '',
   primaryColor: 'green',
   partnerName: '',
-  partnerLogos: [
-    { name: 'Nutrien', opacity: 0.4 },
-    { name: 'Bayer', opacity: 0.4 },
-    { name: 'Elders', opacity: 0.4 },
-    { name: 'Syngenta', opacity: 0.4 },
-  ],
+  partnerLogos: [],
   agronomistContact: {
     label: 'Connect with an Agronomist',
     description: 'Get tailored advice from your local agronomy partner.',

@@ -1332,21 +1332,23 @@ function App() {
 
         </div>
 
-        {/* Partner Strip */}
-        <div className="mb-5 flex items-center justify-center gap-8 py-3 px-6 rounded-xl border border-slate-800/50 bg-slate-900/50">
-          <span className="text-[9px] text-slate-600 uppercase tracking-wider font-medium flex-shrink-0">Supported by leading ag partners</span>
-          <div className="flex items-center gap-6">
-            {whiteLabelConfig.partnerLogos.map(partner => (
-              <span
-                key={partner.name}
-                className="text-[11px] font-semibold text-slate-600 tracking-wide"
-                style={{ opacity: partner.opacity || 0.4 }}
-              >
-                {partner.name}
-              </span>
-            ))}
+        {/* Partner Strip — only shown when partners are configured */}
+        {whiteLabelConfig.partnerLogos.length > 0 && (
+          <div className="mb-5 flex items-center justify-center gap-8 py-3 px-6 rounded-xl border border-slate-800/50 bg-slate-900/50">
+            <span className="text-[9px] text-slate-600 uppercase tracking-wider font-medium flex-shrink-0">Supported by leading ag partners</span>
+            <div className="flex items-center gap-6">
+              {whiteLabelConfig.partnerLogos.map(partner => (
+                <span
+                  key={partner.name}
+                  className="text-[11px] font-semibold text-slate-600 tracking-wide"
+                  style={{ opacity: partner.opacity || 0.4 }}
+                >
+                  {partner.name}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* BIG METRIC CARDS ROW */}
         <div className="mb-6 grid grid-cols-2 lg:grid-cols-5 gap-4">
