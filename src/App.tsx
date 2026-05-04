@@ -1057,6 +1057,22 @@ function App() {
                   </div>
                 ))}
               </div>
+
+              {/* Today on Farm summary */}
+              <div className="mt-3 pt-3 border-t border-slate-700/30">
+                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-2">Today on Farm</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="inline-flex items-center text-[10px] px-2.5 py-1 rounded-full bg-slate-800/60 border border-slate-700/40 text-slate-300">
+                    {todayBestWindow ? `Best spray: ${todayBestWindow.startTime}` : 'No spray window'}
+                  </span>
+                  <span className={`inline-flex items-center text-[10px] px-2.5 py-1 rounded-full border ${todayRainChance > 60 ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : todayRainChance > 30 ? 'bg-yellow-500/8 border-yellow-500/20 text-yellow-300' : 'bg-green-500/8 border-green-500/20 text-green-300'}`}>
+                    Rain risk: {todayRainChance > 60 ? 'High' : todayRainChance > 30 ? 'Moderate' : 'Low'}
+                  </span>
+                  <span className={`inline-flex items-center text-[10px] px-2.5 py-1 rounded-full border ${deltaT >= 2 && deltaT <= 8 ? 'bg-green-500/8 border-green-500/20 text-green-300' : 'bg-yellow-500/8 border-yellow-500/20 text-yellow-300'}`}>
+                    {deltaT >= 2 && deltaT <= 8 ? 'Suitable for spraying' : 'Monitor before spraying'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1326,7 +1342,7 @@ function App() {
               </div>
 
               {/* Connect with Agronomist */}
-              <div className="mt-auto pt-3 border-t border-slate-700/30">
+              <div className="pt-3 border-t border-slate-700/30">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <UserCheck className="w-3 h-3 text-green-400/70" />
                   <p className="text-[9px] text-green-300/70 uppercase tracking-wider font-semibold">{whiteLabelConfig.agronomistContact.label}</p>
@@ -1339,6 +1355,27 @@ function App() {
                   {whiteLabelConfig.agronomistContact.buttonText}
                   <ChevronRight className="w-3 h-3" />
                 </button>
+              </div>
+
+              {/* Recent Insights */}
+              <div className="mt-auto pt-3 border-t border-slate-700/30">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">Recent Insights</p>
+                  <span className="text-[8px] text-slate-600">AI-generated</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    humidity > 70 ? 'High humidity may increase disease pressure' : 'Humidity levels are within normal range',
+                    windSpeedKmh > 15 ? 'Monitor wind before spraying this afternoon' : 'Wind conditions suitable for application',
+                    todayRainChance < 30 ? 'Soil moisture levels are stable' : 'Rainfall expected — plan field access accordingly',
+                    tempC >= 12 && tempC <= 30 ? 'Conditions suitable for planting later this week' : 'Temperature outside ideal planting range',
+                  ].map((insight, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[10px] text-slate-400 leading-relaxed">
+                      <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
+                      {insight}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
