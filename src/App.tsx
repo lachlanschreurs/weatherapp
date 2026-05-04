@@ -32,6 +32,9 @@ import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, ConnectSensorsModal } from './components/ExplainerModal';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TodayOnYourFarm } from './components/TodayOnYourFarm';
+import { getConfig, getActivityRecommendation } from './utils/whiteLabel';
+
+const whiteLabelConfig = getConfig();
 
 interface WeatherData {
   current: {
@@ -833,6 +836,9 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+              <span className="hidden md:inline-flex items-center gap-1.5 text-[10px] text-slate-500 border border-slate-700/50 rounded-full px-3 py-1 mr-1">
+                Powered by <span className="font-semibold text-green-400/80">{whiteLabelConfig.poweredBy}</span>
+              </span>
               <button
                 onClick={() => document.getElementById('radar-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="farmcast-nav-btn"
@@ -1029,6 +1035,13 @@ function App() {
                 </div>
               </div>
 
+              {/* Activity recommendation */}
+              <div className="mb-3 px-2.5 py-2 bg-green-500/5 border border-green-500/15 rounded-lg">
+                <p className="text-[10px] text-green-300/80 font-medium">
+                  {getActivityRecommendation(windSpeedKmh, humidity, todayRainChance, deltaT, tempC)}
+                </p>
+              </div>
+
               {/* Divider */}
               <div className="h-px bg-slate-700/50 mb-3" />
 
@@ -1216,14 +1229,29 @@ function App() {
                   : 'Conditions unfavourable \u2013 high drift risk or washoff likely. Delay application.'}
               </p>
 
+              {/* Product Recommendation */}
+              {whiteLabelConfig.productRecommendation.enabled && (
+                <div className="mb-3 p-2.5 bg-slate-800/50 border border-slate-700/30 rounded-lg">
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1">{whiteLabelConfig.productRecommendation.title}</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed mb-2">{whiteLabelConfig.productRecommendation.description}</p>
+                  <button className="text-[10px] text-green-400 hover:text-green-300 font-medium transition-colors flex items-center gap-1">
+                    {whiteLabelConfig.productRecommendation.buttonText}
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
               {/* Professional CTA button */}
               <button
                 onClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
-                className="mt-auto w-full flex items-center justify-center gap-1.5 border border-slate-600/50 hover:border-green-500/40 bg-slate-800/40 hover:bg-green-500/8 text-slate-400 hover:text-green-300 font-medium px-4 py-2 rounded-lg text-[11px] transition-all duration-200"
+                className="w-full flex items-center justify-center gap-1.5 border border-slate-600/50 hover:border-green-500/40 bg-slate-800/40 hover:bg-green-500/8 text-slate-400 hover:text-green-300 font-medium px-4 py-2 rounded-lg text-[11px] transition-all duration-200"
               >
                 View Full Analysis
                 <ChevronRight className="w-3 h-3" />
               </button>
+
+              {/* Powered by footer */}
+              <p className="text-center text-[9px] text-slate-600 mt-2.5">Insights powered by {whiteLabelConfig.poweredBy} AI</p>
             </div>
           </div>
 
@@ -1271,14 +1299,13 @@ function App() {
               </div>
 
               {/* Prompt suggestions */}
-              <div className="mt-auto">
-                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-2.5">Try asking</p>
+              <div>
+                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-2">Try asking</p>
                 <div className="flex flex-col gap-1.5">
                   {[
                     'What pest is this?',
                     'Is disease pressure high?',
                     'What should I spray today?',
-                    'Best planting option this week?',
                   ].map(prompt => (
                     <button
                       key={prompt}
@@ -1291,9 +1318,34 @@ function App() {
                   ))}
                 </div>
               </div>
+
+              {/* Connect with Agronomist */}
+              <div className="mt-auto pt-4 border-t border-slate-700/30">
+                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1">{whiteLabelConfig.agronomistContact.label}</p>
+                <p className="text-[10px] text-slate-400 mb-2">{whiteLabelConfig.agronomistContact.description}</p>
+                <button className="w-full text-[11px] font-medium text-slate-300 hover:text-white border border-slate-600/50 hover:border-slate-500 bg-slate-800/30 hover:bg-slate-700/40 px-3 py-2 rounded-lg transition-all duration-200">
+                  {whiteLabelConfig.agronomistContact.buttonText}
+                </button>
+              </div>
             </div>
           </div>
 
+        </div>
+
+        {/* Partner Strip */}
+        <div className="mb-5 flex items-center justify-center gap-8 py-3 px-6 rounded-xl border border-slate-800/50 bg-slate-900/50">
+          <span className="text-[9px] text-slate-600 uppercase tracking-wider font-medium flex-shrink-0">Supported by leading ag partners</span>
+          <div className="flex items-center gap-6">
+            {whiteLabelConfig.partnerLogos.map(partner => (
+              <span
+                key={partner.name}
+                className="text-[11px] font-semibold text-slate-600 tracking-wide"
+                style={{ opacity: partner.opacity || 0.4 }}
+              >
+                {partner.name}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* BIG METRIC CARDS ROW */}
