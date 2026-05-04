@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock } from 'lucide-react';
+import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -28,7 +28,6 @@ import { getUserLocation } from './utils/geolocation';
 import { isNightTime } from './utils/weatherEffects';
 import type { User } from '@supabase/supabase-js';
 import { SubscriptionSuccessBanner } from './components/SubscriptionSuccessBanner';
-import { SprayWindowCard } from './components/SprayWindowCard';
 import { fireSubscriptionConversion } from './utils/googleAds';
 import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, ConnectSensorsModal } from './components/ExplainerModal';
@@ -930,7 +929,7 @@ function App() {
         )}
 
         {/* HERO CURRENT CONDITIONS */}
-        <div className="mb-6 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5">
+        <div className="mb-6 grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
 
           {/* Main Temp Card */}
           <div className="relative overflow-hidden rounded-[16px] farmcast-card farmcast-hero-glow hover:border-white/[0.12] transition-all duration-200">
@@ -1054,15 +1053,119 @@ function App() {
             </div>
           </div>
 
-          {/* Spray Window Card - Right Panel */}
-          <SprayWindowCard
-            sprayWindow={todayBestWindow}
-            windSpeedKmh={windSpeedKmh}
-            deltaT={deltaT}
-            rainChance={todayRainChance}
-            humidity={humidity}
-            onCardClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
-          />
+          {/* Agronomy Advisor - Right Panel */}
+          <div
+            className="relative overflow-hidden rounded-[16px] border border-green-500/20 backdrop-blur-xl flex flex-col"
+            style={{
+              background: 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(255,255,255,0.02))',
+              boxShadow: '0 10px 35px rgba(0,0,0,0.45), 0 0 35px rgba(34,197,94,0.18), inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-500/30 to-transparent" />
+            <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-green-600/20 border border-green-500/30 flex items-center justify-center">
+                    <Leaf className="w-4 h-4 text-green-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-white tracking-tight">Agronomy Advisor</h2>
+                    <p className="text-[10px] text-white/40 font-medium">AI-powered farm decisions</p>
+                  </div>
+                </div>
+                <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full tracking-wider ${
+                  todayBestWindow?.rating === 'Good'
+                    ? 'bg-green-500/15 text-green-300 border border-green-500/30'
+                    : todayBestWindow?.rating === 'Moderate'
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                    : 'bg-red-500/15 text-red-300 border border-red-500/30'
+                }`} style={{ boxShadow: todayBestWindow?.rating === 'Good' ? '0 0 10px rgba(34,197,94,0.25)' : undefined }}>
+                  {todayBestWindow?.rating === 'Good' ? 'IDEAL' : todayBestWindow?.rating === 'Moderate' ? 'OKAY' : 'AVOID'}
+                </span>
+              </div>
+
+              {/* Spray Window - Hero text */}
+              <div className="mb-4">
+                <p className="text-[10px] text-white/50 uppercase tracking-[0.12em] font-medium mb-1.5">Spray Window</p>
+                {todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
+                  <>
+                    <p className="text-[2rem] xl:text-[2.4rem] font-extrabold text-white leading-[1.1]" style={{ letterSpacing: '-1px' }}>
+                      {todayBestWindow.startTime} &ndash; {todayBestWindow.endTime}
+                    </p>
+                    <p className="text-xs text-white/50 mt-1.5 font-medium">
+                      {todayBestWindow.duration.toFixed(0)}hr window &bull; {todayBestWindow.conditions}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-white">No suitable window</p>
+                    <p className="text-xs text-white/40 mt-1">Conditions not favourable today</p>
+                  </>
+                )}
+              </div>
+
+              {/* AI Summary */}
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2.5 mb-4">
+                <p className="text-[11px] text-white/65 leading-relaxed">
+                  {windSpeedKmh <= 15 && deltaT >= 4 && deltaT <= 6 && todayRainChance < 20
+                    ? `Ideal spray conditions today. Wind is calm at ${Math.round(windSpeedKmh)} km/h with optimal Delta T for droplet performance.`
+                    : windSpeedKmh > 25
+                    ? `High wind speeds (${Math.round(windSpeedKmh)} km/h) create significant drift risk. Delay applications until conditions ease.`
+                    : todayRainChance > 50
+                    ? `Rain forecast (${todayRainChance}% chance) may wash off foliar applications. Consider timing around rainfall.`
+                    : deltaT < 2
+                    ? `Delta T is too low (${deltaT.toFixed(1)}), indicating inversion conditions. Droplets may suspend and drift unpredictably.`
+                    : `Moderate spray conditions. Monitor wind gusts and consider drift-reducing nozzles for best coverage.`
+                  }
+                </p>
+              </div>
+
+              {/* Key metrics grid */}
+              <div className="grid grid-cols-2 gap-2.5 mb-4">
+                <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider font-medium mb-0.5">Delta T</p>
+                  <p className={`text-base font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-green-400' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {deltaT.toFixed(1)}&deg;
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider font-medium mb-0.5">Wind</p>
+                  <p className={`text-base font-bold ${windSpeedKmh <= 15 ? 'text-green-400' : windSpeedKmh <= 25 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {Math.round(windSpeedKmh)} km/h
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider font-medium mb-0.5">Humidity</p>
+                  <p className="text-base font-bold text-white/80">{Math.round(humidity)}%</p>
+                </div>
+                <div className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-3 py-2">
+                  <p className="text-[9px] text-white/40 uppercase tracking-wider font-medium mb-0.5">Rain Chance</p>
+                  <p className={`text-base font-bold ${todayRainChance <= 20 ? 'text-green-400' : todayRainChance <= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {todayRainChance}%
+                  </p>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="mt-auto flex flex-col gap-2">
+                <button
+                  onClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="w-full flex items-center justify-center gap-2 bg-green-600/90 hover:bg-green-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all duration-200 hover:shadow-[0_0_16px_rgba(34,197,94,0.3)]"
+                >
+                  Full Analysis
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
+                  className="w-full flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.12] text-white/70 hover:text-white font-semibold px-4 py-2 rounded-xl text-xs transition-all duration-200"
+                >
+                  <Leaf className="w-3.5 h-3.5 text-green-400" />
+                  Ask Agronomy Advisor
+                </button>
+              </div>
+            </div>
+          </div>
 
         </div>
 
