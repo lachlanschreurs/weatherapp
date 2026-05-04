@@ -928,34 +928,34 @@ function App() {
         )}
 
         {/* HERO CURRENT CONDITIONS — 3 CARD ROW */}
-        <div className="mb-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="mb-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* CARD 1 — WEATHER OVERVIEW (5 cols) */}
           <div
-            className="col-span-1 lg:col-span-5 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
+            className="col-span-1 lg:col-span-5 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
             style={{
               background: 'linear-gradient(145deg, #1e2937 0%, #0f172a 100%)',
               border: '1px solid rgba(148, 163, 184, 0.12)',
               boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
             }}
           >
-            <div className="relative z-10 p-6 xl:p-8 flex flex-col flex-1">
+            <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
               {/* Current Conditions Header */}
-              <div className="uppercase text-slate-400 text-[10px] font-medium tracking-[2.5px] mb-4">Current Conditions</div>
+              <div className="uppercase text-slate-400 text-[10px] font-medium tracking-[2.5px] mb-3">Current Conditions</div>
 
               {/* Main weather section */}
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start mb-4">
                 <div className="flex items-start gap-4">
                   <div className="relative flex-shrink-0 mt-1">
-                    {getWeatherIcon(weatherCode, 'w-16 h-16 xl:w-20 xl:h-20')}
+                    {getWeatherIcon(weatherCode, 'w-14 h-14 xl:w-16 xl:h-16')}
                     {isNight && <div className="absolute -top-1 -right-1 w-3 h-3 bg-slate-700 rounded-full border border-slate-500" />}
                   </div>
                   <div>
-                    <div className="text-6xl xl:text-7xl font-bold text-white leading-none tracking-tighter">
+                    <div className="text-5xl xl:text-6xl font-bold text-white leading-none tracking-tighter">
                       {formatTempValue(tempC, units.temp)}<span className="text-2xl xl:text-3xl text-white/25 ml-0.5">&deg;</span>
                     </div>
-                    <div className="mt-2 text-xl text-white font-semibold capitalize">{weatherDescription}</div>
-                    <div className="mt-0.5 text-base text-green-400 font-medium">Feels like {formatTemp(feelsLike, units.temp)}</div>
+                    <div className="mt-1.5 text-lg text-white font-semibold capitalize">{weatherDescription}</div>
+                    <div className="mt-0.5 text-sm text-green-400 font-medium">Feels like {formatTemp(feelsLike, units.temp)}</div>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 hidden sm:block space-y-0.5">
@@ -969,78 +969,78 @@ function App() {
               </div>
 
               {/* Secondary conditions row */}
-              <div className="flex items-center gap-5 mt-4 text-sm text-slate-300">
+              <div className="flex items-center gap-4 text-[13px] text-slate-300 mb-4">
                 <span className="flex items-center gap-1.5">
-                  <Wind className="w-3.5 h-3.5 text-slate-500" />
+                  <Wind className="w-3.5 h-3.5 text-slate-400" />
                   {Math.round(convertWind(windSpeedKmh, units.wind))} {windLabel(units.wind)} {windDirection}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Droplets className="w-3.5 h-3.5 text-slate-500" />
+                  <Droplets className="w-3.5 h-3.5 text-slate-400" />
                   {humidity}%
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <CloudRain className="w-3.5 h-3.5 text-slate-500" />
+                  <CloudRain className="w-3.5 h-3.5 text-slate-400" />
                   {todayRainChance}%
                 </span>
               </div>
 
               {/* Divider */}
-              <div className="h-px bg-slate-700/50 my-4" />
+              <div className="h-px bg-slate-700/50 mb-4" />
 
               {/* 2x3 Farm Metrics Grid */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">UV Index</div>
-                  <div className={`text-xl font-bold ${uvLevel.color}`}>{Math.round(uvIndex)}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{uvLevel.label}</div>
+              <div className="grid grid-cols-3 gap-2.5 mb-4">
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">UV Index</div>
+                  <div className={`text-lg font-bold ${uvLevel.color}`}>{Math.round(uvIndex)}</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">{uvLevel.label}</div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Pressure</div>
-                  <div className="text-xl font-bold text-white">{formatPressureValue(current.pressure, units.pressure)}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{pressureLabel(units.pressure)}</div>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">Pressure</div>
+                  <div className="text-lg font-bold text-white">{formatPressureValue(current.pressure, units.pressure)}</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">{pressureLabel(units.pressure)}</div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Delta T</div>
-                  <div className={`text-xl font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-green-400' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>{deltaT.toFixed(1)}&deg;</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">{deltaT >= 4 && deltaT <= 6 ? 'Ideal' : deltaT >= 2 && deltaT <= 8 ? 'Marginal' : 'Poor'}</div>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">Delta T</div>
+                  <div className={`text-lg font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-green-400' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>{deltaT.toFixed(1)}&deg;</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">{deltaT >= 4 && deltaT <= 6 ? 'Ideal' : deltaT >= 2 && deltaT <= 8 ? 'Marginal' : 'Poor'}</div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Soil Temp</div>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">Soil Temp</div>
                   {hasActiveProbe && probeReading?.soil_temp_c != null ? (
-                    <div className="text-xl font-bold text-white">{formatTempValue(probeReading.soil_temp_c, units.temp, 1)}&deg;</div>
+                    <div className="text-lg font-bold text-white">{formatTempValue(probeReading.soil_temp_c, units.temp, 1)}&deg;</div>
                   ) : (
-                    <div className="text-xl font-bold text-white">{formatTempValue(Number(soilTempC), units.temp, 1)}&deg;</div>
+                    <div className="text-lg font-bold text-white">{formatTempValue(Number(soilTempC), units.temp, 1)}&deg;</div>
                   )}
-                  <div className="text-[10px] text-slate-500 mt-0.5">{tempLabel(units.temp)}</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">{tempLabel(units.temp)}</div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Moisture</div>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">Moisture</div>
                   {hasActiveProbe && probeReading?.moisture_percent != null ? (
-                    <div className="text-xl font-bold text-green-400">{probeReading.moisture_percent.toFixed(0)}%</div>
+                    <div className="text-lg font-bold text-green-400">{probeReading.moisture_percent.toFixed(0)}%</div>
                   ) : (
-                    <div className="text-xl font-bold text-green-400">{soilMoisture}%</div>
+                    <div className="text-lg font-bold text-green-400">{soilMoisture}%</div>
                   )}
-                  <div className="text-[10px] text-slate-500 mt-0.5">Volumetric</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">Volumetric</div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">ETo Today</div>
-                  <div className="text-xl font-bold text-blue-400">{eto}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">mm/day</div>
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">ETo Today</div>
+                  <div className="text-lg font-bold text-blue-400">{eto}</div>
+                  <div className="text-[9px] text-slate-500 mt-0.5">mm/day</div>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="h-px bg-slate-700/50 my-4" />
+              <div className="h-px bg-slate-700/50 mb-3" />
 
               {/* Mini Forecast Strip */}
               <div className="flex items-center justify-between">
                 {hourlyList.slice(0, 5).map((h: any, i: number) => (
                   <div key={i} className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-slate-500 font-medium">
+                    <span className="text-[9px] text-slate-500 font-medium">
                       {new Date(h.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true }).toUpperCase()}
                     </span>
                     {getWeatherIcon(h.weather?.[0]?.main || 'clear', 'w-5 h-5')}
-                    <span className="text-xs font-semibold text-white">{formatTempValue(h.temp, units.temp)}&deg;</span>
+                    <span className="text-[11px] font-semibold text-white">{formatTempValue(h.temp, units.temp)}&deg;</span>
                   </div>
                 ))}
               </div>
@@ -1049,7 +1049,7 @@ function App() {
 
           {/* CARD 2 — SPRAY WINDOW DECISION PANEL (4 cols) */}
           <div
-            className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
+            className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
             style={{
               background: 'linear-gradient(160deg, #1e2937 0%, #162220 100%)',
               border: '1px solid rgba(34,197,94,0.25)',
@@ -1057,20 +1057,20 @@ function App() {
             }}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/30 to-transparent" />
-            <div className="relative z-10 p-6 xl:p-8 flex flex-col flex-1">
+            <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
               {/* Dominant Header */}
-              <div className="mb-1">
-                <h2 className="uppercase text-green-400 text-lg xl:text-xl font-bold tracking-[2px]" style={{ textShadow: '0 0 20px rgba(34,197,94,0.15)' }}>
+              <div className="mb-0.5">
+                <h2 className="uppercase text-green-300 text-xl xl:text-2xl font-extrabold tracking-[1.5px]" style={{ textShadow: '0 0 24px rgba(34,197,94,0.2), 0 0 8px rgba(34,197,94,0.1)' }}>
                   FarmCast Spray Window
                 </h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">Spraying conditions based on real-time farm data</p>
+                <p className="text-[10px] text-slate-500 mt-1 leading-tight">Real-time spray conditions based on weather and farm data</p>
               </div>
 
               {/* Divider */}
-              <div className="h-px bg-gradient-to-r from-green-500/25 via-green-500/10 to-transparent my-3" />
+              <div className="h-px bg-gradient-to-r from-green-500/30 via-green-500/10 to-transparent my-3" />
 
               {/* Status line */}
-              <div className="text-lg xl:text-xl font-bold text-white mb-3">
+              <div className="text-base xl:text-lg font-bold text-white mb-2">
                 {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Spray Period` : 'No Spray Window Today'}
               </div>
 
@@ -1079,12 +1079,12 @@ function App() {
                 <div className="mb-3">
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-green-400/70 flex-shrink-0" />
-                    <span className="text-xl xl:text-2xl font-bold text-white tracking-tight">
+                    <span className="text-lg xl:text-xl font-bold text-white tracking-tight">
                       {todayBestWindow.startTime} &ndash; {todayBestWindow.endTime}
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <span className={`inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                  <div className="mt-1.5">
+                    <span className={`inline-flex items-center text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       todayBestWindow.rating === 'Good'
                         ? 'bg-green-500/15 text-green-300 border border-green-500/30'
                         : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
@@ -1095,68 +1095,68 @@ function App() {
                 </div>
               ) : (
                 <div className="mb-3">
-                  <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30">
+                  <span className="inline-flex items-center text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30">
                     Avoid Spraying
                   </span>
                 </div>
               )}
 
               {/* 2x2 Metrics grid */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+              <div className="grid grid-cols-2 gap-2.5 mb-3">
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="flex items-center gap-1.5 mb-1">
                     <Thermometer className="w-3 h-3 text-slate-500" />
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Delta T</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">Delta T</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className={`text-xl font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-green-400' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>
+                    <span className={`text-lg font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-green-400' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>
                       {deltaT.toFixed(1)}
                     </span>
-                    <span className="text-xs text-slate-500">&deg;C</span>
+                    <span className="text-[11px] text-slate-500">&deg;C</span>
                   </div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="flex items-center gap-1.5 mb-1">
                     <Wind className="w-3 h-3 text-slate-500" />
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Wind</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">Wind</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className={`text-xl font-bold ${windSpeedKmh <= 15 ? 'text-green-400' : windSpeedKmh <= 25 ? 'text-amber-300' : 'text-red-400'}`}>
+                    <span className={`text-lg font-bold ${windSpeedKmh <= 15 ? 'text-green-400' : windSpeedKmh <= 25 ? 'text-amber-300' : 'text-red-400'}`}>
                       {Math.round(windSpeedKmh)}
                     </span>
-                    <span className="text-xs text-slate-500">km/h</span>
+                    <span className="text-[11px] text-slate-500">km/h</span>
                   </div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="flex items-center gap-1.5 mb-1">
                     <Droplets className="w-3 h-3 text-slate-500" />
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Humidity</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">Humidity</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className={`text-xl font-bold ${humidity <= 60 ? 'text-green-400' : humidity <= 80 ? 'text-amber-300' : 'text-red-400'}`}>
+                    <span className={`text-lg font-bold ${humidity <= 60 ? 'text-green-400' : humidity <= 80 ? 'text-amber-300' : 'text-red-400'}`}>
                       {humidity}
                     </span>
-                    <span className="text-xs text-slate-500">%</span>
+                    <span className="text-[11px] text-slate-500">%</span>
                   </div>
                 </div>
-                <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30">
-                  <div className="flex items-center gap-1.5 mb-0.5">
+                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/25">
+                  <div className="flex items-center gap-1.5 mb-1">
                     <CloudRain className="w-3 h-3 text-slate-500" />
-                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Rain</span>
+                    <span className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">Rain</span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className={`text-xl font-bold ${todayRainChance <= 20 ? 'text-green-400' : todayRainChance <= 50 ? 'text-amber-300' : 'text-red-400'}`}>
+                    <span className={`text-lg font-bold ${todayRainChance <= 20 ? 'text-green-400' : todayRainChance <= 50 ? 'text-amber-300' : 'text-red-400'}`}>
                       {todayRainChance}
                     </span>
-                    <span className="text-xs text-slate-500">%</span>
+                    <span className="text-[11px] text-slate-500">%</span>
                   </div>
                 </div>
               </div>
 
               {/* Spray Quality Score */}
               <div className="mb-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] text-slate-400 font-medium">Spray Quality</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Spray Quality Score</span>
                   <span className="text-xs font-bold text-white">
                     {(() => {
                       const score = Math.min(10, Math.max(0,
@@ -1170,7 +1170,7 @@ function App() {
                     <span className="text-slate-500 font-normal"> / 10</span>
                   </span>
                 </div>
-                <div className="h-1.5 bg-slate-700/60 rounded-full overflow-hidden">
+                <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -1199,6 +1199,14 @@ function App() {
                 </div>
               </div>
 
+              {/* Insight line */}
+              <p className="text-[10px] text-slate-500 mb-2">
+                {todayBestWindow?.startTime
+                  ? `Best spray start: ${todayBestWindow.startTime}`
+                  : 'No viable window detected today'}
+                {todayBestWindow?.endTime && ` \u2022 Conditions change after ${todayBestWindow.endTime}`}
+              </p>
+
               {/* Short advisory */}
               <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
                 {todayBestWindow?.rating === 'Good'
@@ -1208,51 +1216,54 @@ function App() {
                   : 'Conditions unfavourable \u2013 high drift risk or washoff likely. Delay application.'}
               </p>
 
-              {/* Compact CTA button */}
+              {/* Professional CTA button */}
               <button
                 onClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
-                className="mt-auto w-full flex items-center justify-center gap-1.5 border border-slate-600/60 hover:border-green-500/50 bg-slate-800/50 hover:bg-green-500/10 text-slate-300 hover:text-green-300 font-medium px-4 py-2.5 rounded-lg text-xs transition-all duration-200"
+                className="mt-auto w-full flex items-center justify-center gap-1.5 border border-slate-600/50 hover:border-green-500/40 bg-slate-800/40 hover:bg-green-500/8 text-slate-400 hover:text-green-300 font-medium px-4 py-2 rounded-lg text-[11px] transition-all duration-200"
               >
                 View Full Analysis
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-3 h-3" />
               </button>
             </div>
           </div>
 
           {/* CARD 3 — AGRONOMY ADVISOR (3 cols) */}
           <div
-            className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
+            className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
             style={{
-              background: 'rgba(30, 41, 59, 0.92)',
+              background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)',
               border: '1px solid rgba(148, 163, 184, 0.12)',
               backdropFilter: 'blur(20px)',
               boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
             }}
           >
-            <div className="relative z-10 p-7 xl:p-8 flex flex-col flex-1">
+            <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
               {/* Header */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 rounded-xl bg-green-600/20 border border-green-500/30 flex items-center justify-center">
-                  <Leaf className="w-4.5 h-4.5 text-green-400" />
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-green-600/20 border border-green-500/30 flex items-center justify-center">
+                  <Leaf className="w-4 h-4 text-green-400" />
                 </div>
                 <div>
-                  <h2 className="text-base font-semibold text-white">Agronomy Advisor</h2>
-                  <span className="text-[10px] font-semibold text-green-400 uppercase tracking-wider">AI Powered</span>
+                  <h2 className="text-sm font-bold text-white">Agronomy Advisor</h2>
+                  <span className="text-[9px] font-semibold text-green-400 uppercase tracking-wider">AI Powered</span>
                 </div>
               </div>
 
+              {/* Description */}
+              <p className="text-[11px] text-slate-500 leading-relaxed mb-4">Identify pests, diseases and get instant farm recommendations.</p>
+
               {/* Action buttons */}
-              <div className="flex flex-col gap-3 mb-6">
+              <div className="flex flex-col gap-2.5 mb-5">
                 <button
                   onClick={() => { setAgronomyInitialQuery('Upload photo'); setShowAgronomyDB(true); }}
-                  className="w-full flex items-center justify-center gap-2.5 border border-slate-600 hover:border-green-500/60 bg-transparent text-white font-medium px-4 py-4 rounded-2xl text-sm transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 border border-green-500/40 hover:border-green-400/60 bg-green-500/8 hover:bg-green-500/15 text-white font-medium px-4 py-3 rounded-xl text-sm transition-all duration-200"
                 >
                   <Database className="w-4 h-4 text-green-400" />
                   Upload Photo / Identify
                 </button>
                 <button
                   onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
-                  className="w-full flex items-center justify-center gap-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-4 rounded-2xl text-sm transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 hover:border-slate-600 text-slate-300 hover:text-white font-medium px-4 py-3 rounded-xl text-sm transition-all duration-200"
                 >
                   <Leaf className="w-4 h-4 text-green-400" />
                   Ask Agronomy Advisor
@@ -1261,8 +1272,8 @@ function App() {
 
               {/* Prompt suggestions */}
               <div className="mt-auto">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-3">Try asking</p>
-                <div className="flex flex-col gap-2">
+                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-2.5">Try asking</p>
+                <div className="flex flex-col gap-1.5">
                   {[
                     'What pest is this?',
                     'Is disease pressure high?',
@@ -1272,8 +1283,9 @@ function App() {
                     <button
                       key={prompt}
                       onClick={() => { setAgronomyInitialQuery(prompt); setShowAgronomyDB(true); }}
-                      className="text-left text-xs px-3.5 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700/60 hover:border-slate-600 transition-all duration-150"
+                      className="text-left text-[11px] px-3 py-2 rounded-lg bg-slate-800/40 border border-slate-700/40 text-slate-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600 transition-all duration-150 flex items-center gap-2"
                     >
+                      <ChevronRight className="w-3 h-3 text-slate-600 flex-shrink-0" />
                       {prompt}
                     </button>
                   ))}
