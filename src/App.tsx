@@ -931,60 +931,64 @@ function App() {
         <div className="mb-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
 
           {/* CARD 1 — WEATHER OVERVIEW (5 cols) */}
-          <div className="col-span-1 lg:col-span-5 relative overflow-hidden rounded-3xl border border-white/[0.06] flex flex-col transition-all duration-200 hover:border-white/[0.1]"
+          <div
+            className="col-span-1 lg:col-span-5 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
             style={{
               background: 'linear-gradient(145deg, #1e2937 0%, #0f172a 100%)',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)',
+              border: '1px solid rgba(148, 163, 184, 0.12)',
+              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-green-900/8 via-transparent to-emerald-950/8 pointer-events-none" />
             <div className="relative z-10 p-8 xl:p-10 flex flex-col flex-1">
-              {/* Top: temp + condition + H/L */}
-              <div className="flex items-start justify-between mb-8">
-                <div className="flex items-center gap-5">
-                  <div className="relative flex-shrink-0">
+              {/* Top: Icon + Temp + Condition */}
+              <div className="flex justify-between items-start">
+                <div className="flex items-start gap-5">
+                  <div className="relative flex-shrink-0 mt-1">
                     {getWeatherIcon(weatherCode, 'w-20 h-20 xl:w-24 xl:h-24')}
                     {isNight && <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-slate-700 rounded-full border border-slate-500" />}
                   </div>
                   <div>
                     <div className="text-7xl xl:text-8xl font-bold text-white leading-none tracking-tighter">
-                      {formatTempValue(tempC, units.temp)}<span className="text-4xl text-white/30">{tempLabel(units.temp)}</span>
+                      {formatTempValue(tempC, units.temp)}<span className="text-3xl xl:text-4xl text-white/25 ml-0.5">&deg;</span>
                     </div>
-                    <div className="mt-2 text-xl text-slate-300 capitalize font-semibold">{weatherDescription}</div>
-                    <div className="mt-1 text-base text-green-400">Feels like {formatTemp(feelsLike, units.temp)}</div>
+                    <div className="mt-3 text-2xl text-white font-semibold capitalize">{weatherDescription}</div>
+                    <div className="mt-1 text-lg text-green-400 font-medium">Feels like {formatTemp(feelsLike, units.temp)}</div>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 hidden sm:block">
-                  <div className="text-xs uppercase tracking-widest text-slate-400 font-medium">
-                    HIGH {formatTempValue(todayHighTemp, units.temp)}&deg; &bull; LOW {formatTempValue(todayLowTemp, units.temp)}&deg;
+                  <div className="text-sm text-slate-400">
+                    HIGH <span className="font-semibold text-white">{formatTempValue(todayHighTemp, units.temp)}&deg;</span>
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    LOW <span className="font-semibold text-white">{formatTempValue(todayLowTemp, units.temp)}&deg;</span>
                   </div>
                 </div>
               </div>
 
-              {/* Bottom stats grid */}
-              <div className="mt-auto grid grid-cols-4 gap-6 pt-6 border-t border-white/[0.06]">
+              {/* Bottom stats grid — large values */}
+              <div className="mt-auto grid grid-cols-4 gap-6 pt-8 border-t border-slate-700/60">
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">UV Index</div>
-                  <div className={`text-2xl xl:text-3xl font-semibold ${uvLevel.color}`}>{Math.round(uvIndex)}</div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">UV Index</div>
+                  <div className={`text-3xl xl:text-4xl font-bold ${uvLevel.color}`}>{Math.round(uvIndex)}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Pressure</div>
-                  <div className="text-2xl xl:text-3xl font-semibold text-white">{formatPressureValue(current.pressure, units.pressure)}</div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">Pressure</div>
+                  <div className="text-3xl xl:text-4xl font-bold text-white">{formatPressureValue(current.pressure, units.pressure)}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Soil Temp</div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">Soil Temp</div>
                   {hasActiveProbe && probeReading?.soil_temp_c != null ? (
-                    <div className="text-2xl xl:text-3xl font-semibold text-amber-300">{formatTempValue(probeReading.soil_temp_c, units.temp, 1)}&deg;</div>
+                    <div className="text-3xl xl:text-4xl font-bold text-white">{formatTempValue(probeReading.soil_temp_c, units.temp, 1)}&deg;</div>
                   ) : (
-                    <div className="text-2xl xl:text-3xl font-semibold text-amber-300/70">{formatTempValue(Number(soilTempC), units.temp, 1)}&deg;</div>
+                    <div className="text-3xl xl:text-4xl font-bold text-white">{formatTempValue(Number(soilTempC), units.temp, 1)}&deg;</div>
                   )}
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1.5">Moisture</div>
+                  <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">Moisture</div>
                   {hasActiveProbe && probeReading?.moisture_percent != null ? (
-                    <div className="text-2xl xl:text-3xl font-semibold text-cyan-300">{probeReading.moisture_percent.toFixed(0)}%</div>
+                    <div className="text-3xl xl:text-4xl font-bold text-green-400">{probeReading.moisture_percent.toFixed(0)}%</div>
                   ) : (
-                    <div className="text-2xl xl:text-3xl font-semibold text-cyan-300/70">{soilMoisture}%</div>
+                    <div className="text-3xl xl:text-4xl font-bold text-green-400">{soilMoisture}%</div>
                   )}
                 </div>
               </div>
@@ -992,131 +996,115 @@ function App() {
           </div>
 
           {/* CARD 2 — SPRAY WINDOW (4 cols, priority card) */}
-          <div className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-3xl border border-green-500/30 flex flex-col transition-all duration-200 hover:border-green-500/40"
+          <div
+            className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
             style={{
-              background: 'linear-gradient(145deg, #1e2937 0%, #142220 100%)',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 60px rgba(34,197,94,0.08), inset 0 1px 0 rgba(255,255,255,0.04)',
+              background: '#1e2937',
+              border: '1px solid rgba(34,197,94,0.3)',
+              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
             }}
           >
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/35 to-transparent" />
             <div className="relative z-10 p-8 xl:p-10 flex flex-col flex-1">
-              {/* Label + status */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs uppercase tracking-[2px] text-green-400 font-semibold">
-                  {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr` : '0hr'} Spray Window
+              {/* Heading block */}
+              <div className="mb-6">
+                <div className="uppercase text-green-400 text-xs font-semibold tracking-[3px] mb-1">Spray Window</div>
+                <div className="text-2xl xl:text-3xl font-bold text-white">
+                  {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Period` : 'No Window Today'}
                 </div>
-                <span className={`text-[10px] font-bold px-3 py-1 rounded-full tracking-wider ${
-                  todayBestWindow?.rating === 'Good'
-                    ? 'bg-green-500/15 text-green-300 border border-green-500/30'
-                    : todayBestWindow?.rating === 'Moderate'
-                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                    : 'bg-red-500/15 text-red-300 border border-red-500/30'
-                }`}>
-                  {todayBestWindow?.rating === 'Good' ? 'EXCELLENT' : todayBestWindow?.rating === 'Moderate' ? 'MODERATE' : 'AVOID'}
-                </span>
               </div>
 
-              {/* Big time */}
+              {/* Big time display */}
               {todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
                 <>
-                  <p className="text-3xl xl:text-4xl font-bold text-white leading-tight tracking-tight mb-1">
+                  <p className="text-3xl xl:text-4xl font-bold text-white leading-tight tracking-tight">
                     {todayBestWindow.startTime} &ndash; {todayBestWindow.endTime}
                   </p>
-                  <p className="text-base text-green-400 font-medium mb-6">
-                    {todayBestWindow.rating === 'Good' ? 'EXCELLENT' : 'MODERATE'} CONDITIONS
+                  <p className="text-base text-green-400 font-medium mt-1.5 uppercase tracking-wide">
+                    {todayBestWindow.rating === 'Good' ? 'Excellent' : 'Moderate'} Conditions
                   </p>
                 </>
               ) : (
-                <>
-                  <p className="text-2xl font-bold text-white mb-1">No suitable window</p>
-                  <p className="text-sm text-slate-400 mb-6">Conditions not favourable today</p>
-                </>
+                <p className="text-base text-slate-400">Conditions not favourable for spraying today</p>
               )}
 
-              {/* Key metrics — large */}
-              <div className="grid grid-cols-2 gap-x-8 gap-y-5 mb-8">
+              {/* Key metrics — oversized */}
+              <div className="grid grid-cols-2 gap-x-8 mt-10">
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1">Delta T</div>
-                  <div className={`text-4xl xl:text-5xl font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-white' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>
+                  <div className="text-sm text-slate-400 mb-1">DELTA T</div>
+                  <div className={`text-5xl xl:text-6xl font-bold ${deltaT >= 4 && deltaT <= 6 ? 'text-white' : deltaT >= 2 && deltaT <= 8 ? 'text-amber-300' : 'text-red-400'}`}>
                     {deltaT.toFixed(1)}&deg;
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium mb-1">Wind</div>
-                  <div className={`text-4xl xl:text-5xl font-bold ${windSpeedKmh <= 15 ? 'text-white' : windSpeedKmh <= 25 ? 'text-amber-300' : 'text-red-400'}`}>
-                    {Math.round(windSpeedKmh)} <span className="text-lg font-normal text-slate-400">km/h</span>
+                  <div className="text-sm text-slate-400 mb-1">WIND</div>
+                  <div className={`text-5xl xl:text-6xl font-bold ${windSpeedKmh <= 15 ? 'text-white' : windSpeedKmh <= 25 ? 'text-amber-300' : 'text-red-400'}`}>
+                    {Math.round(windSpeedKmh)} <span className="text-xl font-normal text-slate-400">km/h</span>
                   </div>
                 </div>
               </div>
 
               {/* Progress bar */}
-              <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden mb-8">
+              <div className="h-3 bg-slate-700/60 rounded-full overflow-hidden mt-10">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-green-400 to-teal-400 transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(10, todayBestWindow ? (todayBestWindow.rating === 'Good' ? 90 : todayBestWindow.rating === 'Moderate' ? 65 : 20) : 10))}%` }}
+                  className="h-full rounded-full bg-gradient-to-r from-green-400 via-teal-400 to-cyan-400 transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(10, todayBestWindow ? (todayBestWindow.rating === 'Good' ? 90 : todayBestWindow.rating === 'Moderate' ? 70 : 20) : 10))}%` }}
                 />
               </div>
 
               {/* CTA */}
-              <div className="mt-auto">
-                <button
-                  onClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-slate-900 font-bold px-5 py-4 rounded-2xl text-lg transition-all duration-200 hover:shadow-[0_0_24px_rgba(34,197,94,0.4)]"
-                >
-                  View Full Analysis
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
+              <button
+                onClick={() => document.getElementById('actionable-recommendations')?.scrollIntoView({ behavior: 'smooth' })}
+                className="mt-8 w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-400 text-slate-900 font-bold px-5 py-5 rounded-2xl text-lg transition-all duration-200 hover:shadow-[0_0_24px_rgba(34,197,94,0.4)]"
+              >
+                View Full Analysis
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
 
           {/* CARD 3 — AGRONOMY ADVISOR (3 cols) */}
-          <div className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-3xl border border-white/[0.06] flex flex-col transition-all duration-200 hover:border-white/[0.1]"
+          <div
+            className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-3xl flex flex-col transition-all duration-200"
             style={{
-              background: 'linear-gradient(145deg, #1e2937 0%, #162032 100%)',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)',
+              background: 'rgba(30, 41, 59, 0.92)',
+              border: '1px solid rgba(148, 163, 184, 0.12)',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
             }}
           >
             <div className="relative z-10 p-7 xl:p-8 flex flex-col flex-1">
               {/* Header */}
-              <div className="flex items-center gap-3 mb-5">
+              <div className="flex items-center gap-3 mb-6">
                 <div className="w-9 h-9 rounded-xl bg-green-600/20 border border-green-500/30 flex items-center justify-center">
-                  <Leaf className="w-4 h-4 text-green-400" />
+                  <Leaf className="w-4.5 h-4.5 text-green-400" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-white tracking-tight">Agronomy Advisor</h2>
-                  </div>
-                  <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">AI-Powered</span>
+                  <h2 className="text-base font-semibold text-white">Agronomy Advisor</h2>
+                  <span className="text-[10px] font-semibold text-green-400 uppercase tracking-wider">AI Powered</span>
                 </div>
               </div>
-
-              {/* Description */}
-              <p className="text-sm text-slate-300 leading-relaxed mb-6">
-                Identify pests, diseases, weeds and get instant farm advice.
-              </p>
 
               {/* Action buttons */}
               <div className="flex flex-col gap-3 mb-6">
                 <button
                   onClick={() => { setAgronomyInitialQuery('Upload photo'); setShowAgronomyDB(true); }}
-                  className="w-full flex items-center justify-center gap-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] hover:border-white/[0.15] text-white font-semibold px-4 py-3 rounded-xl text-sm transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2.5 border border-slate-600 hover:border-green-500/60 bg-transparent text-white font-medium px-4 py-4 rounded-2xl text-sm transition-all duration-200"
                 >
                   <Database className="w-4 h-4 text-green-400" />
                   Upload Photo / Identify
                 </button>
                 <button
                   onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
-                  className="w-full flex items-center justify-center gap-2 bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.07] hover:border-white/[0.12] text-white/70 hover:text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-4 rounded-2xl text-sm transition-all duration-200"
                 >
-                  <Leaf className="w-3.5 h-3.5 text-green-400" />
+                  <Leaf className="w-4 h-4 text-green-400" />
                   Ask Agronomy Advisor
                 </button>
               </div>
 
               {/* Prompt suggestions */}
               <div className="mt-auto">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-2.5">Try asking</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-3">Try asking</p>
                 <div className="flex flex-col gap-2">
                   {[
                     'What pest is this?',
@@ -1127,7 +1115,7 @@ function App() {
                     <button
                       key={prompt}
                       onClick={() => { setAgronomyInitialQuery(prompt); setShowAgronomyDB(true); }}
-                      className="text-left text-xs px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-150"
+                      className="text-left text-xs px-3.5 py-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:bg-slate-700/60 hover:border-slate-600 transition-all duration-150"
                     >
                       {prompt}
                     </button>
