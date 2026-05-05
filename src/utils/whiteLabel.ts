@@ -37,9 +37,9 @@ export const defaultConfig: WhiteLabelConfig = {
   },
   productRecommendation: {
     enabled: true,
-    title: 'Recommended Product',
-    description: 'Based on current conditions, consider using a drift-reducing nozzle or compatible spray solution.',
-    buttonText: 'View Recommended Products',
+    title: 'Recommended Spray Setup',
+    description: 'Based on current conditions, view nozzle recommendations for optimal drift control and coverage.',
+    buttonText: 'Recommended Spray Setup',
     url: undefined,
   },
 };

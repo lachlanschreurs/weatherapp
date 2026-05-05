@@ -32,6 +32,7 @@ import { AgronomyNavBubble } from './components/AgronomyNavBubble';
 import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, ConnectSensorsModal } from './components/ExplainerModal';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TodayOnYourFarm } from './components/TodayOnYourFarm';
+import NozzleRecommendation from './components/NozzleRecommendation';
 import { getConfig, getActivityRecommendation } from './utils/whiteLabel';
 
 const whiteLabelConfig = getConfig();
@@ -151,6 +152,7 @@ function App() {
   const [explainerOpen, setExplainerOpen] = useState<string | null>(null);
   const [showConnectSensors, setShowConnectSensors] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+  const [showNozzleModal, setShowNozzleModal] = useState(false);
 
   const countryCode = location.country || 'AU';
   const units: RegionUnits = resolveUnits({ country: countryCode }, unitPrefs);
@@ -1250,11 +1252,14 @@ function App() {
                 <div className="mb-3 p-3 bg-green-500/[0.04] border border-green-500/15 rounded-lg">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <SprayCan className="w-3 h-3 text-green-400/70" />
-                    <p className="text-[9px] text-green-300/70 uppercase tracking-wider font-semibold">{whiteLabelConfig.productRecommendation.title}</p>
+                    <p className="text-[9px] text-green-300/70 uppercase tracking-wider font-semibold">Recommended Spray Setup</p>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5">{whiteLabelConfig.productRecommendation.description}</p>
-                  <button className="text-[11px] text-green-400 hover:text-green-300 font-semibold transition-colors flex items-center gap-1">
-                    {whiteLabelConfig.productRecommendation.buttonText}
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2.5">Based on current conditions, view nozzle recommendations for optimal drift control and coverage.</p>
+                  <button
+                    onClick={() => setShowNozzleModal(true)}
+                    className="text-[11px] text-green-400 hover:text-green-300 font-semibold transition-colors flex items-center gap-1"
+                  >
+                    Recommended Spray Setup
                     <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -1868,6 +1873,17 @@ function App() {
       {showPrivacyPolicy && (
         <PrivacyPolicy onClose={() => setShowPrivacyPolicy(false)} />
       )}
+
+      <NozzleRecommendation
+        isOpen={showNozzleModal}
+        onClose={() => setShowNozzleModal(false)}
+        windSpeed={windSpeedKmh}
+        deltaT={deltaT}
+        humidity={humidity}
+        rainProbability={todayRainChance}
+        sprayWindowStart={todayBestWindow?.startTime}
+        sprayWindowEnd={todayBestWindow?.endTime}
+      />
 
       {showAgronomyDB && (
         <AgronomyDatabase
