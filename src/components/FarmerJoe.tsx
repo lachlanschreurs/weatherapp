@@ -220,18 +220,30 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setSelectedImage(base64String);
-      setImagePreview(base64String);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxDim = 1024;
+      let w = img.width;
+      let h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.7);
+      setSelectedImage(compressed);
+      setImagePreview(compressed);
     };
-    reader.readAsDataURL(file);
+    img.src = URL.createObjectURL(file);
   };
 
   const removeImage = () => {
@@ -277,7 +289,7 @@ export default function FarmerJoe({ weatherContext, isAuthenticated = false }: F
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/farmer-joe`;
 
       const requestBody = {
-        message: input,
+        message: input.trim() || (imageToSend ? 'What can you see in this image? Identify any issues and provide recommendations.' : ''),
         weatherContext,
         chatHistory: messages.map(m => ({
           role: m.role,

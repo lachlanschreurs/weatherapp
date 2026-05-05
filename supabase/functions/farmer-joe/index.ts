@@ -95,9 +95,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (!message || message.trim().length === 0) {
-      throw new Error('Message is required');
+    if ((!message || message.trim().length === 0) && !imageData) {
+      throw new Error('Message or image is required');
     }
+
+    const effectiveMessage = (message && message.trim().length > 0)
+      ? message
+      : 'What can you see in this image? Identify any pests, diseases, weeds, crops, or issues and provide recommendations.';
+
 
     // Fetch agronomy database using service role for full access
     const serviceClient = createClient(
@@ -333,7 +338,7 @@ You have access to real-time weather data and forecasts when available. You also
       // Fallback response if no API key
       const fallbackResponse = `Howdy! I'm Farmer Joe, your AI farming assistant. I'd love to help you with weather insights, pest identification, and farm planning, but it looks like I need an OpenAI API key to be configured first.
 
-In the meantime, here's some general advice: ${message.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : message.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : imageData ? 'For pest and disease identification, I need to analyze your photo. Please configure the OpenAI API key to enable this feature.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
+In the meantime, here's some general advice: ${effectiveMessage.toLowerCase().includes('spray') ? 'For spraying, you generally want calm conditions with wind speeds below 10 mph, temperatures between 50-85°F, and no rain in the forecast for at least 6 hours.' : effectiveMessage.toLowerCase().includes('plant') ? 'For planting, check your soil temperature and ensure no hard frost is expected in the next 2 weeks.' : imageData ? 'For pest and disease identification, I need to analyze your photo. Please configure the OpenAI API key to enable this feature.' : 'Always check your local weather forecast and plan farm activities around optimal conditions!'}`;
 
       // Save to database (only for authenticated users)
       if (user) {
@@ -341,7 +346,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
           {
             user_id: user.id,
             role: 'user',
-            content: message,
+            content: effectiveMessage,
             image_url: imageData ? 'data:image/jpeg;base64,...' : null,
           },
           {
@@ -403,7 +408,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         content: [
           {
             type: 'text',
-            text: message,
+            text: effectiveMessage,
           },
           {
             type: 'image_url',
@@ -416,7 +421,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
     } else {
       messages.push({
         role: 'user',
-        content: message,
+        content: effectiveMessage,
       });
     }
 
@@ -466,7 +471,7 @@ In the meantime, here's some general advice: ${message.toLowerCase().includes('s
         {
           user_id: user.id,
           role: 'user',
-          content: message,
+          content: effectiveMessage,
           image_url: imageData ? `data:image/jpeg;base64,${imageData.substring(0, 50)}...` : null,
         },
         {
