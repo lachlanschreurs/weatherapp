@@ -1286,48 +1286,51 @@ function App() {
           <div
             className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
             style={{
-              background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)',
-              border: '1px solid rgba(148, 163, 184, 0.12)',
-              backdropFilter: 'blur(20px)',
-              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
+              background: 'linear-gradient(160deg, #0f2e2a 0%, #0c2421 50%, #081a18 100%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5), 0 0 25px rgba(34,197,94,0.12)',
             }}
           >
+            {/* Top glow strip */}
+            <div className="h-[2px] w-full bg-gradient-to-r from-green-400 via-emerald-300 to-green-500 rounded-t-2xl" />
+            <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-green-500/[0.04] to-transparent pointer-events-none" />
+
             <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
               {/* Header */}
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-green-600/20 border border-green-500/30 flex items-center justify-center">
-                  <Leaf className="w-4 h-4 text-green-400" />
+                <div className="w-9 h-9 rounded-lg bg-green-500/15 border border-green-500/30 flex items-center justify-center" style={{ boxShadow: '0 0 12px rgba(34,197,94,0.2)' }}>
+                  <Leaf className="w-4.5 h-4.5 text-green-400" style={{ filter: 'drop-shadow(0 0 6px rgba(34,197,94,0.6))' }} />
                 </div>
-                <div>
-                  <h2 className="text-sm font-bold text-white">Agronomy Advisor</h2>
-                  <span className="text-[9px] font-semibold text-green-400 uppercase tracking-wider">AI Powered</span>
+                <div className="flex-1">
+                  <h2 className="text-sm font-semibold text-white">Agronomy Advisor</h2>
                 </div>
+                <span className="text-[9px] font-semibold text-green-400 uppercase tracking-wider px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">AI Powered</span>
               </div>
 
               {/* Description */}
-              <p className="text-[11px] text-slate-500 leading-relaxed mb-4">Identify pests, diseases and get instant farm recommendations.</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed mb-4">Identify pests, diseases and get instant farm recommendations.</p>
 
               {/* Action buttons */}
               <div className="flex flex-col gap-2.5 mb-5">
                 <button
                   onClick={() => { setAgronomyInitialQuery('Upload photo'); setShowAgronomyDB(true); }}
-                  className="w-full flex items-center justify-center gap-2 border border-green-500/40 hover:border-green-400/60 bg-green-500/8 hover:bg-green-500/15 text-white font-medium px-4 py-3 rounded-xl text-sm transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-400 text-black font-semibold px-4 py-3 rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                 >
-                  <Database className="w-4 h-4 text-green-400" />
+                  <Database className="w-4 h-4" />
                   Upload Photo / Identify
                 </button>
                 <button
                   onClick={() => { setAgronomyInitialQuery(''); setShowAgronomyDB(true); }}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 hover:border-slate-600 text-slate-300 hover:text-white font-medium px-4 py-3 rounded-xl text-sm transition-all duration-200"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-400 text-black font-semibold px-4 py-3 rounded-xl text-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_15px_rgba(34,197,94,0.4)]"
                 >
-                  <Leaf className="w-4 h-4 text-green-400" />
+                  <Leaf className="w-4 h-4" />
                   Ask Agronomy Advisor
                 </button>
               </div>
 
               {/* Prompt suggestions */}
               <div>
-                <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium mb-2">Try asking</p>
+                <p className="text-[9px] text-white/50 uppercase tracking-wider font-medium mb-2">Try asking</p>
                 <div className="flex flex-col gap-1.5">
                   {[
                     'What pest is this?',
@@ -1337,9 +1340,9 @@ function App() {
                     <button
                       key={prompt}
                       onClick={() => { setAgronomyInitialQuery(prompt); setShowAgronomyDB(true); }}
-                      className="text-left text-[11px] px-3 py-2 rounded-lg bg-slate-800/40 border border-slate-700/40 text-slate-400 hover:text-white hover:bg-slate-700/50 hover:border-slate-600 transition-all duration-150 flex items-center gap-2"
+                      className="text-left text-[11px] px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 text-white/70 hover:text-green-400 hover:bg-white/[0.07] hover:border-green-500/30 transition-all duration-150 flex items-center gap-2 cursor-pointer"
                     >
-                      <ChevronRight className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                      <ChevronRight className="w-3 h-3 text-green-500/40 flex-shrink-0" />
                       {prompt}
                     </button>
                   ))}
@@ -1347,7 +1350,7 @@ function App() {
               </div>
 
               {/* Connect with Agronomist */}
-              <div className="pt-3 border-t border-slate-700/30">
+              <div className="pt-3 mt-4 border-t border-white/[0.06]">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <UserCheck className="w-3 h-3 text-green-400/70" />
                   <p className="text-[9px] text-green-300/70 uppercase tracking-wider font-semibold">{whiteLabelConfig.agronomistContact.label}</p>
@@ -1355,7 +1358,7 @@ function App() {
                 <p className="text-[10px] text-slate-400 leading-relaxed mb-3">{whiteLabelConfig.agronomistContact.description}</p>
                 <button
                   onClick={() => window.open('https://www.google.com/search?q=agronomist+near+me', '_blank', 'noopener')}
-                  className="w-full text-[11px] font-semibold text-white bg-slate-700/60 hover:bg-slate-600/70 border border-slate-600/50 hover:border-slate-500 px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5"
+                  className="w-full text-[11px] font-semibold text-white bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 hover:border-green-400/40 px-3 py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5"
                 >
                   {whiteLabelConfig.agronomistContact.buttonText}
                   <ChevronRight className="w-3 h-3" />
@@ -1363,10 +1366,10 @@ function App() {
               </div>
 
               {/* Recent Insights */}
-              <div className="mt-auto pt-3 border-t border-slate-700/30">
+              <div className="mt-auto pt-3 border-t border-white/[0.06]">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-medium">Recent Insights</p>
-                  <span className="text-[8px] text-slate-600">AI-generated</span>
+                  <p className="text-[9px] text-white/50 uppercase tracking-wider font-medium">Recent Insights</p>
+                  <span className="text-[8px] text-green-400/50">AI-generated</span>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {[
@@ -1375,8 +1378,8 @@ function App() {
                     todayRainChance < 30 ? 'Soil moisture levels are stable' : 'Rainfall expected — plan field access accordingly',
                     tempC >= 12 && tempC <= 30 ? 'Conditions suitable for planting later this week' : 'Temperature outside ideal planting range',
                   ].map((insight, i) => (
-                    <div key={i} className="flex items-start gap-2 text-[10px] text-slate-400 leading-relaxed">
-                      <span className="w-1 h-1 rounded-full bg-slate-600 mt-1.5 flex-shrink-0" />
+                    <div key={i} className="flex items-start gap-2 text-[10px] text-white/60 leading-relaxed">
+                      <span className="w-1 h-1 rounded-full bg-green-500/40 mt-1.5 flex-shrink-0" />
                       {insight}
                     </div>
                   ))}
