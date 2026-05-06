@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink, Shield, Globe } from 'lucide-react';
+import { FlaskConical, Bug, Leaf, X, Database, Lock, Sprout, Camera, Loader2, Sparkles, ShieldAlert, ExternalLink, Shield, Globe, CheckCircle, AlertTriangle, RotateCcw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { AgronomyDisclaimer, DISCLAIMER_FULL } from '../AgronomyDisclaimer';
 import type { Chemical, Disease, Pest, Weed, Fertiliser, AgronomyTab, CountryCode } from './types';
@@ -13,7 +13,7 @@ import { IPMPlanCard } from './IPMPlanCard';
 import { AgronomyDisclaimerModal } from './AgronomyDisclaimerModal';
 import { checkDisclaimerAccepted, recordDisclaimerAcceptance } from '../../utils/agronomyDisclaimer';
 import type { IPMWeatherContext, IPMPlan } from '../../utils/ipm';
-import { generatePestIPM, generateDiseaseIPM, generateWeedIPM, generateGenericIPM, IPM_DISCLAIMER } from '../../utils/ipm';
+import { generatePestIPM, generateDiseaseIPM, generateWeedIPM, generateGenericIPM } from '../../utils/ipm';
 
 const TABS: { id: AgronomyTab; label: string; icon: React.ReactNode; color: string }[] = [
   { id: 'chemicals',   label: 'Chemicals',   icon: <FlaskConical className="w-4 h-4" />, color: 'text-emerald-400' },
@@ -116,6 +116,123 @@ interface AIAnalysisResult {
   issueType?: 'pest' | 'disease' | 'weed' | 'deficiency' | 'general';
   confidence?: string;
   riskLevel?: string;
+  suggestedProducts?: string[];
+  ipmActions?: string[];
+  rawText?: string;
+}
+
+function parseAIResponse(raw: string): AIAnalysisResult {
+  console.log('[Photo AI] Raw response:', raw);
+
+  let cleaned = raw.trim();
+
+  // Remove markdown code fences
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+  cleaned = cleaned.trim();
+  console.log('[Photo AI] Cleaned response:', cleaned);
+
+  // Attempt 1: direct JSON parse
+  try {
+    const direct = JSON.parse(cleaned);
+    const result = normalizeResult(direct);
+    console.log('[Photo AI] Parsed via direct JSON:', result);
+    return result;
+  } catch { /* continue */ }
+
+  // Attempt 2: extract JSON object via regex
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const extracted = JSON.parse(jsonMatch[0]);
+      const result = normalizeResult(extracted);
+      console.log('[Photo AI] Parsed via regex extraction:', result);
+      return result;
+    } catch { /* continue */ }
+
+    // Attempt 3: fix common JSON issues (trailing commas, single quotes)
+    try {
+      let fixable = jsonMatch[0];
+      fixable = fixable.replace(/,\s*([}\]])/g, '$1');
+      fixable = fixable.replace(/'/g, '"');
+      const fixed = JSON.parse(fixable);
+      const result = normalizeResult(fixed);
+      console.log('[Photo AI] Parsed via fixed JSON:', result);
+      return result;
+    } catch { /* continue */ }
+  }
+
+  // Attempt 4: graceful fallback — extract useful info from plain text
+  console.log('[Photo AI] JSON parsing failed, extracting from plain text');
+  return extractFromText(raw);
+}
+
+function normalizeResult(obj: any): AIAnalysisResult {
+  return {
+    identification: obj.identification || obj.identified_issue || obj.issue || obj.name || 'Unidentified',
+    details: obj.details || obj.description || obj.summary || '',
+    recommendations: Array.isArray(obj.recommendations)
+      ? obj.recommendations
+      : Array.isArray(obj.suggested_products)
+        ? obj.suggested_products
+        : [],
+    issueType: normalizeIssueType(obj.issueType || obj.category || obj.type),
+    confidence: obj.confidence || 'Medium',
+    riskLevel: normalizeRisk(obj.riskLevel || obj.severity || obj.risk),
+    suggestedProducts: Array.isArray(obj.suggested_products) ? obj.suggested_products : [],
+    ipmActions: Array.isArray(obj.ipm_actions) ? obj.ipm_actions : [],
+  };
+}
+
+function normalizeIssueType(val: any): AIAnalysisResult['issueType'] {
+  if (!val) return 'general';
+  const lower = String(val).toLowerCase();
+  if (lower.includes('pest') || lower.includes('insect')) return 'pest';
+  if (lower.includes('disease') || lower.includes('fung') || lower.includes('pathogen')) return 'disease';
+  if (lower.includes('weed')) return 'weed';
+  if (lower.includes('deficien') || lower.includes('nutri')) return 'deficiency';
+  return 'general';
+}
+
+function normalizeRisk(val: any): string {
+  if (!val) return 'moderate';
+  const lower = String(val).toLowerCase();
+  if (lower.includes('low') || lower.includes('minor')) return 'low';
+  if (lower.includes('high') || lower.includes('major')) return 'high';
+  if (lower.includes('severe') || lower.includes('critical')) return 'severe';
+  return 'moderate';
+}
+
+function extractFromText(text: string): AIAnalysisResult {
+  const lines = text.split('\n').filter(l => l.trim());
+  const recommendations: string[] = [];
+  let identification = '';
+  let details = '';
+
+  for (const line of lines) {
+    const stripped = line.replace(/^[\d\.\-\*\#]+\s*/, '').trim();
+    if (!stripped) continue;
+
+    if (!identification && (
+      line.match(/^#|identif|detected|diagnosis|issue|finding/i) ||
+      lines.indexOf(line) === 0
+    )) {
+      identification = stripped.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+    } else if (line.match(/^\d+[\.\)]/) || line.match(/^[-*]\s/)) {
+      recommendations.push(stripped);
+    } else if (!details && stripped.length > 20) {
+      details = stripped;
+    }
+  }
+
+  return {
+    identification: identification || lines[0]?.replace(/^#+\s*/, '').replace(/\*\*/g, '') || 'Analysis Complete',
+    details: details || lines.slice(1, 3).join(' ') || text.substring(0, 200),
+    recommendations: recommendations.length > 0 ? recommendations : ['Review the full analysis above and consult with your agronomist for specific treatment options.'],
+    issueType: 'general',
+    confidence: 'Medium',
+    riskLevel: 'moderate',
+    rawText: text,
+  };
 }
 
 export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initialQuery = '', weatherContext, userCountry = 'AU' }: Props) {
@@ -412,22 +529,14 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
           'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          message: `You are a ${regionName} agricultural expert specialising in Integrated Pest Management. Use ${authority}. Analyse this photo and:
-1. Identify what you see (crop, pest, disease, weed, nutrient deficiency, etc.)
-2. Provide a brief description
-3. Give 2-4 specific recommendations using products registered in ${authorityShort}
-4. Classify the issue type and confidence level
-5. Assess the risk level
+          message: `You are a ${regionName} agricultural expert specialising in Integrated Pest Management. Use ${authority}. Analyse this photo and identify what you see.
 
-Respond ONLY with this exact JSON format (no other text):
-{
-  "identification": "What this is (e.g. Aphid infestation on wheat)",
-  "details": "2-3 sentence description of what you see and why it matters",
-  "recommendations": ["First recommendation", "Second recommendation", "Third recommendation"],
-  "issueType": "pest|disease|weed|deficiency|general",
-  "confidence": "High|Moderate|Low",
-  "riskLevel": "low|moderate|high|severe"
-}`,
+Return ONLY valid JSON. Do not include markdown formatting, code fences, explanations, or extra text outside the JSON object.
+
+Required JSON structure:
+{"identification":"What this is (e.g. Aphid infestation on wheat)","details":"2-3 sentence description of what you see and why it matters","recommendations":["First recommendation","Second recommendation","Third recommendation"],"issueType":"pest|disease|weed|deficiency|general","confidence":"High|Moderate|Low","riskLevel":"low|moderate|high|severe","suggested_products":["Product 1","Product 2"],"ipm_actions":["Action 1","Action 2"]}
+
+Use products registered in ${authorityShort}. Include active ingredients, withholding periods and registered crops where relevant.`,
           imageData: base64,
         }),
       });
@@ -441,12 +550,12 @@ Respond ONLY with this exact JSON format (no other text):
       if (json.error) throw new Error(json.error);
 
       const raw = (json.response || '').trim();
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('Could not parse AI response. The AI may not have returned structured data.');
+      if (!raw) throw new Error('No response received from AI. Please try again.');
 
-      const parsed: AIAnalysisResult = JSON.parse(match[0]);
+      const parsed = parseAIResponse(raw);
       setAnalysisResult(parsed);
     } catch (err: any) {
+      console.error('[Photo AI] Analysis error:', err);
       setAnalysisError(err?.message || 'Analysis failed. Please try again.');
     } finally {
       setAnalyzing(false);
@@ -735,6 +844,12 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
             <Sparkles className="w-2 h-2" />
             AI
           </span>
+          {analysisResult && (
+            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-300 border border-green-500/25">
+              <CheckCircle className="w-2.5 h-2.5" />
+              Complete
+            </span>
+          )}
         </div>
         <button onClick={onClear} className="p-1 text-slate-500 hover:text-slate-300 transition-colors">
           <X className="w-4 h-4" />
@@ -744,11 +859,23 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
       <div className="p-5">
         <div className="flex flex-col sm:flex-row gap-5">
           <div className="flex-shrink-0">
-            <img
-              src={photoPreview}
-              alt="Uploaded for analysis"
-              className="w-full sm:w-48 h-36 object-cover rounded-xl border border-slate-700/60 shadow-lg"
-            />
+            <div className="relative">
+              <img
+                src={photoPreview}
+                alt="Uploaded for analysis"
+                className="w-full sm:w-48 h-36 object-cover rounded-xl border border-slate-700/60 shadow-lg"
+              />
+              {analyzing && (
+                <div className="absolute inset-0 rounded-xl bg-slate-900/60 flex items-center justify-center">
+                  <div className="w-10 h-10 border-2 border-green-700 border-t-green-400 rounded-full animate-spin" />
+                </div>
+              )}
+              {analysisResult && (
+                <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-green-500 flex items-center justify-center shadow-lg animate-[scale-in_0.3s_ease-out]">
+                  <CheckCircle className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </div>
             <div className="flex gap-2 mt-3">
               {!analysisResult && !analyzing && (
                 <button
@@ -764,6 +891,15 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Analysing...
                 </div>
+              )}
+              {analysisResult && (
+                <button
+                  onClick={onAnalyse}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-bold rounded-xl transition-colors border border-slate-700/60"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Re-analyse
+                </button>
               )}
               <button
                 onClick={onClear}
@@ -781,6 +917,7 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Upload a clear photo of a pest, disease, weed, crop deficiency, or damage and AI will identify it and provide actionable recommendations.
                 </p>
+                <p className="text-[10px] text-slate-600 mt-1">AI analysis may take 5-15 seconds</p>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {['Pest', 'Disease', 'Weed', 'Deficiency', 'Damage'].map(tag => (
                     <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700/60 text-slate-500">{tag}</span>
@@ -798,18 +935,23 @@ function PhotoAnalysisPanel({ photoPreview, analyzing, analysisResult, analysisE
                     <p className="text-xs text-slate-500 mt-0.5">Identifying species, conditions, and recommendations</p>
                   </div>
                 </div>
+                <p className="text-[10px] text-slate-600 mt-1">AI analysis may take 5-15 seconds</p>
               </div>
             )}
 
             {analysisError && (
-              <div className="rounded-xl bg-red-950/40 border border-red-500/20 p-4">
-                <p className="text-sm font-bold text-red-400 mb-1">Analysis failed</p>
-                <p className="text-xs text-red-300/70">{analysisError}</p>
+              <div className="rounded-xl bg-amber-950/30 border border-amber-500/20 p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-400" />
+                  <p className="text-sm font-bold text-amber-300">Could not complete analysis</p>
+                </div>
+                <p className="text-xs text-amber-200/60 leading-relaxed">{analysisError}</p>
                 <button
                   onClick={onAnalyse}
-                  className="mt-3 text-xs font-bold text-red-400 hover:text-red-300 transition-colors"
+                  className="mt-3 flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20"
                 >
-                  Try again
+                  <RotateCcw className="w-3 h-3" />
+                  Retry analysis
                 </button>
               </div>
             )}
@@ -924,21 +1066,39 @@ function PhotoAnalysisIPMResult({ result, weatherContext }: { result: AIAnalysis
       {/* Detected Issue */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-3.5 h-3.5 text-green-400" />
+          <CheckCircle className="w-3.5 h-3.5 text-green-400" />
           <span className="text-xs font-bold text-green-400 uppercase tracking-wider">Detected Issue</span>
           {result.confidence && (
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
               result.confidence === 'High' ? 'bg-green-500/10 text-green-300 border-green-500/30' :
-              result.confidence === 'Moderate' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
+              result.confidence === 'Moderate' || result.confidence === 'Medium' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
               'bg-slate-800 text-slate-400 border-slate-600/40'
             }`}>
               {result.confidence} confidence
+            </span>
+          )}
+          {result.riskLevel && (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+              result.riskLevel === 'severe' ? 'bg-red-500/10 text-red-300 border-red-500/30' :
+              result.riskLevel === 'high' ? 'bg-orange-500/10 text-orange-300 border-orange-500/30' :
+              result.riskLevel === 'moderate' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
+              'bg-green-500/10 text-green-300 border-green-500/30'
+            }`}>
+              {result.riskLevel} risk
             </span>
           )}
         </div>
         <h3 className="text-base font-black text-white">{result.identification}</h3>
         <p className="text-sm text-slate-400 mt-1 leading-relaxed">{result.details}</p>
       </div>
+
+      {/* Raw Text Fallback */}
+      {result.rawText && (
+        <div className="rounded-lg bg-slate-800/50 border border-slate-700/40 p-3">
+          <p className="text-[10px] text-amber-400/70 font-bold uppercase tracking-wider mb-1">Full AI Response</p>
+          <p className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">{result.rawText}</p>
+        </div>
+      )}
 
       {/* Common Treatment Options */}
       {result.recommendations.length > 0 && (
@@ -954,6 +1114,33 @@ function PhotoAnalysisIPMResult({ result, weatherContext }: { result: AIAnalysis
                   {i + 1}
                 </span>
                 {rec}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Suggested Products */}
+      {result.suggestedProducts && result.suggestedProducts.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Suggested Products</div>
+          <div className="flex flex-wrap gap-1.5">
+            {result.suggestedProducts.map((product, i) => (
+              <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-600/25 text-emerald-300">{product}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* IPM Actions */}
+      {result.ipmActions && result.ipmActions.length > 0 && (
+        <div>
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">IPM Actions</div>
+          <ul className="space-y-1">
+            {result.ipmActions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-green-500/60 mt-2" />
+                {action}
               </li>
             ))}
           </ul>
