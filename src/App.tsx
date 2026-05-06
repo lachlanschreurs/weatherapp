@@ -532,55 +532,88 @@ function App() {
 
   if (locationDenied) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-        <div className="max-w-sm w-full">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-5 bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/30">
-              <MapPin className="w-8 h-8 text-green-400" />
+      <div className="min-h-screen flex items-center justify-center farmcast-bg p-4 relative overflow-hidden">
+        <div className="farmcast-bg-overlay" />
+
+        <div className="relative z-10 max-w-md w-full">
+          {/* Logo + branding */}
+          <div className="text-center mb-8 farmcast-fade-in">
+            <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 rounded-2xl flex items-center justify-center border border-green-500/25 farmcast-logo-glow">
+              <Sprout className="w-10 h-10 text-green-400" />
             </div>
-            <p className="text-white text-2xl font-bold tracking-wide mb-2">FarmCast</p>
-            <p className="text-slate-300 text-base mb-1">Where are you farming?</p>
-            <p className="text-slate-500 text-sm">Get hyper-local weather for your exact location, anywhere in the world</p>
+            <h1 className="text-white text-3xl font-extrabold tracking-tight mb-2" style={{ letterSpacing: '-0.5px' }}>FarmCast</h1>
+            <p className="text-slate-300 text-base font-medium">Your Daily Farm Decision Engine</p>
           </div>
 
-          <button
-            onClick={() => {
-              setLocationDenied(false);
-              getUserLocation().then((loc) => {
-                setLocation(loc);
-                setLocationResolved(true);
-                setIsUsingCurrentLocation(true);
-                setHasLoadedInitialLocation(true);
-              }).catch(() => {
-                setLocationDenied(true);
-              });
-            }}
-            className="w-full mb-4 px-4 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold flex items-center justify-center gap-3 transition-colors"
-          >
-            <Navigation className="w-5 h-5" />
-            Allow Location Access
-          </button>
-
-          <div className="relative flex items-center mb-4">
-            <div className="flex-1 border-t border-slate-700" />
-            <span className="px-3 text-slate-500 text-sm">or search manually</span>
-            <div className="flex-1 border-t border-slate-700" />
+          {/* Feature highlights */}
+          <div className="grid grid-cols-3 gap-3 mb-8 farmcast-fade-in-delay-1">
+            <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <Wind className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
+              <p className="text-[10px] text-slate-300 font-medium">Spray Windows</p>
+            </div>
+            <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <Activity className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
+              <p className="text-[10px] text-slate-300 font-medium">Disease Alerts</p>
+            </div>
+            <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <Droplets className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
+              <p className="text-[10px] text-slate-300 font-medium">Rain Forecasts</p>
+            </div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-            <LocationSearch
-              onLocationSelect={(loc) => {
-                setLocation(loc);
-                setLocationResolved(true);
+          {/* Location prompt card */}
+          <div className="farmcast-glass-highlight p-6 farmcast-fade-in-delay-2">
+            <div className="flex items-center gap-2 mb-4">
+              <MapPin className="w-4 h-4 text-green-400" />
+              <span className="text-sm font-semibold text-white">Set your farm location</span>
+            </div>
+            <p className="text-xs text-slate-400 mb-5 leading-relaxed">Get hyper-local spray windows, weather alerts, and agronomy intelligence tailored to your exact paddock.</p>
+
+            <button
+              onClick={() => {
                 setLocationDenied(false);
-                setIsUsingCurrentLocation(false);
-                setHasLoadedInitialLocation(true);
+                getUserLocation().then((loc) => {
+                  setLocation(loc);
+                  setLocationResolved(true);
+                  setIsUsingCurrentLocation(true);
+                  setHasLoadedInitialLocation(true);
+                }).catch(() => {
+                  setLocationDenied(true);
+                });
               }}
-              currentLocation=""
-            />
+              className="w-full mb-4 px-4 py-3.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 shadow-lg shadow-green-900/40 hover:shadow-green-800/50 hover:scale-[1.01]"
+            >
+              <Navigation className="w-4 h-4" />
+              Use My Current Location
+            </button>
+
+            <div className="relative flex items-center mb-4">
+              <div className="flex-1 border-t border-white/[0.06]" />
+              <span className="px-3 text-slate-500 text-xs font-medium">or search</span>
+              <div className="flex-1 border-t border-white/[0.06]" />
+            </div>
+
+            <div className="rounded-xl bg-slate-800/60 border border-white/[0.06] p-3">
+              <LocationSearch
+                onLocationSelect={(loc) => {
+                  setLocation(loc);
+                  setLocationResolved(true);
+                  setLocationDenied(false);
+                  setIsUsingCurrentLocation(false);
+                  setHasLoadedInitialLocation(true);
+                }}
+                currentLocation=""
+              />
+            </div>
           </div>
 
-          <p className="text-center text-slate-600 text-xs mt-4">Works worldwide — Australia, USA, UK, Europe and beyond</p>
+          {/* Footer */}
+          <p className="text-center text-slate-600 text-[11px] mt-5 farmcast-fade-in-delay-3">
+            Works worldwide — Australia, USA, UK, NZ, Europe and beyond
+          </p>
+          <p className="text-center text-slate-700 text-[10px] mt-1.5 farmcast-fade-in-delay-4">
+            Built by farmers, for real farm decisions
+          </p>
         </div>
       </div>
     );
@@ -588,18 +621,17 @@ function App() {
 
   if (!locationResolved) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center farmcast-bg relative overflow-hidden">
+        <div className="farmcast-bg-overlay" />
+        <div className="relative z-10 text-center farmcast-fade-in">
           <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="animate-spin rounded-full h-20 w-20 border-4 border-slate-700 border-t-green-500 absolute inset-0"></div>
+            <div className="animate-spin rounded-full h-20 w-20 border-[3px] border-white/[0.06] border-t-green-400 absolute inset-0"></div>
             <div className="flex items-center justify-center h-20 w-20">
-              <Map className="w-8 h-8 text-green-500" />
+              <Sprout className="w-8 h-8 text-green-400" />
             </div>
           </div>
-          <p className="text-white text-xl font-bold tracking-wide">FarmCast</p>
+          <p className="text-white text-xl font-bold tracking-tight">FarmCast</p>
           <p className="mt-2 text-slate-400 text-sm">Detecting your location...</p>
-          <p className="mt-1 text-slate-500 text-xs">Allow location access for precise local weather</p>
-          <p className="mt-1 text-slate-600 text-xs">Works anywhere in the world</p>
         </div>
       </div>
     );
@@ -607,16 +639,17 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center farmcast-bg relative overflow-hidden">
+        <div className="farmcast-bg-overlay" />
+        <div className="relative z-10 text-center farmcast-fade-in">
           <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="animate-spin rounded-full h-20 w-20 border-4 border-slate-700 border-t-green-500 absolute inset-0"></div>
+            <div className="animate-spin rounded-full h-20 w-20 border-[3px] border-white/[0.06] border-t-green-400 absolute inset-0"></div>
             <div className="flex items-center justify-center h-20 w-20">
-              <Sprout className="w-8 h-8 text-green-500" />
+              <Sprout className="w-8 h-8 text-green-400" />
             </div>
           </div>
-          <p className="text-white text-xl font-bold tracking-wide">FarmCast</p>
-          <p className="mt-2 text-slate-400 text-sm">Loading weather data for {location.name}</p>
+          <p className="text-white text-xl font-bold tracking-tight">FarmCast</p>
+          <p className="mt-2 text-slate-400 text-sm">Loading weather data for {location.name}...</p>
         </div>
       </div>
     );
@@ -940,7 +973,7 @@ function App() {
 
           {/* CARD 1 — WEATHER OVERVIEW (5 cols) */}
           <div
-            className="col-span-1 lg:col-span-5 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
+            className="col-span-1 lg:col-span-5 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200 farmcast-fade-in"
             style={{
               background: 'linear-gradient(145deg, #1e2937 0%, #0f172a 100%)',
               border: '1px solid rgba(148, 163, 184, 0.12)',
@@ -949,7 +982,10 @@ function App() {
           >
             <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
               {/* Current Conditions Header */}
-              <div className="uppercase text-slate-400 text-[10px] font-medium tracking-[2.5px] mb-3">Current Conditions</div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 farmcast-pulse-dot" />
+                <span className="uppercase text-slate-400 text-[10px] font-medium tracking-[2.5px]">Current Conditions</span>
+              </div>
 
               {/* Main weather section */}
               <div className="flex justify-between items-start mb-4">
@@ -1080,7 +1116,7 @@ function App() {
 
           {/* CARD 2 — SPRAY WINDOW DECISION PANEL (4 cols) */}
           <div
-            className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
+            className="col-span-1 lg:col-span-4 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200 farmcast-fade-in-delay-1"
             style={{
               background: 'linear-gradient(160deg, #1e2937 0%, #162220 100%)',
               border: '1px solid rgba(34,197,94,0.25)',
@@ -1102,12 +1138,22 @@ function App() {
 
               {/* Status line */}
               <div className="text-base xl:text-lg font-bold text-white mb-2">
-                {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Spray Period` : 'No Spray Window Today'}
+                {rainfall > 0 ? 'Currently Raining — Avoid Spraying' : todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Spray Period` : 'No Spray Window Today'}
               </div>
 
               {/* Time range + badge */}
-              {todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
-                <div className="mb-3">
+              {rainfall > 0 ? (
+                <div className="mb-3 farmcast-fade-in">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <CloudRain className="w-4 h-4 text-red-400" />
+                    <span className="text-sm font-semibold text-red-300">Rain washes off product — zero efficacy</span>
+                  </div>
+                  <span className="inline-flex items-center text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30">
+                    Score: 0 / 10
+                  </span>
+                </div>
+              ) : todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
+                <div className="mb-3 farmcast-fade-in">
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-green-400/70 flex-shrink-0" />
                     <span className="text-lg xl:text-xl font-bold text-white tracking-tight">
@@ -1125,10 +1171,18 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <div className="mb-3">
-                  <span className="inline-flex items-center text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30">
-                    Avoid Spraying
-                  </span>
+                <div className="mb-3 farmcast-fade-in">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/40 border border-slate-700/30">
+                    <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <AlertTriangle className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div>
+                      <span className="inline-flex items-center text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30 mb-1">
+                        Avoid Spraying
+                      </span>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">Wind, rain risk, or Delta T outside safe range. Check tomorrow's forecast for the next available window.</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1187,9 +1241,13 @@ function App() {
               {/* Spray Quality Score */}
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Spray Quality Score</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Spray Quality Score</span>
+                    {rainfall > 0 && <span className="w-1.5 h-1.5 rounded-full bg-red-400 farmcast-pulse-dot" />}
+                  </div>
                   <span className="text-xs font-bold text-white">
                     {(() => {
+                      if (rainfall > 0) return '0.0';
                       const score = Math.min(10, Math.max(0,
                         (deltaT >= 4 && deltaT <= 6 ? 3 : deltaT >= 2 && deltaT <= 8 ? 1.5 : 0) +
                         (windSpeedKmh <= 15 ? 3 : windSpeedKmh <= 25 ? 1.5 : 0) +
@@ -1203,9 +1261,9 @@ function App() {
                 </div>
                 <div className="h-2 bg-slate-700/60 rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-500"
+                    className="h-full rounded-full farmcast-score-fill"
                     style={{
-                      width: `${Math.min(100, Math.max(5, (() => {
+                      width: `${rainfall > 0 ? 0 : Math.min(100, Math.max(5, (() => {
                         const score = Math.min(10, Math.max(0,
                           (deltaT >= 4 && deltaT <= 6 ? 3 : deltaT >= 2 && deltaT <= 8 ? 1.5 : 0) +
                           (windSpeedKmh <= 15 ? 3 : windSpeedKmh <= 25 ? 1.5 : 0) +
@@ -1215,6 +1273,7 @@ function App() {
                         return score * 10;
                       })()))}%`,
                       background: (() => {
+                        if (rainfall > 0) return 'linear-gradient(90deg, #ef4444, #dc2626)';
                         const score = Math.min(10, Math.max(0,
                           (deltaT >= 4 && deltaT <= 6 ? 3 : deltaT >= 2 && deltaT <= 8 ? 1.5 : 0) +
                           (windSpeedKmh <= 15 ? 3 : windSpeedKmh <= 25 ? 1.5 : 0) +
@@ -1228,6 +1287,9 @@ function App() {
                     }}
                   />
                 </div>
+                {rainfall > 0 && (
+                  <p className="text-[10px] text-red-400/80 mt-1 font-medium">Rain detected — do not spray. Product will wash off.</p>
+                )}
               </div>
 
               {/* Insight line */}
@@ -1284,7 +1346,7 @@ function App() {
 
           {/* CARD 3 — AGRONOMY ADVISOR (3 cols) */}
           <div
-            className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200"
+            className="col-span-1 lg:col-span-3 relative overflow-hidden rounded-2xl flex flex-col transition-all duration-200 farmcast-fade-in-delay-2"
             style={{
               background: 'linear-gradient(160deg, #102b27 0%, #0b221f 50%, #071816 100%)',
               border: '1px solid rgba(255,255,255,0.1)',
