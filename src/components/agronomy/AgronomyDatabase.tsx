@@ -150,6 +150,20 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
     });
   }, []);
 
+  useEffect(() => {
+    if (initialQuery?.toLowerCase() === 'upload photo' && fileInputRef.current) {
+      setTimeout(() => fileInputRef.current?.click(), 400);
+    }
+  }, [initialQuery]);
+
+  const pendingAnalysis = useRef<string | null>(null);
+  useEffect(() => {
+    if (pendingAnalysis.current && photoPreview === pendingAnalysis.current && !analyzing) {
+      pendingAnalysis.current = null;
+      analysePhoto();
+    }
+  }, [photoPreview]);
+
   async function handleDisclaimerAccept() {
     await recordDisclaimerAcceptance();
     setDisclaimerAccepted(true);
@@ -325,26 +339,54 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxDim = 1024;
-      let w = img.width;
-      let h = img.height;
-      if (w > maxDim || h > maxDim) {
-        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
-        else { w = Math.round(w * maxDim / h); h = maxDim; }
+    setAnalysisResult(null);
+    setAnalysisError(null);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (!dataUrl) {
+        setAnalysisError('Failed to read image file.');
+        return;
       }
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', 0.7);
-      setPhotoPreview(compressed);
-      setAnalysisResult(null);
-      setAnalysisError(null);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1024;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+            else { w = Math.round(w * maxDim / h); h = maxDim; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            pendingAnalysis.current = dataUrl;
+            setPhotoPreview(dataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.75);
+          pendingAnalysis.current = compressed;
+          setPhotoPreview(compressed);
+        } catch {
+          pendingAnalysis.current = dataUrl;
+          setPhotoPreview(dataUrl);
+        }
+      };
+      img.onerror = () => {
+        pendingAnalysis.current = dataUrl;
+        setPhotoPreview(dataUrl);
+      };
+      img.src = dataUrl;
     };
-    img.src = URL.createObjectURL(file);
+    reader.onerror = () => {
+      setAnalysisError('Failed to read image file.');
+    };
+    reader.readAsDataURL(file);
   }
 
   async function analysePhoto() {
@@ -358,6 +400,10 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const base64 = photoPreview.split('base64,')[1] || photoPreview;
 
+      const regionName = region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : region === 'CA' ? 'Canadian' : 'Australian';
+      const authority = region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM-registered products and NZ crop terminology' : region === 'CA' ? 'PMRA-registered products and Canadian crop terminology' : 'APVMA-registered products and Australian crop terminology';
+      const authorityShort = region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM)' : region === 'CA' ? 'Canada (PMRA)' : 'Australia (APVMA)';
+
       const res = await fetch(`${supabaseUrl}/functions/v1/farmer-joe`, {
         method: 'POST',
         headers: {
@@ -366,10 +412,10 @@ export function AgronomyDatabase({ onClose, isPremium = false, onSignUp, initial
           'Apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          message: `You are a ${region === 'US' ? 'United States' : region === 'NZ' ? 'New Zealand' : region === 'CA' ? 'Canadian' : 'Australian'} agricultural expert specialising in Integrated Pest Management. Use ${region === 'US' ? 'EPA-registered products and US crop terminology' : region === 'NZ' ? 'ACVM-registered products and NZ crop terminology' : region === 'CA' ? 'PMRA-registered products and Canadian crop terminology' : 'APVMA-registered products and Australian crop terminology'}. Analyse this photo and:
+          message: `You are a ${regionName} agricultural expert specialising in Integrated Pest Management. Use ${authority}. Analyse this photo and:
 1. Identify what you see (crop, pest, disease, weed, nutrient deficiency, etc.)
 2. Provide a brief description
-3. Give 2-4 specific recommendations using products registered in ${region === 'US' ? 'the USA (EPA)' : region === 'NZ' ? 'New Zealand (ACVM)' : region === 'CA' ? 'Canada (PMRA)' : 'Australia (APVMA)'}
+3. Give 2-4 specific recommendations using products registered in ${authorityShort}
 4. Classify the issue type and confidence level
 5. Assess the risk level
 
@@ -386,12 +432,17 @@ Respond ONLY with this exact JSON format (no other text):
         }),
       });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Server error (${res.status}): ${errText}`);
+      }
+
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
       const raw = (json.response || '').trim();
       const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('Could not parse AI response');
+      if (!match) throw new Error('Could not parse AI response. The AI may not have returned structured data.');
 
       const parsed: AIAnalysisResult = JSON.parse(match[0]);
       setAnalysisResult(parsed);
@@ -487,7 +538,6 @@ Respond ONLY with this exact JSON format (no other text):
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handleFileSelect}
               />

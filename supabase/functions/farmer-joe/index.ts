@@ -436,7 +436,7 @@ In the meantime, here's some general advice: ${effectiveMessage.toLowerCase().in
         model: 'gpt-4o',
         messages: messages,
         temperature: 0.7,
-        max_tokens: 1000,
+        max_tokens: imageData ? 2000 : 1000,
       }),
     });
 
