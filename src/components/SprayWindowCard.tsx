@@ -12,12 +12,14 @@ interface SprayWindowCardProps {
   deltaT: number;
   rainChance: number;
   humidity: number;
+  currentRainfall?: number;
   onCardClick: () => void;
 }
 
 type SprayStatus = 'IDEAL' | 'OKAY' | 'POOR';
 
-function getSprayStatus(windSpeedKmh: number, deltaT: number, rainChance: number): SprayStatus {
+function getSprayStatus(windSpeedKmh: number, deltaT: number, rainChance: number, currentRainfall: number): SprayStatus {
+  if (currentRainfall > 0) return 'POOR';
   if (windSpeedKmh > 25 || windSpeedKmh < 3 || deltaT < 2 || deltaT > 8 || rainChance > 30) {
     return 'POOR';
   }
@@ -48,8 +50,9 @@ const statusConfig = {
   },
 };
 
-export function SprayWindowCard({ sprayWindow, windSpeedKmh, deltaT, rainChance, humidity, onCardClick }: SprayWindowCardProps) {
-  const status = getSprayStatus(windSpeedKmh, deltaT, rainChance);
+export function SprayWindowCard({ sprayWindow, windSpeedKmh, deltaT, rainChance, humidity, currentRainfall = 0, onCardClick }: SprayWindowCardProps) {
+  const isRaining = currentRainfall > 0;
+  const status = getSprayStatus(windSpeedKmh, deltaT, rainChance, currentRainfall);
   const config = statusConfig[status];
   const hasData = windSpeedKmh !== undefined && deltaT !== undefined;
 
@@ -98,9 +101,11 @@ export function SprayWindowCard({ sprayWindow, windSpeedKmh, deltaT, rainChance,
               ) : (
                 <div>
                   <p className="text-xl font-bold text-white leading-tight">
-                    No suitable window
+                    {isRaining ? 'Currently raining' : 'No suitable window'}
                   </p>
-                  <p className="text-sm text-white/40 mt-2">Conditions not favourable today</p>
+                  <p className="text-sm text-white/40 mt-2">
+                    {isRaining ? 'Spray quality: 0 — rain washes off product' : 'Conditions not favourable today'}
+                  </p>
                 </div>
               )}
             </div>

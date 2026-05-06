@@ -64,9 +64,16 @@ function getTimeUntilWindow(windowStart: string): { hours: number; minutes: numb
 
 function generateActions(props: Props): TodayAction[] {
   const actions: TodayAction[] = [];
-  const { tempC, windSpeedKmh, windGustKmh, deltaTRating, todayBestWindow, todayRainChance, todayExpectedRain, frostRisk, soilMoisture, uvIndex } = props;
+  const { tempC, windSpeedKmh, windGustKmh, deltaTRating, todayBestWindow, todayRainChance, todayExpectedRain, rainfall, frostRisk, soilMoisture, uvIndex } = props;
 
-  if (todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate')) {
+  if (rainfall > 0) {
+    actions.push({
+      type: 'avoid',
+      icon: <Droplets className="w-4 h-4" />,
+      text: 'Do not spray — currently raining',
+      detail: 'Spray quality: 0. Rain washes off product before absorption. Wait until rain stops and foliage dries.',
+    });
+  } else if (todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate')) {
     actions.push({
       type: 'do',
       icon: <CheckCircle className="w-4 h-4" />,
@@ -277,11 +284,13 @@ export function TodayOnYourFarm(props: Props) {
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              props.rainfall > 0 ? 'bg-red-600/15 border border-red-500/30' :
               props.todayBestWindow?.rating === 'Good' ? 'bg-green-600/15 border border-green-500/30' :
               props.todayBestWindow?.rating === 'Moderate' ? 'bg-amber-600/15 border border-amber-500/30' :
               'bg-slate-800 border border-slate-700/50'
             }`}>
               <Clock className={`w-4 h-4 ${
+                props.rainfall > 0 ? 'text-red-400' :
                 props.todayBestWindow?.rating === 'Good' ? 'text-green-400' :
                 props.todayBestWindow?.rating === 'Moderate' ? 'text-amber-400' :
                 'text-slate-500'
@@ -290,7 +299,11 @@ export function TodayOnYourFarm(props: Props) {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm font-bold text-white">Best Spray Window</h3>
-                {props.todayBestWindow && (
+                {props.rainfall > 0 ? (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border text-red-400 bg-red-500/10 border-red-500/30">
+                    Raining — Score 0
+                  </span>
+                ) : props.todayBestWindow && (
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
                     props.todayBestWindow.rating === 'Good' ? 'text-green-400 bg-green-500/10 border-green-500/30' :
                     'text-amber-400 bg-amber-500/10 border-amber-500/30'
@@ -300,7 +313,9 @@ export function TodayOnYourFarm(props: Props) {
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5 truncate">
-                {props.todayBestWindow
+                {props.rainfall > 0
+                  ? 'Do not spray — rain washes off product'
+                  : props.todayBestWindow
                   ? `${props.todayBestWindow.startTime} – ${props.todayBestWindow.endTime} (${props.todayBestWindow.duration.toFixed(0)}h window)`
                   : 'No safe window today'
                 }
@@ -375,7 +390,22 @@ function SprayExpandedContent({ props, timeUntil }: { props: Props; timeUntil: {
 
   return (
     <div className="space-y-4 pt-3">
-      {props.todayBestWindow ? (
+      {props.rainfall > 0 ? (
+        <div className="py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Droplets className="w-5 h-5 text-red-400" />
+            <p className="text-sm font-bold text-red-400">Currently Raining — Spray Quality: 0</p>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Spraying during rain is ineffective. Product will be washed off foliage before absorption, wasting chemical and reducing efficacy to zero. Wait until rain stops and foliage has dried before applying any foliar products.
+          </p>
+          {props.todayBestWindow && (
+            <p className="text-xs text-slate-500 mt-2">
+              A spray window was identified for {props.todayBestWindow.startTime} – {props.todayBestWindow.endTime}, but conditions have changed due to current rainfall.
+            </p>
+          )}
+        </div>
+      ) : props.todayBestWindow ? (
         <>
           {timeUntil && (
             <div className="flex items-baseline gap-3">
