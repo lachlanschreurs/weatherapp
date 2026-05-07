@@ -6,20 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
 };
 
-interface WeatherData {
-  location: string;
-  current: any;
-  forecast: any;
-  sprayConditions: string;
-  deltaT: number;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -36,66 +25,37 @@ Deno.serve(async (req: Request) => {
     if (subError) throw subError;
 
     const eligibleSubscribers = subscribers?.filter((sub: any) => {
-      if (sub.trial_active && sub.trial_end_date && new Date(sub.trial_end_date) > new Date()) {
-        return true;
-      }
-      if (!sub.requires_subscription) {
-        return true;
-      }
+      if (sub.trial_active && sub.trial_end_date && new Date(sub.trial_end_date) > new Date()) return true;
+      if (!sub.requires_subscription) return true;
       return false;
     }) || [];
 
     if (eligibleSubscribers.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No eligible subscribers found' }),
-        {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      return new Response(JSON.stringify({ message: 'No eligible subscribers found' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY not configured');
-    }
+    if (!resendApiKey) throw new Error('RESEND_API_KEY not configured');
 
     const weatherApiKey = Deno.env.get('FARMCAST_OPENWEATHER_STARTUP_KEY');
-    if (!weatherApiKey) {
-      throw new Error('Weather API key not configured');
-    }
+    if (!weatherApiKey) throw new Error('Weather API key not configured');
 
     console.log(`Starting to process ${eligibleSubscribers.length} eligible subscribers`);
 
     const backgroundTask = processEmailsInBackground(eligibleSubscribers, resendApiKey, weatherApiKey, supabaseAdmin);
     EdgeRuntime.waitUntil(backgroundTask);
 
-    return new Response(
-      JSON.stringify({
-        message: `Processing ${eligibleSubscribers.length} daily forecast emails`,
-        total: eligibleSubscribers.length
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    return new Response(JSON.stringify({ message: `Processing ${eligibleSubscribers.length} daily forecast emails`, total: eligibleSubscribers.length }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error in send-daily-forecast function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
 
@@ -103,13 +63,9 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
   let emailsSent = 0;
   const errors: string[] = [];
 
-  console.log(`Processing ${eligibleSubscribers.length} eligible subscribers`);
-
   try {
     for (const subscriber of eligibleSubscribers) {
       try {
-        console.log(`Processing subscriber: ${subscriber.email}`);
-
         let location = 'Melbourne, Australia';
 
         if (subscriber.user_id) {
@@ -123,79 +79,44 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             .limit(1)
             .maybeSingle();
 
-          if (favoriteLocation?.name) {
-            location = favoriteLocation.name;
-          }
+          if (favoriteLocation?.name) location = favoriteLocation.name;
         }
 
         const geoResponse = await fetch(
           `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${weatherApiKey}`
         );
-
-        if (!geoResponse.ok) {
-          const errorMsg = `Failed to geocode location for ${subscriber.email}: ${geoResponse.status}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
+        if (!geoResponse.ok) { errors.push(`Geocode failed for ${subscriber.email}`); continue; }
 
         const geoData = await geoResponse.json();
-        if (!geoData || geoData.length === 0) {
-          const errorMsg = `Location not found for ${subscriber.email}: ${location}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
+        if (!geoData || geoData.length === 0) { errors.push(`Location not found for ${subscriber.email}`); continue; }
 
         const { lat, lon, name, country } = geoData[0];
 
-        const currentUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`;
-        const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=40`;
-        const dailyUrl = `https://api.openweathermap.org/data/2.5/forecast/daily?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=5`;
-
         const [currentResponse, forecastResponse, dailyResponse] = await Promise.all([
-          fetch(currentUrl),
-          fetch(forecastUrl),
-          fetch(dailyUrl),
+          fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric`),
+          fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=40`),
+          fetch(`https://api.openweathermap.org/data/2.5/forecast/daily?lat=${lat}&lon=${lon}&appid=${weatherApiKey}&units=metric&cnt=5`),
         ]);
 
-        if (!currentResponse.ok) {
-          const errorText = await currentResponse.text();
-          const errorMsg = `Failed to fetch current weather for ${subscriber.email}: ${currentResponse.status} - ${errorText}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
-
-        if (!forecastResponse.ok) {
-          const errorText = await forecastResponse.text();
-          const errorMsg = `Failed to fetch forecast for ${subscriber.email}: ${forecastResponse.status} - ${errorText}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
+        if (!currentResponse.ok) { errors.push(`Weather failed for ${subscriber.email}`); continue; }
+        if (!forecastResponse.ok) { errors.push(`Forecast failed for ${subscriber.email}`); continue; }
 
         const currentData = await currentResponse.json();
         const forecastData = await forecastResponse.json();
         const dailyData = dailyResponse.ok ? await dailyResponse.json() : null;
 
-        const weatherData = transformWeatherDataFromForecast(currentData, forecastData, name, country, currentData.timezone, dailyData);
-        const hourlyForecast = buildHourlyFromForecast(forecastData);
+        const weatherData = transformWeather(currentData, forecastData, name, country, currentData.timezone, dailyData);
+        const hourly = buildHourly(forecastData);
 
-        let probeReport = '';
+        let probeHtml = '';
         if (subscriber.user_id) {
-          probeReport = await generateProbeReport(subscriber.user_id, supabaseAdmin, weatherData, weatherData.forecast.forecastday);
+          probeHtml = await generateProbeReport(subscriber.user_id, supabaseAdmin, weatherData);
         }
 
-        const emailHtml = buildDailyForecastEmail(weatherData, hourlyForecast, probeReport);
+        const emailHtml = buildEmail(weatherData, hourly, probeHtml);
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(subscriber.email)) {
-          const errorMsg = `Invalid email format for ${subscriber.email}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
-          continue;
-        }
+        if (!emailRegex.test(subscriber.email)) { errors.push(`Invalid email: ${subscriber.email}`); continue; }
 
         const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -208,44 +129,34 @@ async function processEmailsInBackground(eligibleSubscribers: any[], resendApiKe
             to: subscriber.email,
             subject: `Daily Farm Forecast - ${name}`,
             html: emailHtml,
-            text: buildDailyForecastEmailText(weatherData, hourlyForecast, name, country),
             headers: {
               'X-Entity-Ref-ID': `daily-forecast-${Date.now()}`,
               'List-Unsubscribe': '<https://farmcastweather.com/unsubscribe>',
               'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
             },
-            tags: [
-              {
-                name: 'category',
-                value: 'daily_forecast'
-              }
-            ]
+            tags: [{ name: 'category', value: 'daily_forecast' }]
           }),
         });
 
         if (emailResponse.ok) {
           emailsSent++;
-          console.log(`Successfully sent email to ${subscriber.email}`);
+          console.log(`Sent email to ${subscriber.email}`);
         } else {
           const errorData = await emailResponse.text();
-          const errorMsg = `Failed to send email to ${subscriber.email}: ${errorData}`;
-          console.error(errorMsg);
-          errors.push(errorMsg);
+          errors.push(`Send failed for ${subscriber.email}: ${errorData}`);
         }
       } catch (error) {
-        const errorMsg = `Error processing subscriber ${subscriber.email}: ${error.message}`;
-        console.error(errorMsg);
-        errors.push(errorMsg);
+        errors.push(`Error for ${subscriber.email}: ${error.message}`);
       }
     }
 
-    console.log(`Successfully sent ${emailsSent} emails, ${errors.length} errors`);
+    console.log(`Sent ${emailsSent} emails, ${errors.length} errors`);
   } catch (error) {
-    console.error('Error in background email processing:', error);
+    console.error('Background processing error:', error);
   }
 }
 
-function buildHourlyFromForecast(forecastData: any): any[] {
+function buildHourly(forecastData: any): any[] {
   const nowTs = Math.floor(Date.now() / 1000);
   return (forecastData.list || [])
     .filter((item: any) => item.dt >= nowTs)
@@ -258,26 +169,21 @@ function buildHourlyFromForecast(forecastData: any): any[] {
       wind_speed: item.wind.speed,
       wind_deg: item.wind.deg,
       pop: item.pop || 0,
+      rain_mm: item.rain?.['3h'] || 0,
       weather: item.weather,
     }));
 }
 
-function transformWeatherDataFromForecast(currentData: any, forecastData: any, cityName: string, country: string, timezoneOffsetSeconds: number = 0, dailyData: any = null) {
+function transformWeather(currentData: any, forecastData: any, cityName: string, country: string, timezoneOffsetSeconds: number = 0, dailyData: any = null) {
   const list = forecastData.list || [];
-
   const localNowMs = Date.now() + timezoneOffsetSeconds * 1000;
-  const localNowDate = new Date(localNowMs);
-  const todayStr = localNowDate.toISOString().split('T')[0];
-  const nowTs = Math.floor(Date.now() / 1000);
+  const todayStr = new Date(localNowMs).toISOString().split('T')[0];
 
   const dailyMap: Record<string, { maxtemp_c: number; mintemp_c: number }> = {};
   if (dailyData?.list) {
     for (const d of dailyData.list) {
       const dateStr = new Date(d.dt * 1000).toISOString().split('T')[0];
-      dailyMap[dateStr] = {
-        maxtemp_c: d.temp?.max ?? null,
-        mintemp_c: d.temp?.min ?? null,
-      };
+      dailyMap[dateStr] = { maxtemp_c: d.temp?.max ?? null, mintemp_c: d.temp?.min ?? null };
     }
   }
 
@@ -293,49 +199,44 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
     .filter(([date]) => date >= todayStr)
     .slice(0, 8)
     .map(([date, items]) => {
-    const allDayItems = items as any[];
-    const tempMaxValues = allDayItems.map((i: any) => i.main.temp_max);
-    const tempMinValues = allDayItems.map((i: any) => i.main.temp_min);
-    const allTemps = allDayItems.map((i: any) => i.main.temp);
+      const tempMaxValues = items.map((i: any) => i.main.temp_max);
+      const tempMinValues = items.map((i: any) => i.main.temp_min);
+      const allTemps = items.map((i: any) => i.main.temp);
+      const derivedMax = Math.max(...tempMaxValues, ...allTemps);
+      const derivedMin = Math.min(...tempMinValues, ...allTemps);
+      const officialDay = dailyMap[date];
+      const maxtemp_c = (officialDay?.maxtemp_c != null) ? officialDay.maxtemp_c : derivedMax;
+      const mintemp_c = (officialDay?.mintemp_c != null) ? officialDay.mintemp_c : derivedMin;
+      const rain = items.reduce((s: number, i: any) => s + (i.rain?.['3h'] || 0), 0);
+      const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
+      const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
+      const mid = items[Math.floor(items.length / 2)] || items[0];
+      const avgWindDeg = items.reduce((s: number, i: any) => s + (i.wind?.deg || 0), 0) / items.length;
 
-    const derivedMax = Math.max(...tempMaxValues, ...allTemps);
-    const derivedMin = Math.min(...tempMinValues, ...allTemps);
+      const hourlyItems = items.map((i: any) => ({
+        dt: i.dt,
+        temp: i.main.temp,
+        humidity: i.main.humidity,
+        wind_speed_kph: (i.wind?.speed || 0) * 3.6,
+        wind_deg: i.wind?.deg || 0,
+        pop: i.pop || 0,
+        rain_mm: i.rain?.['3h'] || 0,
+      }));
 
-    const officialDay = dailyMap[date];
-    const maxtemp_c = (officialDay?.maxtemp_c != null) ? officialDay.maxtemp_c : derivedMax;
-    const mintemp_c = (officialDay?.mintemp_c != null) ? officialDay.mintemp_c : derivedMin;
-
-    const rain = items.reduce((sum: number, i: any) => sum + (i.rain?.['3h'] || 0), 0);
-    const maxPop = Math.max(...items.map((i: any) => i.pop || 0));
-    const maxWind = Math.max(...items.map((i: any) => (i.wind?.speed || 0) * 3.6));
-    const midItem = items[Math.floor(items.length / 2)] || items[0];
-
-    const avgWindDeg = allDayItems.reduce((sum: number, i: any) => sum + (i.wind?.deg || 0), 0) / allDayItems.length;
-
-    const hourlyItems = (items as any[]).map((i: any) => ({
-      dt: i.dt,
-      temp: i.main.temp,
-      humidity: i.main.humidity,
-      wind_speed_kph: (i.wind?.speed || 0) * 3.6,
-      wind_deg: i.wind?.deg || 0,
-      pop: i.pop || 0,
-      rain_mm: i.rain?.['3h'] || 0,
-    }));
-
-    return {
-      date,
-      hour: hourlyItems,
-      day: {
-        maxtemp_c,
-        mintemp_c,
-        condition: { text: midItem.weather[0].description },
-        daily_chance_of_rain: Math.round(maxPop * 100),
-        totalprecip_mm: rain,
-        maxwind_kph: maxWind,
-        avg_wind_deg: avgWindDeg,
-      },
-    };
-  });
+      return {
+        date,
+        hour: hourlyItems,
+        day: {
+          maxtemp_c,
+          mintemp_c,
+          condition: { text: mid.weather[0].description },
+          daily_chance_of_rain: Math.round(maxPop * 100),
+          totalprecip_mm: rain,
+          maxwind_kph: maxWind,
+          avg_wind_deg: avgWindDeg,
+        },
+      };
+    });
 
   return {
     location: { name: cityName, country },
@@ -352,143 +253,122 @@ function transformWeatherDataFromForecast(currentData: any, forecastData: any, c
   };
 }
 
-function transformWeatherDataFromOneCall(oneCallData: any, cityName: string, country: string) {
-  const forecastDays = oneCallData.daily.slice(0, 8).map((day: any) => {
-    return {
-      date: new Date(day.dt * 1000).toISOString().split('T')[0],
-      day: {
-        maxtemp_c: day.temp.max,
-        mintemp_c: day.temp.min,
-        condition: {
-          text: day.weather[0].description
-        },
-        daily_chance_of_rain: Math.round((day.pop || 0) * 100),
-        totalprecip_mm: (day.rain || 0) + (day.snow || 0),
-        maxwind_kph: day.wind_speed * 3.6
-      }
-    };
-  });
-
-  return {
-    location: {
-      name: cityName,
-      country: country
-    },
-    current: {
-      temp_c: oneCallData.current.temp,
-      feelslike_c: oneCallData.current.feels_like,
-      humidity: oneCallData.current.humidity,
-      wind_kph: oneCallData.current.wind_speed * 3.6,
-      wind_degree: oneCallData.current.wind_deg,
-      wind_dir: degreesToDirection(oneCallData.current.wind_deg),
-      condition: {
-        text: oneCallData.current.weather[0].description
-      }
-    },
-    forecast: {
-      forecastday: forecastDays
-    }
-  };
+function degreesToDirection(d: number): string {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(d / 22.5) % 16];
 }
 
-function degreesToDirection(degrees: number): string {
-  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-  const index = Math.round(degrees / 22.5) % 16;
-  return directions[index];
+function calcDeltaT(temp: number, humidity: number): number {
+  const wb = temp * Math.atan(0.151977 * Math.sqrt(humidity + 8.313659)) +
+    Math.atan(temp + humidity) - Math.atan(humidity - 1.676331) +
+    0.00391838 * Math.pow(humidity, 1.5) * Math.atan(0.023101 * humidity) - 4.686035;
+  return Math.max(0, temp - wb);
 }
 
-function calculateDeltaT(tempC: number, humidity: number): number {
-  const dewpoint = tempC - ((100 - humidity) / 5);
-  const wetBulb = tempC * Math.atan(0.151977 * Math.sqrt(humidity + 8.313659)) +
-                  Math.atan(tempC + humidity) -
-                  Math.atan(humidity - 1.676331) +
-                  0.00391838 * Math.pow(humidity, 1.5) * Math.atan(0.023101 * humidity) -
-                  4.686035;
-
-  const deltaT = tempC - wetBulb;
-  return Math.max(0, deltaT);
+function getDeltaTRating(dt: number): { rating: string; color: string } {
+  if (dt < 2) return { rating: 'Poor', color: '#dc2626' };
+  if (dt < 4) return { rating: 'Okay', color: '#d97706' };
+  if (dt <= 6) return { rating: 'Excellent', color: '#16a34a' };
+  if (dt <= 8) return { rating: 'Okay', color: '#d97706' };
+  return { rating: 'Poor', color: '#dc2626' };
 }
 
-function getDeltaTCondition(deltaT: number): { rating: string; color: string; bgColor: string } {
-  if (deltaT < 2) return { rating: 'Poor', color: '#dc2626', bgColor: '#fee2e2' };
-  if (deltaT < 4) return { rating: 'Okay', color: '#f59e0b', bgColor: '#fef3c7' };
-  if (deltaT <= 6) return { rating: 'Excellent', color: '#059669', bgColor: '#d1fae5' };
-  if (deltaT <= 8) return { rating: 'Okay', color: '#f59e0b', bgColor: '#fef3c7' };
-  return { rating: 'Poor', color: '#dc2626', bgColor: '#fee2e2' };
+function getMoistureStatus(val: number): { status: string; color: string } {
+  if (val < 15) return { status: 'Very Dry', color: '#dc2626' };
+  if (val < 25) return { status: 'Dry', color: '#d97706' };
+  if (val <= 40) return { status: 'Ideal', color: '#16a34a' };
+  if (val <= 55) return { status: 'Moist', color: '#2563eb' };
+  return { status: 'Saturated', color: '#7c3aed' };
 }
 
-function getSprayCondition(windSpeedKmh: number, rainfallMm: number): { rating: string; color: string; bgColor: string } {
-  if (rainfallMm > 0.5) return { rating: 'Poor', color: '#dc2626', bgColor: '#fee2e2' };
-  if (windSpeedKmh > 25) return { rating: 'Poor', color: '#dc2626', bgColor: '#fee2e2' };
-  if (windSpeedKmh > 15) return { rating: 'Moderate', color: '#f59e0b', bgColor: '#fef3c7' };
-  return { rating: 'Good', color: '#059669', bgColor: '#d1fae5' };
+function getSoilTempStatus(t: number): { status: string; color: string } {
+  if (t < 10) return { status: 'Cold', color: '#2563eb' };
+  if (t < 15) return { status: 'Cool', color: '#059669' };
+  if (t <= 25) return { status: 'Optimal', color: '#16a34a' };
+  if (t <= 30) return { status: 'Warm', color: '#d97706' };
+  return { status: 'Hot', color: '#dc2626' };
 }
 
-function getSprayWindowForDay(windSpeedKmh: number, rainfallMm: number, deltaT: number): string {
-  if (rainfallMm > 5) return '❌';
-  if (windSpeedKmh > 25) return '❌';
-  if (windSpeedKmh >= 3 && windSpeedKmh <= 15 && deltaT >= 2 && deltaT <= 8) return '✅';
-  if (windSpeedKmh < 3 || windSpeedKmh > 20) return '⚠️';
-  if (deltaT < 2 || deltaT > 10) return '⚠️';
-  return '✓';
-}
+function getBestSprayWindow(hours: any[]): { hasWindow: boolean; timeRange: string; reason: string } {
+  const totalRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
+  if (totalRain > 5) return { hasWindow: false, timeRange: '', reason: 'Rain' };
 
-function hourIsRainy(h: any): boolean {
-  if (h.rain_mm > 0.2) return true;
-  if (h.pop > 0.4) return true;
-  return false;
-}
-
-function getBestSprayWindowFromHours(hours: any[], totalRainMm: number): { icon: string; timeRange: string; windDir: string } {
-  const totalActualRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
-  const heavyRainDay = totalActualRain > 5 || totalRainMm > 10;
-  if (heavyRainDay) return { icon: '❌', timeRange: 'Rain forecast', windDir: '' };
-
-  const idealWindows: any[] = [];
-  const goodWindows: any[] = [];
-
+  const windows: any[] = [];
   for (const h of hours) {
-    const windKph = h.wind_speed_kph;
-    const deltaT = calculateDeltaT(h.temp, h.humidity);
-
-    if (hourIsRainy(h) || windKph > 25) continue;
-
-    const recentRain = h.rain_mm > 0.1;
-
-    if (!recentRain && windKph >= 3 && windKph <= 15 && deltaT >= 2 && deltaT <= 8 && h.temp >= 10 && h.temp <= 30) {
-      idealWindows.push(h);
-    } else if (!recentRain && windKph >= 3 && windKph <= 20 && deltaT >= 2 && deltaT <= 10) {
-      goodWindows.push(h);
+    const wind = h.wind_speed_kph || (h.wind_speed ? h.wind_speed * 3.6 : 0);
+    const dt = calcDeltaT(h.temp, h.humidity);
+    const rainy = (h.rain_mm || 0) > 0.2 || (h.pop || 0) > 0.4;
+    if (!rainy && wind >= 3 && wind <= 15 && dt >= 2 && dt <= 8) {
+      windows.push(h);
     }
   }
 
-  const buildTimeRange = (windows: any[]) => {
-    if (windows.length === 0) return { timeRange: '', windDir: '' };
-    const sortedWindows = [...windows].sort((a, b) => a.dt - b.dt);
-    const first = sortedWindows[0];
-    const last = sortedWindows[sortedWindows.length - 1];
-    const fmt = (ts: number) => new Date(ts * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-    const timeRange = sortedWindows.length === 1 ? fmt(first.dt) : `${fmt(first.dt)}–${fmt(last.dt)}`;
-    const avgDeg = sortedWindows.reduce((s: number, h: any) => s + h.wind_deg, 0) / sortedWindows.length;
-    return { timeRange, windDir: degreesToDirection(avgDeg) };
+  if (windows.length === 0) {
+    if (totalRain > 0.5) return { hasWindow: false, timeRange: '', reason: 'Rain' };
+    return { hasWindow: false, timeRange: '', reason: 'Conditions' };
+  }
+
+  const sorted = [...windows].sort((a, b) => a.dt - b.dt);
+  const fmt = (ts: number) => {
+    const d = new Date(ts * 1000);
+    const h = d.getHours();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    const hr = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${hr}${ampm}`;
   };
-
-  if (idealWindows.length > 0) {
-    const { timeRange, windDir } = buildTimeRange(idealWindows);
-    return { icon: '✅', timeRange, windDir };
-  }
-  if (goodWindows.length > 0) {
-    const { timeRange, windDir } = buildTimeRange(goodWindows);
-    return { icon: '✓', timeRange, windDir };
-  }
-
-  const dryHour = hours.find((h: any) => !hourIsRainy(h));
-  const windDirFallback = dryHour ? degreesToDirection(dryHour.wind_deg) : '';
-  if (totalActualRain > 0.5 || totalRainMm > 0.5) return { icon: '❌', timeRange: 'Rain forecast', windDir: windDirFallback };
-  return { icon: '⚠️', timeRange: 'Marginal conditions', windDir: windDirFallback };
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  return { hasWindow: true, timeRange: `${fmt(first.dt)}\u2013${fmt(last.dt)}`, reason: '' };
 }
 
-async function generateProbeReport(userId: string, supabaseAdmin: any, weatherData?: any, dailyForecast?: any[]): Promise<string> {
+function getDaySprayLabel(hours: any[], totalRainMm: number): { icon: string; label: string } {
+  if (totalRainMm > 5) return { icon: '\u2717', label: 'Rain' };
+  const totalActualRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
+  if (totalActualRain > 5) return { icon: '\u2717', label: 'Rain' };
+
+  const windows: any[] = [];
+  for (const h of hours) {
+    const wind = h.wind_speed_kph || 0;
+    const dt = calcDeltaT(h.temp, h.humidity);
+    const rainy = (h.rain_mm || 0) > 0.2 || (h.pop || 0) > 0.4;
+    if (!rainy && wind >= 3 && wind <= 15 && dt >= 2 && dt <= 8) windows.push(h);
+  }
+
+  if (windows.length === 0) {
+    if (totalActualRain > 0.5 || totalRainMm > 0.5) return { icon: '\u2717', label: 'Rain' };
+    return { icon: '\u2717', label: 'Conditions' };
+  }
+
+  const sorted = [...windows].sort((a, b) => a.dt - b.dt);
+  const fmt = (ts: number) => {
+    const d = new Date(ts * 1000);
+    const h = d.getHours();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    const hr = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${hr}${ampm}`;
+  };
+  return { icon: '\u2713', label: `${fmt(sorted[0].dt)}\u2013${fmt(sorted[sorted.length - 1].dt)}` };
+}
+
+function getDailyPlantingRating(maxTemp: number, minTemp: number, rainMm: number, maxWindKph: number, rainChance: number): { rating: string; icon: string; color: string; note: string; soilTempEst: number } {
+  const soilTempEst = Math.round((maxTemp * 0.6 + minTemp * 0.4) * 0.85);
+  if (rainMm > 10 || rainChance > 70) return { rating: 'Avoid', icon: '\u2717', color: '#dc2626', note: 'Too wet \u2014 waterlogging risk', soilTempEst };
+  if (maxWindKph > 30) return { rating: 'Avoid', icon: '\u2717', color: '#dc2626', note: 'High winds \u2014 seedling damage risk', soilTempEst };
+  if (maxTemp > 38 || minTemp < 2) return { rating: 'Avoid', icon: '\u2717', color: '#dc2626', note: maxTemp > 38 ? 'Too hot for transplanting' : 'Frost risk overnight', soilTempEst };
+  if (maxTemp >= 20 && maxTemp <= 28 && minTemp >= 8 && rainMm < 5 && maxWindKph < 20) return { rating: 'Good', icon: '\u2713', color: '#16a34a', note: 'Suitable conditions for planting', soilTempEst };
+  if (maxTemp >= 15 && maxTemp <= 32 && minTemp >= 5 && rainMm < 8 && maxWindKph < 25) return { rating: 'Good', icon: '\u2713', color: '#16a34a', note: 'Suitable conditions for planting', soilTempEst };
+  return { rating: 'Marginal', icon: '\u26a0', color: '#d97706', note: 'Borderline \u2014 monitor conditions', soilTempEst };
+}
+
+function getDailyIrrigationAdvice(rainMm: number, rainChance: number, maxTemp: number): { action: string; amount: string; note: string; color: string } {
+  if (rainMm >= 10 || rainChance >= 70) return { action: 'Skip', amount: '0mm', note: 'Rain forecast \u2014 soil will recharge naturally', color: '#16a34a' };
+  if (rainMm >= 5 || rainChance >= 50) return { action: 'Reduce', amount: '5\u201310mm', note: 'Light rain expected \u2014 top up only if needed', color: '#d97706' };
+  if (maxTemp >= 35) return { action: 'Irrigate', amount: '25\u201335mm', note: 'Heat stress risk \u2014 irrigate early morning', color: '#dc2626' };
+  if (maxTemp >= 28) return { action: 'Irrigate', amount: '15\u201320mm', note: 'Warm & dry \u2014 apply in early morning', color: '#2563eb' };
+  return { action: 'Optional', amount: '5\u201310mm', note: 'Cool conditions \u2014 irrigate only if soil is dry', color: '#64748b' };
+}
+
+async function generateProbeReport(userId: string, supabaseAdmin: any, weatherData: any): Promise<string> {
   try {
     const { data: connections, error: connError } = await supabaseAdmin
       .from('probe_connections')
@@ -497,9 +377,7 @@ async function generateProbeReport(userId: string, supabaseAdmin: any, weatherDa
       .eq('is_active', true)
       .limit(10);
 
-    if (connError || !connections || connections.length === 0) {
-      return '';
-    }
+    if (connError || !connections || connections.length === 0) return '';
 
     const { data: latestReadings, error: readingError } = await supabaseAdmin
       .from('probe_readings_latest')
@@ -508,1055 +386,439 @@ async function generateProbeReport(userId: string, supabaseAdmin: any, weatherDa
       .order('measured_at', { ascending: false })
       .limit(50);
 
-    if (readingError || !latestReadings || latestReadings.length === 0) {
-      return '';
-    }
+    if (readingError || !latestReadings || latestReadings.length === 0) return '';
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      return buildBasicProbeReport(latestReadings, connections);
-    }
+    let analysis = '';
 
-    const probeDataForAI = latestReadings.slice(0, 10).map((reading: any) => {
-      const connection = connections.find((c: any) => c.id === reading.connection_id);
-      const moistureDepths = reading.moisture_depths?.depths || [];
-      const soilTempDepths = reading.soil_temp_depths?.depths || [];
+    if (openaiApiKey) {
+      const probeDataForAI = latestReadings.slice(0, 10).map((reading: any) => {
+        const connection = connections.find((c: any) => c.id === reading.connection_id);
+        const moistureDepths = reading.moisture_depths?.depths || [];
+        const soilTempDepths = reading.soil_temp_depths?.depths || [];
+        return {
+          location: connection?.friendly_name || reading.station_id || 'Probe',
+          moisture: moistureDepths.length > 0
+            ? moistureDepths.map((d: any) => `${d.depth_cm}cm: ${d.value}% (${getMoistureStatus(d.value).status})`).join(', ')
+            : reading.moisture_percent ? `${reading.moisture_percent}%` : 'N/A',
+          soilTemp: soilTempDepths.length > 0
+            ? soilTempDepths.map((d: any) => `${d.depth_cm}cm: ${d.value}\u00b0C`).join(', ')
+            : reading.soil_temp_c ? `${reading.soil_temp_c}\u00b0C` : 'N/A',
+        };
+      });
 
-      return {
-        location: reading.station_id || connection?.friendly_name || connection?.station_id || 'Probe',
-        lastUpdate: new Date(reading.measured_at).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }),
-        moisture: moistureDepths.length > 0
-          ? moistureDepths.map((d: any) => {
-              const status = getMoistureStatus(d.value);
-              return `${d.depth_cm}cm: ${d.value}% (${status.status})`;
-            }).join(', ')
-          : reading.moisture_percent
-          ? `${reading.moisture_percent}% (${getMoistureStatus(reading.moisture_percent).status})`
-          : 'N/A',
-        soilTemp: soilTempDepths.length > 0
-          ? soilTempDepths.map((d: any) => {
-              const status = getSoilTempStatus(d.value);
-              return `${d.depth_cm}cm: ${d.value}°C (${status.status})`;
-            }).join(', ')
-          : reading.soil_temp_c
-          ? `${reading.soil_temp_c}°C (${getSoilTempStatus(reading.soil_temp_c).status})`
-          : 'N/A',
-        airTemp: reading.air_temp_c ? `${reading.air_temp_c}°C` : 'N/A',
-        humidity: reading.humidity_percent ? `${reading.humidity_percent}%` : 'N/A',
-        battery: reading.battery_level ? `${reading.battery_level}%` : 'N/A',
-      };
-    });
-
-    const weatherContext = weatherData && dailyForecast ? `
-
-CURRENT WEATHER CONDITIONS:
-- Temperature: ${weatherData.current.temp_c}°C
-- Humidity: ${weatherData.current.humidity}%
-- Conditions: ${weatherData.current.condition.text}
-
-UPCOMING 3-DAY FORECAST:
+      const dailyForecast = weatherData.forecast.forecastday;
+      const weatherContext = `
+CURRENT: ${weatherData.current.temp_c}\u00b0C, ${weatherData.current.humidity}% humidity, ${weatherData.current.condition.text}
+NEXT 3 DAYS:
 ${dailyForecast.slice(0, 3).map((day: any, i: number) => {
   const date = new Date(day.date).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' });
-  return `Day ${i + 1} (${date}):
-  - Temp: ${day.day.mintemp_c}°C to ${day.day.maxtemp_c}°C
-  - Rain chance: ${day.day.daily_chance_of_rain}%
-  - Expected rainfall: ${day.day.totalprecip_mm.toFixed(1)}mm
-  - Conditions: ${day.day.condition.text}`;
-}).join('\n')}
-` : '';
+  return `${date}: ${day.day.mintemp_c}\u00b0C-${day.day.maxtemp_c}\u00b0C, ${day.day.totalprecip_mm.toFixed(1)}mm rain (${day.day.daily_chance_of_rain}%)`;
+}).join('\n')}`;
 
-    const prompt = `You are an agricultural soil expert analyzing moisture probe data from multiple field stations. Based on the following recent readings AND upcoming weather forecast, provide:
+      const prompt = `You are an agricultural soil expert. Based on soil probe data and weather forecast, provide a practical 3-5 sentence analysis covering: overall soil conditions, irrigation recommendations considering weather, and any concerns. Keep under 120 words.
 
-1. A brief summary of overall soil conditions across all probes
-2. Specific concerns or opportunities identified (e.g., dry zones, optimal moisture areas)
-3. Actionable irrigation recommendations for the next 24-48 hours, considering upcoming weather
-4. Any plant health considerations based on soil temperature, moisture, and weather trends
-
-MOISTURE LEVEL GUIDE:
-- Very Dry (<15%): Critical - immediate irrigation needed
-- Dry (15-25%): Irrigation recommended soon
-- Ideal (25-40%): Optimal moisture for most crops
-- Moist (40-55%): Good moisture, monitor for excess
-- Saturated (>55%): Risk of waterlogging, avoid irrigation
-
-SOIL TEMP GUIDE:
-- Cold (<10°C): Slow growth, delay planting
-- Cool (10-15°C): Suitable for cool-season crops
-- Optimal (15-25°C): Ideal for most crops
-- Warm (25-30°C): Monitor stress, increase irrigation
-- Hot (>30°C): Heat stress risk, critical monitoring
-${weatherContext}
-Probe Data (latest readings):
+PROBE DATA:
 ${JSON.stringify(probeDataForAI, null, 2)}
 
-Provide a practical analysis in 3-5 sentences that considers BOTH current soil conditions AND upcoming weather. If rain is forecast, adjust irrigation advice accordingly. If hot weather is coming, factor that into moisture management. Focus on actionable insights for farm operations. Keep it under 150 words.`;
+WEATHER:
+${weatherContext}`;
 
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'You are a helpful agricultural advisor providing concise, actionable soil analysis for farmers.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 250,
-        temperature: 0.7,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      console.error('OpenAI API error:', await aiResponse.text());
-      return buildBasicProbeReport(latestReadings, connections);
+      try {
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiApiKey}` },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a helpful agricultural advisor providing concise soil analysis for farmers.' },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 200,
+            temperature: 0.7,
+          }),
+        });
+        if (aiResponse.ok) {
+          const aiData = await aiResponse.json();
+          analysis = aiData.choices[0]?.message?.content || '';
+        }
+      } catch (_e) { /* fall through */ }
     }
 
-    const aiData = await aiResponse.json();
-    const analysis = aiData.choices[0]?.message?.content || '';
-
-    if (!analysis) {
-      return buildBasicProbeReport(latestReadings, connections);
-    }
-
-    const detailedReadings = latestReadings.slice(0, 5).map((reading: any) => {
+    const probeCards = latestReadings.slice(0, 5).map((reading: any) => {
       const connection = connections.find((c: any) => c.id === reading.connection_id);
+      const probeName = connection?.friendly_name || reading.station_id || 'Probe';
+      const lastUpdate = new Date(reading.measured_at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
       const moistureDepths = reading.moisture_depths?.depths || [];
       const soilTempDepths = reading.soil_temp_depths?.depths || [];
 
-      return buildProbeReadingCard(reading, connection, moistureDepths, soilTempDepths);
+      const moistureRows = moistureDepths.length > 0
+        ? moistureDepths.map((d: any) => {
+            const st = getMoistureStatus(d.value);
+            return `<tr>
+              <td style="padding:8px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">\u{1F4A7} ${d.depth_cm}cm</td>
+              <td style="padding:8px 12px;font-size:14px;font-weight:700;color:#111827;text-align:center;border-bottom:1px solid #f3f4f6;font-family:monospace;">${d.value.toFixed(2)}%</td>
+              <td style="padding:8px 12px;font-size:12px;font-weight:600;color:${st.color};text-align:right;border-bottom:1px solid #f3f4f6;">${st.status}</td>
+            </tr>`;
+          }).join('')
+        : '';
+
+      const soilTempRows = soilTempDepths.length > 0
+        ? soilTempDepths.map((d: any) => {
+            return `<tr>
+              <td style="padding:8px 12px;font-size:13px;color:#374151;border-bottom:1px solid #f3f4f6;">\u{1F321}\u{FE0F} Soil ${d.depth_cm}cm</td>
+              <td style="padding:8px 12px;font-size:14px;font-weight:700;color:#111827;text-align:center;border-bottom:1px solid #f3f4f6;font-family:monospace;" colspan="2">${d.value.toFixed(2)}\u00b0C</td>
+            </tr>`;
+          }).join('')
+        : '';
+
+      return `<div style="margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:700;color:#111827;margin-bottom:2px;">${probeName}</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">Last update: ${lastUpdate}</div>
+        <table style="width:100%;border-collapse:collapse;">${moistureRows}${soilTempRows}</table>
+      </div>`;
     }).join('');
 
-    return `
-      <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 10px; padding: 16px; margin-top: 20px;">
-        <div style="font-size: 12px; font-weight: 800; color: #92400e; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-          🌱 AI Soil Analysis & Recommendations
+    let aiSection = '';
+    if (analysis) {
+      aiSection = `
+      <tr><td style="padding:24px 32px 0;">
+        <div style="border-top:2px solid #16a34a;padding-top:20px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:12px;">\u{1F9EA} AI ANALYSIS</div>
+          <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;background:#fafafa;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#6b7280;text-transform:uppercase;margin-bottom:8px;">AI POWERED &nbsp;&nbsp;SOIL ANALYSIS & RECOMMENDATIONS</div>
+            <div style="font-size:13px;color:#374151;line-height:1.6;">${analysis}</div>
+            <div style="font-size:11px;color:#6b7280;font-style:italic;margin-top:10px;">Analysis based on ${latestReadings.length} active probe${latestReadings.length > 1 ? 's' : ''}</div>
+          </div>
         </div>
-        <div style="font-size: 13px; color: #78350f; line-height: 1.6; font-weight: 500; margin-bottom: 12px;">
-          ${analysis}
-        </div>
-        <div style="font-size: 10px; color: #92400e; font-weight: 600;">
-          Analysis based on ${latestReadings.length} active probe${latestReadings.length > 1 ? 's' : ''}
-        </div>
-      </div>
+      </td></tr>`;
+    }
 
-      <div style="margin-top: 16px;">
-        <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; margin-bottom: 8px;">
-          📊 Detailed Probe Readings
-        </div>
-        ${detailedReadings}
+    return `
+    ${aiSection}
+    <tr><td style="padding:24px 32px 0;">
+      <div style="${analysis ? '' : 'border-top:2px solid #16a34a;padding-top:20px;'}">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">\u{1F4CA} SOIL PROBE READINGS</div>
+        ${probeCards}
       </div>
-    `;
+    </td></tr>`;
   } catch (error) {
     console.error('Error generating probe report:', error);
     return '';
   }
 }
 
-function getMoistureStatus(moisturePercent: number): { status: string; color: string; bgColor: string; icon: string } {
-  if (moisturePercent < 15) {
-    return { status: 'Very Dry', color: '#dc2626', bgColor: '#fee2e2', icon: '🔴' };
-  } else if (moisturePercent >= 15 && moisturePercent < 25) {
-    return { status: 'Dry', color: '#f59e0b', bgColor: '#fef3c7', icon: '🟡' };
-  } else if (moisturePercent >= 25 && moisturePercent <= 40) {
-    return { status: 'Ideal', color: '#059669', bgColor: '#d1fae5', icon: '🟢' };
-  } else if (moisturePercent > 40 && moisturePercent <= 55) {
-    return { status: 'Moist', color: '#3b82f6', bgColor: '#dbeafe', icon: '🔵' };
-  } else {
-    return { status: 'Saturated', color: '#6366f1', bgColor: '#e0e7ff', icon: '💧' };
-  }
-}
-
-function getSoilTempStatus(tempC: number): { status: string; color: string } {
-  if (tempC < 10) {
-    return { status: 'Cold', color: '#3b82f6' };
-  } else if (tempC >= 10 && tempC < 15) {
-    return { status: 'Cool', color: '#10b981' };
-  } else if (tempC >= 15 && tempC <= 25) {
-    return { status: 'Optimal', color: '#059669' };
-  } else if (tempC > 25 && tempC <= 30) {
-    return { status: 'Warm', color: '#f59e0b' };
-  } else {
-    return { status: 'Hot', color: '#dc2626' };
-  }
-}
-
-function buildBasicProbeReport(readings: any[], connections: any[]): string {
-  const readingCards = readings.slice(0, 5).map((reading: any) => {
-    const connection = connections.find((c: any) => c.id === reading.connection_id);
-    const moistureDepths = reading.moisture_depths?.depths || [];
-    const soilTempDepths = reading.soil_temp_depths?.depths || [];
-
-    return buildProbeReadingCard(reading, connection, moistureDepths, soilTempDepths);
-  }).join('');
-
-  return `
-    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 10px; padding: 16px; margin-top: 20px;">
-      <div style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase; margin-bottom: 8px;">
-        🌱 Soil Moisture Readings
-      </div>
-      <div style="font-size: 13px; color: #78350f; line-height: 1.6; font-weight: 500;">
-        Latest data from ${readings.length} active probe${readings.length > 1 ? 's' : ''} in your field.
-      </div>
-    </div>
-
-    <div style="margin-top: 16px;">
-      ${readingCards}
-    </div>
-  `;
-}
-
-function buildProbeReadingCard(reading: any, connection: any, moistureDepths: any[], soilTempDepths: any[]): string {
-  const probeName = connection?.friendly_name || reading.station_id || 'Probe Station';
-  const lastUpdate = new Date(reading.measured_at).toLocaleString('en-AU', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-
-  const moistureRows = moistureDepths.length > 0
-    ? moistureDepths.map((d: any) => {
-        const moistStatus = getMoistureStatus(d.value);
-        return `
-        <tr>
-          <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💧 ${d.depth_cm}cm depth</td>
-          <td style="padding: 6px 8px; text-align: right;">
-            <div style="font-size: 12px; font-weight: 800; color: #047857;">${d.value}%</div>
-            <div style="font-size: 9px; font-weight: 700; color: ${moistStatus.color}; margin-top: 2px;">${moistStatus.icon} ${moistStatus.status}</div>
-          </td>
-        </tr>
-      `;
-      }).join('')
-    : reading.moisture_percent
-    ? (() => {
-        const moistStatus = getMoistureStatus(reading.moisture_percent);
-        return `<tr>
-        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💧 Moisture</td>
-        <td style="padding: 6px 8px; text-align: right;">
-          <div style="font-size: 12px; font-weight: 800; color: #047857;">${reading.moisture_percent}%</div>
-          <div style="font-size: 9px; font-weight: 700; color: ${moistStatus.color}; margin-top: 2px;">${moistStatus.icon} ${moistStatus.status}</div>
-        </td>
-      </tr>`;
-      })()
-    : '';
-
-  const soilTempRows = soilTempDepths.length > 0
-    ? soilTempDepths.map((d: any) => {
-        const tempStatus = getSoilTempStatus(d.value);
-        return `
-        <tr>
-          <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌡️ Soil ${d.depth_cm}cm</td>
-          <td style="padding: 6px 8px; text-align: right;">
-            <div style="font-size: 12px; font-weight: 800; color: #047857;">${d.value}°C</div>
-            <div style="font-size: 9px; font-weight: 700; color: ${tempStatus.color}; margin-top: 2px;">${tempStatus.status}</div>
-          </td>
-        </tr>
-      `;
-      }).join('')
-    : reading.soil_temp_c
-    ? (() => {
-        const tempStatus = getSoilTempStatus(reading.soil_temp_c);
-        return `<tr>
-        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌡️ Soil Temp</td>
-        <td style="padding: 6px 8px; text-align: right;">
-          <div style="font-size: 12px; font-weight: 800; color: #047857;">${reading.soil_temp_c}°C</div>
-          <div style="font-size: 9px; font-weight: 700; color: ${tempStatus.color}; margin-top: 2px;">${tempStatus.status}</div>
-        </td>
-      </tr>`;
-      })()
-    : '';
-
-  const extraRows = `
-    ${reading.air_temp_c ? `
-      <tr>
-        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🌤️ Air Temp</td>
-        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.air_temp_c}°C</td>
-      </tr>
-    ` : ''}
-    ${reading.humidity_percent ? `
-      <tr>
-        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">💨 Humidity</td>
-        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: #047857; text-align: right;">${reading.humidity_percent}%</td>
-      </tr>
-    ` : ''}
-    ${reading.battery_level ? `
-      <tr>
-        <td style="padding: 6px 8px; font-size: 11px; color: #065f46; font-weight: 600;">🔋 Battery</td>
-        <td style="padding: 6px 8px; font-size: 12px; font-weight: 800; color: ${reading.battery_level < 20 ? '#dc2626' : '#047857'}; text-align: right;">${reading.battery_level}%</td>
-      </tr>
-    ` : ''}
-  `;
-
-  return `
-    <div style="background: white; border: 2px solid #d1d5db; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-      <div style="font-size: 12px; font-weight: 800; color: #047857; margin-bottom: 6px;">
-        ${probeName}
-      </div>
-      <div style="font-size: 9px; color: #6b7280; margin-bottom: 8px; font-weight: 600;">
-        Last update: ${lastUpdate}
-      </div>
-      <table style="width: 100%; border-collapse: collapse;">
-        ${moistureRows}
-        ${soilTempRows}
-        ${extraRows}
-      </table>
-    </div>
-  `;
-}
-
-function getDailyIrrigationAdvice(rainMm: number, rainChance: number, maxTemp: number, minTemp: number): { action: string; amount: string; note: string; badgeColor: string } {
-  if (rainMm >= 10 || rainChance >= 70) {
-    return { action: 'Skip', amount: '0mm', note: 'Rain forecast — soil will recharge naturally', badgeColor: '#475569' };
-  }
-  if (rainMm >= 5 || rainChance >= 50) {
-    return { action: 'Reduce', amount: '5–10mm', note: 'Light rain expected — top up only if needed', badgeColor: '#d97706' };
-  }
-  if (maxTemp >= 35) {
-    return { action: 'Irrigate', amount: '25–35mm', note: 'Heat stress risk — irrigate early morning', badgeColor: '#dc2626' };
-  }
-  if (maxTemp >= 28 && minTemp >= 15) {
-    return { action: 'Irrigate', amount: '15–20mm', note: 'Warm & dry — apply in early morning', badgeColor: '#1d4ed8' };
-  }
-  if (maxTemp >= 20) {
-    return { action: 'Consider', amount: '10–15mm', note: 'Mild conditions — check soil moisture first', badgeColor: '#d97706' };
-  }
-  return { action: 'Optional', amount: '5–10mm', note: 'Cool conditions — irrigate only if soil is dry', badgeColor: '#475569' };
-}
-
-function getDailyPlantingRating(maxTemp: number, minTemp: number, rainMm: number, maxWindKph: number, rainChance: number): { rating: string; icon: string; color: string; note: string; soilTempEst: number } {
-  const soilTempEst = Math.round((maxTemp * 0.6 + minTemp * 0.4) * 0.85);
-
-  if (rainMm > 10 || rainChance > 70) {
-    return { rating: 'Avoid', icon: '❌', color: '#dc2626', note: 'Too wet — waterlogging risk', soilTempEst };
-  }
-  if (maxWindKph > 30) {
-    return { rating: 'Avoid', icon: '❌', color: '#dc2626', note: 'High winds — seedling damage risk', soilTempEst };
-  }
-  if (maxTemp > 38 || minTemp < 2) {
-    return { rating: 'Avoid', icon: '❌', color: '#dc2626', note: maxTemp > 38 ? 'Too hot for transplanting' : 'Frost risk overnight', soilTempEst };
-  }
-  if (maxTemp >= 20 && maxTemp <= 28 && minTemp >= 8 && rainMm < 5 && maxWindKph < 20) {
-    return { rating: 'Excellent', icon: '✅', color: '#16a34a', note: 'Ideal temp, calm & dry conditions', soilTempEst };
-  }
-  if (maxTemp >= 15 && maxTemp <= 32 && minTemp >= 5 && rainMm < 8 && maxWindKph < 25) {
-    return { rating: 'Good', icon: '✓', color: '#4ade80', note: 'Suitable conditions for planting', soilTempEst };
-  }
-  return { rating: 'Marginal', icon: '⚠️', color: '#f59e0b', note: 'Borderline — monitor conditions closely', soilTempEst };
-}
-
-function buildDailyForecastEmail(weatherData: any, hourlyForecast: any[], probeReport: string = ''): string {
-  const location = weatherData.location.name;
-  const country = weatherData.location.country;
-  const current = weatherData.current;
+function buildEmail(weatherData: any, hourly: any[], probeHtml: string = ''): string {
+  const { name: loc, country } = weatherData.location;
+  const cur = weatherData.current;
   const forecast = weatherData.forecast.forecastday;
+  const today = forecast[0];
+  const todayDay = today.day;
 
-  const deltaT = calculateDeltaT(current.temp_c, current.humidity);
-  const deltaTCond = getDeltaTCondition(deltaT);
+  const highTemp = Math.round(todayDay.maxtemp_c);
+  const lowTemp = Math.round(todayDay.mintemp_c);
+  const rainMm = todayDay.totalprecip_mm;
+  const rainChance = todayDay.daily_chance_of_rain;
+  const windDir = degreesToDirection(cur.wind_degree);
+  const dt = calcDeltaT(cur.temp_c, cur.humidity);
+  const dtCond = getDeltaTRating(dt);
 
-  const todayForecast = forecast[0].day;
-  const highTemp = todayForecast?.maxtemp_c || 0;
-  const lowTemp = todayForecast?.mintemp_c || 0;
-  const rainToday = todayForecast?.totalprecip_mm || 0;
-  const rainChance = todayForecast?.daily_chance_of_rain || 0;
+  const sprayWindow = getBestSprayWindow(today.hour || hourly);
+  const sprayBadgeText = sprayWindow.hasWindow ? '' : 'AVOID SPRAYING';
+  const sprayBadgeColor = sprayWindow.hasWindow ? '#16a34a' : '#dc2626';
+  const sprayTitle = sprayWindow.hasWindow
+    ? `Spray Window: ${sprayWindow.timeRange}`
+    : 'No Spray Window Today';
+  const spraySubtext = sprayWindow.hasWindow
+    ? 'Conditions suitable for application during this window'
+    : 'High drift risk or washoff likely \u2014 delay application';
 
-  const windDir = degreesToDirection(current.wind_degree);
-
-  const next24Hours = hourlyForecast.slice(0, 24);
-  let bestSprayWindow = 'No ideal window';
-  let bestWindowTime = '';
-
-  const rainPeriods: string[] = [];
-  for (const hour of next24Hours) {
-    const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
-    const hourWindSpeed = hour.wind_speed * 3.6;
-    const hourRainLikely = (hour.pop || 0) > 0.5;
-    if (!hourRainLikely &&
-        hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
-        hourDeltaT >= 2 && hourDeltaT <= 8 &&
-        hour.temp >= 10 && hour.temp <= 28) {
-      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-      bestSprayWindow = 'Ideal';
-      bestWindowTime = time;
-      break;
-    }
-
-    if ((hour.pop || 0) > 0.5) {
-      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-      const prob = Math.round((hour.pop || 0) * 100);
-      rainPeriods.push(`${time} (${prob}%)`);
-    }
-  }
-
-  const rainTimingText = rainPeriods.length > 0
-    ? `Expected around: ${rainPeriods.slice(0, 3).join(', ')}`
-    : 'No significant rain expected in next 24 hours';
-
-  const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
-    const date = new Date(day.date);
+  const fiveDays = forecast.slice(0, 5).map((d: any) => {
+    const date = new Date(d.date);
     const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
-    const windDeg = day.day.avg_wind_deg ?? 0;
-    const avgWindKph = day.hour?.length > 0
-      ? day.hour.reduce((s: number, h: any) => s + h.wind_speed_kph, 0) / day.hour.length
-      : day.day.maxwind_kph;
-    const sprayResult = getBestSprayWindowFromHours(day.hour || [], day.day.totalprecip_mm);
-    const irrigation = getDailyIrrigationAdvice(day.day.totalprecip_mm, day.day.daily_chance_of_rain, day.day.maxtemp_c, day.day.mintemp_c);
-    const planting = getDailyPlantingRating(day.day.maxtemp_c, day.day.mintemp_c, day.day.totalprecip_mm, day.day.maxwind_kph, day.day.daily_chance_of_rain);
-
-    return {
-      dayName,
-      date: date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
-      high: Math.round(day.day.maxtemp_c),
-      low: Math.round(day.day.mintemp_c),
-      rain: day.day.totalprecip_mm.toFixed(1),
-      rainChance: day.day.daily_chance_of_rain,
-      wind: Math.round(avgWindKph),
-      windDir: degreesToDirection(windDeg),
-      sprayIcon: sprayResult.icon,
-      sprayTime: sprayResult.timeRange,
-      sprayWindDir: sprayResult.windDir,
-      irrigation,
-      planting,
-    };
+    const dateStr = date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    const avgWind = d.hour?.length > 0
+      ? Math.round(d.hour.reduce((s: number, h: any) => s + (h.wind_speed_kph || 0), 0) / d.hour.length)
+      : Math.round(d.day.maxwind_kph);
+    const windDeg = d.day.avg_wind_deg ?? 0;
+    const spray = getDaySprayLabel(d.hour || [], d.day.totalprecip_mm);
+    const irrigation = getDailyIrrigationAdvice(d.day.totalprecip_mm, d.day.daily_chance_of_rain, d.day.maxtemp_c);
+    const planting = getDailyPlantingRating(d.day.maxtemp_c, d.day.mintemp_c, d.day.totalprecip_mm, d.day.maxwind_kph, d.day.daily_chance_of_rain);
+    return { dayName, dateStr, high: Math.round(d.day.maxtemp_c), low: Math.round(d.day.mintemp_c), rain: d.day.totalprecip_mm.toFixed(1), rainChance: d.day.daily_chance_of_rain, wind: avgWind, windDir: degreesToDirection(windDeg), spray, irrigation, planting };
   });
 
-  const sprayBadgeColor = bestSprayWindow === 'Ideal' ? '#16a34a' : '#64748b';
-  const deltaTBg = deltaTCond.color;
+  const bestSprayTimeForOps = sprayWindow.hasWindow ? sprayWindow.timeRange : 'N/A';
+  const plantingRating = getDailyPlantingRating(todayDay.maxtemp_c, todayDay.mintemp_c, todayDay.totalprecip_mm, todayDay.maxwind_kph, todayDay.daily_chance_of_rain);
+  const irrigationAdvice = getDailyIrrigationAdvice(todayDay.totalprecip_mm, todayDay.daily_chance_of_rain, todayDay.maxtemp_c);
+  const dateStr = new Date(Date.now() + 11 * 60 * 60 * 1000).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      background-color: #0f172a;
-      padding: 24px 16px;
-      line-height: 1.5;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: #1e293b;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.8);
-      border: 1px solid #334155;
-    }
-    .header {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      border-bottom: 1px solid #334155;
-      padding: 28px 28px 24px;
-      text-align: center;
-    }
-    .logo-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #16a34a, #15803d);
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-    }
-    .brand-name {
-      font-size: 22px;
-      font-weight: 800;
-      color: #f1f5f9;
-      letter-spacing: -0.5px;
-    }
-    .brand-tag {
-      font-size: 11px;
-      font-weight: 600;
-      color: #4ade80;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      margin-bottom: 14px;
-    }
-    .location-pill {
-      display: inline-block;
-      background: rgba(74,222,128,0.12);
-      border: 1px solid rgba(74,222,128,0.25);
-      border-radius: 999px;
-      padding: 6px 18px;
-      font-size: 14px;
-      font-weight: 700;
-      color: #86efac;
-      margin-bottom: 6px;
-    }
-    .date-line {
-      font-size: 12px;
-      color: #64748b;
-      font-weight: 500;
-    }
-
-    .content { padding: 24px; }
-
-    .section-label {
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #4ade80;
-      margin-bottom: 12px;
-    }
-
-    .card {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .stat-cell {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 14px;
-      text-align: center;
-    }
-
-    .stat-icon { font-size: 22px; margin-bottom: 6px; }
-
-    .stat-label {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #64748b;
-      margin-bottom: 4px;
-    }
-
-    .stat-value {
-      font-size: 26px;
-      font-weight: 800;
-      color: #f1f5f9;
-      line-height: 1.1;
-    }
-
-    .stat-sub {
-      font-size: 11px;
-      color: #94a3b8;
-      margin-top: 3px;
-      font-weight: 500;
-    }
-
-    .ops-row {
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .ops-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #cbd5e1;
-    }
-
-    .badge {
-      font-size: 11px;
-      font-weight: 800;
-      padding: 5px 12px;
-      border-radius: 6px;
-      color: white;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .rain-card {
-      background: linear-gradient(135deg, #0c1a2e 0%, #0f172a 100%);
-      border: 1px solid #1d4ed8;
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-
-    .rain-label {
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #60a5fa;
-      margin-bottom: 6px;
-    }
-
-    .rain-value {
-      font-size: 28px;
-      font-weight: 800;
-      color: #93c5fd;
-      margin-bottom: 4px;
-    }
-
-    .rain-timing {
-      font-size: 12px;
-      color: #60a5fa;
-      font-weight: 600;
-    }
-
-    .forecast-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid #334155;
-    }
-
-    .forecast-table thead tr {
-      background: #0f172a;
-    }
-
-    .forecast-table th {
-      padding: 10px 8px;
-      text-align: center;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #4ade80;
-      font-size: 10px;
-      border-bottom: 1px solid #334155;
-    }
-
-    .forecast-table th:first-child { text-align: left; padding-left: 14px; }
-
-    .forecast-table td {
-      padding: 11px 8px;
-      border-bottom: 1px solid #1e293b;
-      vertical-align: middle;
-    }
-
-    .forecast-table td:first-child { padding-left: 14px; }
-
-    .forecast-table tr:last-child td { border-bottom: none; }
-
-    .forecast-table tr:nth-child(odd) { background: #1e293b; }
-    .forecast-table tr:nth-child(even) { background: #172033; }
-
-    .footer {
-      background: #0a0f1a;
-      border-top: 1px solid #1e293b;
-      color: #475569;
-      padding: 20px 24px;
-      text-align: center;
-      font-size: 11px;
-    }
-
-    .footer-brand {
-      font-size: 15px;
-      font-weight: 800;
-      color: #4ade80;
-      letter-spacing: -0.3px;
-      margin-bottom: 4px;
-    }
-
-    .footer a { color: #4ade80; text-decoration: none; font-weight: 600; }
-
-    @media only screen and (max-width: 600px) {
-      .stat-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 </head>
-<body>
-  <div class="container">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;line-height:1.5;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:24px 16px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
 
-    <div class="header">
-      <div class="logo-row">
-        <div class="logo-icon">🌱</div>
-        <span class="brand-name">FarmCast</span>
-      </div>
-      <div class="brand-tag">Daily Farm Intelligence</div>
-      <div class="location-pill">${location}, ${country}</div>
-      <div class="date-line" style="margin-top:8px;">${new Date(Date.now() + 11 * 60 * 60 * 1000).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+  <!-- Header -->
+  <tr><td style="padding:32px 32px 24px;text-align:center;">
+    <div style="margin-bottom:8px;">
+      <span style="display:inline-block;width:40px;height:40px;background:#f0fdf4;border-radius:10px;line-height:40px;font-size:20px;vertical-align:middle;">\u{1F331}</span>
+      <span style="font-size:24px;font-weight:800;color:#111827;vertical-align:middle;margin-left:8px;">Farm<span style="color:#16a34a;">Cast</span></span>
     </div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6b7280;margin-bottom:16px;">DAILY FARM INTELLIGENCE</div>
+    <div style="display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:999px;padding:6px 18px;font-size:14px;font-weight:700;color:#166534;margin-bottom:6px;">\u{1F4CD} ${loc}, ${country}</div>
+    <div style="font-size:12px;color:#9ca3af;margin-top:6px;">${dateStr}</div>
+  </td></tr>
 
-    <div class="content">
+  <tr><td style="padding:0 32px;"><div style="border-top:2px solid #16a34a;"></div></td></tr>
 
-      <div class="section-label">Today's Forecast</div>
-      <div class="card" style="padding:16px;">
-        <div style="text-align:center;margin-bottom:16px;padding:16px;background:#1e293b;border:1px solid #334155;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:4px;">Current Temperature</div>
-          <div style="font-size:48px;font-weight:800;color:#f1f5f9;line-height:1;">${Math.round(current.temp_c)}°C</div>
-          <div style="font-size:13px;color:#94a3b8;margin-top:6px;font-weight:500;text-transform:capitalize;">${current.condition.text}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;font-weight:600;">Feels like ${Math.round(current.feelslike_c)}°C · ${current.humidity}% humidity</div>
-        </div>
-        <div class="stat-grid">
-          <div class="stat-cell">
-            <div class="stat-icon">🌡️</div>
-            <div class="stat-label">Today's High</div>
-            <div class="stat-value" style="color:#fca5a5;">${Math.round(highTemp)}°C</div>
-            <div class="stat-sub">Maximum</div>
+  <!-- Today's Forecast -->
+  <tr><td style="padding:24px 32px 0;">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">TODAY'S FORECAST</div>
+    <div style="border:1px solid #bbf7d0;border-radius:10px;padding:20px;text-align:center;margin-bottom:20px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#6b7280;margin-bottom:8px;">CURRENT CONDITIONS</div>
+      <div style="font-size:48px;font-weight:300;color:#16a34a;line-height:1;">${Math.round(cur.temp_c)}\u00b0C</div>
+      <div style="font-size:13px;color:#9ca3af;margin-top:8px;text-transform:capitalize;">${cur.condition.text} \u00b7 Feels like ${Math.round(cur.feelslike_c)}\u00b0C \u00b7 ${cur.humidity}% Humidity</div>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="50%" style="padding-right:8px;padding-bottom:16px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">TODAY'S HIGH</div>
+            <div style="font-size:32px;font-weight:300;color:#16a34a;">${highTemp}\u00b0C</div>
+            <div style="font-size:11px;color:#9ca3af;">Maximum</div>
           </div>
-          <div class="stat-cell">
-            <div class="stat-icon">🌡️</div>
-            <div class="stat-label">Today's Low</div>
-            <div class="stat-value" style="color:#93c5fd;">${Math.round(lowTemp)}°C</div>
-            <div class="stat-sub">Minimum</div>
+        </td>
+        <td width="50%" style="padding-left:8px;padding-bottom:16px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">TODAY'S LOW</div>
+            <div style="font-size:32px;font-weight:300;color:#16a34a;">${lowTemp}\u00b0C</div>
+            <div style="font-size:11px;color:#9ca3af;">Minimum</div>
           </div>
-          <div class="stat-cell">
-            <div class="stat-icon">💧</div>
-            <div class="stat-label">Rain Expected</div>
-            <div class="stat-value" style="color:#7dd3fc;">${rainToday.toFixed(1)}mm</div>
-            <div class="stat-sub">${rainChance}% chance</div>
+        </td>
+      </tr>
+      <tr>
+        <td width="50%" style="padding-right:8px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">RAIN EXPECTED</div>
+            <div style="font-size:32px;font-weight:300;color:#16a34a;">${rainMm.toFixed(1)}mm</div>
+            <div style="font-size:11px;color:#9ca3af;">${rainChance}% chance</div>
           </div>
-          <div class="stat-cell">
-            <div class="stat-icon">💨</div>
-            <div class="stat-label">Wind</div>
-            <div class="stat-value" style="color:#86efac;">${Math.round(current.wind_kph)}</div>
-            <div class="stat-sub">km/h ${windDir}</div>
+        </td>
+        <td width="50%" style="padding-left:8px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">WIND</div>
+            <div style="font-size:32px;font-weight:300;color:#d97706;">${Math.round(cur.wind_kph)} km/h</div>
+            <div style="font-size:11px;color:#9ca3af;">${windDir}</div>
           </div>
-        </div>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+
+  <!-- Spray Window -->
+  <tr><td style="padding:24px 32px 0;">
+    <div style="border-top:2px solid #16a34a;padding-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">\u{1F4A7} SPRAY WINDOW</div>
+      <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td><div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${sprayBadgeColor};">\u{1F6AB} TODAY'S SPRAY WINDOW</div></td>
+            <td style="text-align:right;">${sprayBadgeText ? `<span style="display:inline-block;border:1px solid ${sprayBadgeColor};border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;color:${sprayBadgeColor};letter-spacing:0.5px;">${sprayBadgeText}</span>` : ''}</td>
+          </tr>
+        </table>
+        <div style="font-size:20px;font-weight:600;color:#111827;margin:12px 0 4px;">${sprayTitle}</div>
+        <div style="font-size:13px;color:#9ca3af;">${spraySubtext}</div>
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+          <tr>
+            <td width="33%" style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">DELTA T</div>
+              <div style="font-size:16px;font-weight:700;color:#111827;">${dt.toFixed(1)}\u00b0C</div>
+            </td>
+            <td width="33%" style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">WIND</div>
+              <div style="font-size:16px;font-weight:700;color:#111827;">${Math.round(cur.wind_kph)} km/h</div>
+            </td>
+            <td width="33%" style="text-align:center;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;margin-bottom:4px;">HUMIDITY</div>
+              <div style="font-size:16px;font-weight:700;color:#111827;">${cur.humidity}%</div>
+            </td>
+          </tr>
+        </table>
       </div>
+    </div>
+  </td></tr>
 
-      <div class="rain-card">
-        <div class="rain-label">Rainfall Timing</div>
-        <div class="rain-value">${rainToday.toFixed(1)}mm</div>
-        <div class="rain-timing">${rainTimingText}</div>
+  <!-- 5-Day Outlook -->
+  <tr><td style="padding:24px 32px 0;">
+    <div style="border-top:2px solid #16a34a;padding-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">\u{1F4C5} 5-DAY OUTLOOK</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-left:12px;">DAY</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">TEMP</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">RAIN</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">WIND</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">SPRAY</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fiveDays.map((d: any) => `
+          <tr style="border-bottom:1px solid #f3f4f6;">
+            <td style="padding:12px 8px;padding-left:12px;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#111827;">${d.dayName}</div>
+              <div style="font-size:11px;color:#9ca3af;">${d.dateStr}</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#111827;">${d.high}\u00b0</div>
+              <div style="font-size:11px;color:#9ca3af;">${d.low}\u00b0</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#111827;">${d.rain}mm</div>
+              <div style="font-size:11px;color:#9ca3af;">${d.rainChance}%</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:12px;font-weight:600;color:#d97706;">${d.wind} km/h</div>
+              <div style="font-size:11px;color:#9ca3af;">${d.windDir}</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:13px;font-weight:700;color:${d.spray.icon === '\u2713' ? '#16a34a' : '#dc2626'};">${d.spray.icon} ${d.spray.label}</div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </td></tr>
+
+  <!-- Farm Operations Summary -->
+  <tr><td style="padding:24px 32px 0;">
+    <div style="border-top:2px solid #16a34a;padding-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">\u{1F69C} FARM OPERATIONS SUMMARY</div>
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" style="padding:8px 0;">
+            <div style="font-size:12px;color:#9ca3af;">\u{1F4A7} Best Spray Window</div>
+            <div style="font-size:14px;font-weight:700;color:#111827;">${bestSprayTimeForOps}</div>
+          </td>
+          <td width="50%" style="padding:8px 0;">
+            <div style="font-size:12px;color:#9ca3af;">\u{1F321}\u{FE0F} Delta T Index</div>
+            <div style="font-size:14px;font-weight:700;color:#111827;">${dt.toFixed(1)}\u00b0C \u2014 ${dtCond.rating}</div>
+          </td>
+        </tr>
+        <tr>
+          <td width="50%" style="padding:8px 0;">
+            <div style="font-size:12px;color:#9ca3af;">\u{1F331} Planting Conditions</div>
+            <div style="font-size:14px;font-weight:700;color:${plantingRating.color};">${plantingRating.rating.toUpperCase()}</div>
+          </td>
+          <td width="50%" style="padding:8px 0;">
+            <div style="font-size:12px;color:#9ca3af;">\u{1F4A7} Irrigation</div>
+            <div style="display:inline-block;border:1px solid #e5e7eb;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;color:#374151;">${irrigationAdvice.action.toUpperCase()}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </td></tr>
+
+  ${probeHtml}
+
+  <!-- Planting Days -->
+  <tr><td style="padding:24px 32px 0;">
+    <div style="border-top:2px solid #16a34a;padding-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">\u{1F331} PLANTING DAYS THIS WEEK</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-left:12px;">DAY</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">RATING</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">SOIL TEMP</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">CONDITIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fiveDays.map((d: any) => `
+          <tr>
+            <td style="padding:12px 8px;padding-left:12px;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#111827;">${d.dayName} ${d.dateStr.split(' ')[0]}</div>
+              <div style="font-size:11px;color:#9ca3af;">${d.dateStr.split(' ')[1] || ''}</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:13px;font-weight:700;color:${d.planting.color};">${d.planting.icon} ${d.planting.rating}</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#16a34a;">${d.planting.soilTempEst}\u00b0C</div>
+              <div style="font-size:10px;color:#9ca3af;">est.</div>
+            </td>
+            <td style="padding:12px 8px;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:12px;color:#6b7280;">${d.planting.note}</div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </td></tr>
+
+  <!-- Irrigation Schedule -->
+  <tr><td style="padding:24px 32px 0;">
+    <div style="border-top:2px solid #16a34a;padding-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#374151;margin-bottom:16px;">\u{1F4A7} 5-DAY IRRIGATION SCHEDULE</div>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+        <thead>
+          <tr style="background:#f9fafb;">
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-left:12px;">DAY</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">ACTION</th>
+            <th style="padding:10px 8px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">AMOUNT</th>
+            <th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6b7280;border-bottom:1px solid #e5e7eb;">NOTES</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${fiveDays.map((d: any) => `
+          <tr>
+            <td style="padding:12px 8px;padding-left:12px;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#111827;">${d.dayName} ${d.dateStr.split(' ')[0]}</div>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <span style="display:inline-block;border:1px solid ${d.irrigation.color};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;color:${d.irrigation.color};">${d.irrigation.action}</span>
+            </td>
+            <td style="padding:12px 8px;text-align:center;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:14px;font-weight:700;color:#111827;">${d.irrigation.amount}</div>
+            </td>
+            <td style="padding:12px 8px;border-bottom:1px solid #f3f4f6;">
+              <div style="font-size:12px;color:#6b7280;">${d.irrigation.note}</div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:32px 32px 0;">
+    <div style="border-top:2px solid #16a34a;padding-top:24px;text-align:center;">
+      <div style="margin-bottom:8px;">
+        <span style="font-size:18px;font-weight:800;color:#111827;">\u{1F331} Farm<span style="color:#16a34a;">Cast</span></span>
       </div>
-
-      <div class="section-label">Farm Operations</div>
       <div style="margin-bottom:16px;">
-        <div class="ops-row">
-          <span class="ops-label">Best Spray Window</span>
-          <span class="badge" style="background:${sprayBadgeColor};">${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor'}</span>
-        </div>
-        <div class="ops-row">
-          <span class="ops-label">Delta T Index</span>
-          <span class="badge" style="background:${deltaTBg};">${deltaT.toFixed(1)}°C &mdash; ${deltaTCond.rating}</span>
-        </div>
-        ${getPlantingConditions(weatherData, next24Hours)}
-        ${getIrrigationAdvice(rainToday, rainChance, current.temp_c, current.humidity)}
+        <a href="https://farmcastweather.com" style="color:#16a34a;text-decoration:none;font-weight:600;font-size:13px;margin:0 12px;">Dashboard</a>
+        <a href="https://farmcastweather.com/settings" style="color:#16a34a;text-decoration:none;font-weight:600;font-size:13px;margin:0 12px;">Preferences</a>
+        <a href="https://farmcastweather.com/unsubscribe" style="color:#16a34a;text-decoration:none;font-weight:600;font-size:13px;margin:0 12px;">Unsubscribe</a>
       </div>
-
-      ${probeReport}
-
-      <div class="section-label" style="margin-top:8px;">5-Day Outlook</div>
-      <table class="forecast-table">
-        <thead>
-          <tr>
-            <th>Day</th>
-            <th>Temp</th>
-            <th>Rain</th>
-            <th>Wind</th>
-            <th>Spray</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${fiveDayForecast.map((day: any) => `
-            <tr>
-              <td>
-                <div style="font-size:13px;font-weight:800;color:#e2e8f0;">${day.dayName}</div>
-                <div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px;">${day.date}</div>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:14px;font-weight:800;color:#fca5a5;">${day.high}°</div>
-                <div style="font-size:11px;font-weight:700;color:#93c5fd;margin-top:2px;">${day.low}°</div>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:13px;font-weight:800;color:#7dd3fc;">${day.rain}mm</div>
-                <div style="font-size:10px;font-weight:600;color:#64748b;margin-top:2px;">${day.rainChance}%</div>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:12px;font-weight:700;color:#86efac;">${day.wind} km/h</div>
-                <div style="font-size:10px;font-weight:600;color:#64748b;margin-top:2px;">${day.windDir}</div>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:18px;">${day.sprayIcon}</div>
-                ${day.sprayTime ? `<div style="font-size:9px;font-weight:600;color:#94a3b8;margin-top:2px;">${day.sprayTime}</div>` : ''}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top:8px;font-size:10px;color:#475569;text-align:center;font-weight:600;">
-        Spray: ✅ Ideal &nbsp;·&nbsp; ✓ Okay &nbsp;·&nbsp; ⚠️ Monitor &nbsp;·&nbsp; ❌ Poor
+      <div style="font-size:11px;color:#9ca3af;line-height:1.6;margin-bottom:12px;">
+        FarmCast Weather Services \u2014 Sent to daily forecast subscribers at $2.99/month, billed monthly. Cancel anytime in settings. For agricultural information only \u2014 does not constitute fertiliser, or legal application advice. Always follow local regulations and qualified agronomist advice before spraying or applying products.
       </div>
-
-      <div class="section-label" style="margin-top:20px;">5-Day Irrigation Schedule</div>
-      <table class="forecast-table" style="margin-bottom:8px;">
-        <thead>
-          <tr>
-            <th>Day</th>
-            <th>Irrigation</th>
-            <th>Amount</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${fiveDayForecast.map((day: any) => `
-            <tr>
-              <td>
-                <div style="font-size:13px;font-weight:800;color:#e2e8f0;">${day.dayName}</div>
-                <div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px;">${day.date}</div>
-              </td>
-              <td style="text-align:center;">
-                <span style="font-size:11px;font-weight:800;padding:4px 8px;border-radius:5px;background:${day.irrigation.badgeColor};color:white;">${day.irrigation.action}</span>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:12px;font-weight:700;color:#7dd3fc;">${day.irrigation.amount}</div>
-              </td>
-              <td style="padding-right:10px;">
-                <div style="font-size:10px;font-weight:600;color:#94a3b8;">${day.irrigation.note}</div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <div class="section-label" style="margin-top:20px;">Planting Days This Week</div>
-      <table class="forecast-table" style="margin-bottom:8px;">
-        <thead>
-          <tr>
-            <th>Day</th>
-            <th>Rating</th>
-            <th>Soil Temp</th>
-            <th>Conditions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${fiveDayForecast.map((day: any) => `
-            <tr>
-              <td>
-                <div style="font-size:13px;font-weight:800;color:#e2e8f0;">${day.dayName}</div>
-                <div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px;">${day.date}</div>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:18px;">${day.planting.icon}</div>
-                <div style="font-size:9px;font-weight:700;color:${day.planting.color};margin-top:2px;">${day.planting.rating}</div>
-              </td>
-              <td style="text-align:center;">
-                <div style="font-size:12px;font-weight:700;color:#fcd34d;">${day.planting.soilTempEst}°C</div>
-                <div style="font-size:9px;font-weight:600;color:#64748b;margin-top:2px;">est.</div>
-              </td>
-              <td style="padding-right:10px;">
-                <div style="font-size:10px;font-weight:600;color:#94a3b8;">${day.planting.note}</div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div style="margin-top:8px;font-size:10px;color:#475569;text-align:center;font-weight:600;">
-        Planting: ✅ Excellent &nbsp;·&nbsp; ✓ Good &nbsp;·&nbsp; ⚠️ Marginal &nbsp;·&nbsp; ❌ Avoid
+      <div style="font-size:12px;font-weight:600;color:#6b7280;padding-bottom:24px;">
+        Built for farmers. Designed for real on-farm decisions.
       </div>
-
     </div>
+  </td></tr>
 
-    <div class="footer">
-      <div class="footer-brand">FarmCast Weather</div>
-      <p style="margin-bottom:10px;">Agricultural Weather Intelligence</p>
-      <p>
-        <a href="https://farmcastweather.com">Dashboard</a> &nbsp;·&nbsp;
-        <a href="https://farmcastweather.com/settings">Preferences</a> &nbsp;·&nbsp;
-        <a href="https://farmcastweather.com/unsubscribe">Unsubscribe</a>
-      </p>
-      <p style="margin-top:12px;font-size:10px;color:#334155;">
-        FarmCast Weather Services &mdash; Sent to daily forecast subscribers<br>
-        $2.99/month, billed monthly. Cancel anytime in settings.
-      </p>
-      <p style="margin-top:12px;font-size:9px;color:#334155;line-height:1.5;">
-        FarmCast provides general agricultural information only and does not constitute chemical, agronomic, fertiliser, or legal application advice. Always verify with current label directions, local regulations, and qualified agronomic advice before spraying or applying products.
-      </p>
-    </div>
-
-  </div>
+</table>
+</td></tr>
+</table>
 </body>
-</html>
-  `.trim();
-}
-
-function getPlantingConditions(weatherData: any, _hourlyForecast: any[]): string {
-  const todayForecast = weatherData.forecast.forecastday[0].day;
-  const highTemp = todayForecast?.maxtemp_c || 0;
-  const lowTemp = todayForecast?.mintemp_c || 0;
-  const rainToday = todayForecast?.totalprecip_mm || 0;
-  const windSpeed = weatherData.current.wind_kph;
-
-  let rating = 'Good';
-  let color = '#16a34a';
-
-  if (rainToday > 5 || windSpeed > 25) {
-    rating = 'Poor';
-    color = '#dc2626';
-  } else if (highTemp > 35 || lowTemp < 5 || rainToday > 2) {
-    rating = 'Moderate';
-    color = '#d97706';
-  } else if (highTemp >= 15 && highTemp <= 28 && rainToday < 2 && windSpeed < 15) {
-    rating = 'Excellent';
-    color = '#16a34a';
-  }
-
-  return `
-    <div class="ops-row">
-      <span class="ops-label">🌱 Planting Conditions</span>
-      <span class="badge" style="background:${color};">${rating}</span>
-    </div>
-  `;
-}
-
-function getIrrigationAdvice(rainToday: number, rainChance: number, temp: number, humidity: number): string {
-  let advice = 'Not Needed';
-  let color = '#475569';
-
-  const evapotranspiration = temp > 25 && humidity < 60;
-
-  if (rainToday < 5 && rainChance < 30) {
-    if (evapotranspiration) {
-      advice = 'Recommended';
-      color = '#1d4ed8';
-    } else if (rainToday < 2) {
-      advice = 'Consider';
-      color = '#d97706';
-    }
-  }
-
-  return `
-    <div class="ops-row">
-      <span class="ops-label">💧 Irrigation</span>
-      <span class="badge" style="background:${color};">${advice}</span>
-    </div>
-  `;
-}
-
-function buildDailyForecastEmailText(weatherData: any, hourlyForecast: any[], cityName: string, country: string): string {
-  const current = weatherData.current;
-  const forecast = weatherData.forecast.forecastday;
-
-  const deltaT = calculateDeltaT(current.temp_c, current.humidity);
-  const deltaTCond = getDeltaTCondition(deltaT);
-
-  const todayForecast = forecast[0].day;
-  const highTemp = todayForecast?.maxtemp_c || 0;
-  const lowTemp = todayForecast?.mintemp_c || 0;
-  const rainToday = todayForecast?.totalprecip_mm || 0;
-  const rainChance = todayForecast?.daily_chance_of_rain || 0;
-  const sprayCond = getSprayCondition(current.wind_kph, rainToday);
-
-  const windDir = degreesToDirection(current.wind_degree);
-
-  const next24Hours = hourlyForecast.slice(0, 24);
-  let bestSprayWindow = 'No ideal window';
-  let bestWindowTime = '';
-
-  const rainPeriods: string[] = [];
-  for (const hour of next24Hours) {
-    const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
-    const hourWindSpeed = hour.wind_speed * 3.6;
-    const hourRainLikely = (hour.pop || 0) > 0.5;
-    if (!hourRainLikely &&
-        hourWindSpeed >= 3 && hourWindSpeed <= 15 &&
-        hourDeltaT >= 2 && hourDeltaT <= 8 &&
-        hour.temp >= 10 && hour.temp <= 28) {
-      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
-      bestSprayWindow = 'Ideal';
-      bestWindowTime = time;
-      break;
-    }
-
-    if ((hour.pop || 0) > 0.5) {
-      const time = new Date(hour.dt * 1000).toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-      const prob = Math.round((hour.pop || 0) * 100);
-      rainPeriods.push(`${time} (${prob}%)`);
-    }
-  }
-
-  const rainTimingText = rainPeriods.length > 0
-    ? `Expected around: ${rainPeriods.slice(0, 3).join(', ')}`
-    : 'No significant rain expected in next 24 hours';
-
-  const fiveDayForecast = forecast.slice(0, 5).map((day: any) => {
-    const date = new Date(day.date);
-    const dayName = date.toLocaleDateString('en-AU', { weekday: 'short' });
-    const windDeg = day.day.avg_wind_deg ?? 0;
-    const avgWindKph = day.hour?.length > 0
-      ? day.hour.reduce((s: number, h: any) => s + h.wind_speed_kph, 0) / day.hour.length
-      : day.day.maxwind_kph;
-    const sprayResult = getBestSprayWindowFromHours(day.hour || [], day.day.totalprecip_mm);
-
-    return {
-      dayName,
-      date: date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }),
-      high: Math.round(day.day.maxtemp_c),
-      low: Math.round(day.day.mintemp_c),
-      rain: day.day.totalprecip_mm.toFixed(1),
-      rainChance: day.day.daily_chance_of_rain,
-      wind: Math.round(avgWindKph),
-      windDir: degreesToDirection(windDeg),
-      sprayIcon: sprayResult.icon,
-      sprayTime: sprayResult.timeRange,
-    };
-  });
-
-  return `
-FARMCAST DAILY FORECAST
-${cityName}, ${country}
-${new Date(Date.now() + 11 * 60 * 60 * 1000).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-
-TODAY'S FORECAST:
-- Actual High: ${Math.round(highTemp)}°C
-- Actual Low: ${Math.round(lowTemp)}°C
-- Rain Expected: ${rainToday.toFixed(1)}mm (${rainChance}% chance)
-- Rain Timing: ${rainTimingText}
-- Wind: ${Math.round(current.wind_kph)} km/h ${windDir}
-- Humidity: ${current.humidity}%
-
-SPRAY WINDOW ANALYSIS:
-- Spray Conditions: ${sprayCond.rating}
-- Delta T: ${deltaT.toFixed(1)}°C - ${deltaTCond.rating}
-- Best Window Today: ${bestSprayWindow === 'Ideal' ? bestWindowTime : 'Monitor conditions'}
-
-5-DAY FORECAST:
-${fiveDayForecast.map((day: any) =>
-  `${day.dayName} ${day.date}: High ${day.high}°C / Low ${day.low}°C | Rain: ${day.rain}mm (${day.rainChance}%) | Wind: ${day.wind} km/h ${day.windDir} | Spray: ${day.sprayIcon}${day.sprayTime ? ' ' + day.sprayTime : ''}`
-).join('\n')}
-
-Spray Window Key: ✅ Ideal · ✓ Okay · ⚠️ Monitor · ❌ Poor
-
-24-HOUR FORECAST WITH DELTA T:
-${next24Hours.slice(0, 12).map((hour: any) => {
-  const hourTime = new Date(hour.dt * 1000);
-  const timeStr = hourTime.toLocaleTimeString('en-AU', { hour: 'numeric', hour12: true });
-  const temp = Math.round(hour.temp);
-  const rainProb = Math.round((hour.pop || 0) * 100);
-  const weatherMain = hour.weather[0]?.main || 'Clear';
-  const hourDeltaT = calculateDeltaT(hour.temp, hour.humidity);
-  const hourWindSpeed = Math.round(hour.wind_speed * 3.6);
-  const deltaTCond = getDeltaTCondition(hourDeltaT);
-  return `${timeStr}: ${temp}°C, ${weatherMain}, ${rainProb}% rain, Wind ${hourWindSpeed}km/h, ΔT ${hourDeltaT.toFixed(1)} (${deltaTCond.rating})`;
-}).join('\n')}
-
-Delta T Guide: <2=Poor | 2-4=Okay | 4-6=Excellent | 6-8=Okay | >8=Poor
-
-Visit your dashboard: https://farmcastweather.com
-Manage preferences: https://farmcastweather.com/settings
-Unsubscribe: https://farmcastweather.com/unsubscribe
-
-FarmCast Weather Services
-Sent to subscribers of daily weather forecasts
-
-Your subscription: $2.99/month, billed monthly. Cancel anytime in settings.
-
-FarmCast provides general agricultural information only and does not constitute chemical, agronomic, fertiliser, or legal application advice. Always verify with current label directions, local regulations, and qualified agronomic advice before spraying or applying products.
-  `.trim();
+</html>`;
 }
