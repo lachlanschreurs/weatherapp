@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { X, Mail, Lock, User, Phone, Check, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Mail, Lock, User, Phone, Check, Loader2, MapPin, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { saveLocation, setFavoriteLocation } from '../utils/savedLocations';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,10 +10,20 @@ interface AuthModalProps {
   initialMode?: 'login' | 'signup';
 }
 
+interface LocationResult {
+  name: string;
+  lat: number;
+  lon: number;
+  country: string;
+  state?: string;
+  postcode?: string;
+}
+
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }: AuthModalProps) {
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [showPaymentStep, setShowPaymentStep] = useState(false);
+  const [showLocationStep, setShowLocationStep] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -21,18 +32,29 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationResults, setLocationResults] = useState<LocationResult[]>([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<LocationResult | null>(null);
+  const [signedUpUserId, setSignedUpUserId] = useState<string | null>(null);
+  const locationSearchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (isOpen) {
       setIsLogin(initialMode === 'login');
       setIsForgotPassword(false);
       setShowPaymentStep(false);
+      setShowLocationStep(false);
       setError(null);
       setSuccessMessage(null);
       setEmail('');
       setPassword('');
       setName('');
       setPhoneNumber('');
+      setLocationQuery('');
+      setLocationResults([]);
+      setSelectedLocation(null);
+      setSignedUpUserId(null);
     }
   }, [isOpen, initialMode]);
 
@@ -198,10 +220,11 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
       console.log('[Auth] ✓ Signup complete - user is ready');
       console.log('[Auth] === Signup Process Complete ===');
 
-      setSuccessMessage('Account created successfully! Setting up payment...');
+      setSignedUpUserId(authData.user.id);
+      setSuccessMessage('Account created! Now select your farm location.');
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      setShowPaymentStep(true);
+      setShowLocationStep(true);
       setLoading(false);
     } catch (err: any) {
       console.error('[Auth] Signup error:', err);
@@ -361,6 +384,70 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
     }
   };
 
+  const searchLocations = async (query: string) => {
+    if (!query || query.length < 2) {
+      setLocationResults([]);
+      return;
+    }
+    setIsSearchingLocation(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=6`,
+        { headers: { 'User-Agent': 'FarmCast Weather App' } }
+      );
+      if (!response.ok) throw new Error('Search failed');
+      const data = await response.json();
+      const locations: LocationResult[] = data
+        .map((item: any) => ({
+          name: item.address?.city || item.address?.town || item.address?.village || item.address?.hamlet || item.name || item.display_name.split(',')[0],
+          lat: parseFloat(item.lat),
+          lon: parseFloat(item.lon),
+          country: (item.address?.country_code || '').toUpperCase(),
+          state: item.address?.state,
+          postcode: item.address?.postcode,
+        }))
+        .filter((loc: LocationResult) => loc.country !== 'IN');
+      setLocationResults(locations);
+    } catch {
+      setLocationResults([]);
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
+
+  const handleLocationQueryChange = (value: string) => {
+    setLocationQuery(value);
+    setSelectedLocation(null);
+    if (locationSearchTimeout.current) clearTimeout(locationSearchTimeout.current);
+    locationSearchTimeout.current = setTimeout(() => searchLocations(value), 300);
+  };
+
+  const handleLocationConfirm = async () => {
+    if (!selectedLocation || !signedUpUserId) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const saved = await saveLocation(signedUpUserId, selectedLocation);
+      if (saved) {
+        await setFavoriteLocation(signedUpUserId, saved.id);
+      }
+
+      const locationText = [selectedLocation.name, selectedLocation.state, selectedLocation.country].filter(Boolean).join(', ');
+      await supabase
+        .from('email_subscriptions')
+        .update({ location: locationText })
+        .eq('user_id', signedUpUserId);
+
+      setShowLocationStep(false);
+      setShowPaymentStep(true);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save location. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-8 relative">
@@ -375,21 +462,114 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           <h2 className="text-3xl font-bold text-green-900 mb-2">
             {showPaymentStep
               ? 'Complete Your Setup'
-              : isForgotPassword
-                ? 'Reset Password'
-                : isLogin
-                  ? 'Welcome Back'
-                  : 'Get Started with FarmCast'}
+              : showLocationStep
+                ? 'Set Your Farm Location'
+                : isForgotPassword
+                  ? 'Reset Password'
+                  : isLogin
+                    ? 'Welcome Back'
+                    : 'Get Started with FarmCast'}
           </h2>
           <p className="text-gray-600 mb-6">
             {showPaymentStep
               ? 'Start your free 1-month trial today'
-              : isForgotPassword
-                ? 'Enter your email to receive a password reset link'
-                : isLogin
-                  ? 'Sign in to access your farm data'
-                  : 'Start your free 1-month trial'}
+              : showLocationStep
+                ? 'Choose the location for your daily weather emails'
+                : isForgotPassword
+                  ? 'Enter your email to receive a password reset link'
+                  : isLogin
+                    ? 'Sign in to access your farm data'
+                    : 'Start your free 1-month trial'}
           </p>
+
+          {showLocationStep && (
+            <div className="space-y-4 mb-6">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <span className="text-sm text-green-800 font-medium">Account created successfully</span>
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Search for your farm or town
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={locationQuery}
+                    onChange={(e) => handleLocationQueryChange(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                    placeholder="e.g. Dubbo, NSW or Springfield, IL"
+                    autoFocus
+                  />
+                  {isSearchingLocation && (
+                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                  )}
+                </div>
+
+                {locationResults.length > 0 && !selectedLocation && (
+                  <div className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {locationResults.map((loc, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setSelectedLocation(loc);
+                          setLocationQuery(loc.name + (loc.state ? `, ${loc.state}` : '') + `, ${loc.country}`);
+                          setLocationResults([]);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-green-50 border-b border-gray-100 last:border-0 flex items-center gap-3 transition-colors"
+                      >
+                        <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{loc.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {[loc.state, loc.country].filter(Boolean).join(', ')}
+                            {loc.postcode ? ` (${loc.postcode})` : ''}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {selectedLocation && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-green-900">{selectedLocation.name}</p>
+                    <p className="text-xs text-green-700">
+                      {[selectedLocation.state, selectedLocation.country].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                  <Check className="w-5 h-5 text-green-600" />
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500">
+                Your daily weather emails will be sent for this location. You can change it later in settings.
+              </p>
+
+              <button
+                onClick={handleLocationConfirm}
+                disabled={!selectedLocation || loading}
+                className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3.5 rounded-lg font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Saving location...
+                  </>
+                ) : (
+                  <>
+                    <MapPin className="w-5 h-5" />
+                    Confirm Location & Continue
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
           {showPaymentStep && (
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -432,7 +612,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
-          {!isLogin && !isForgotPassword && !showPaymentStep && (
+          {!isLogin && !isForgotPassword && !showPaymentStep && !showLocationStep && (
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <div className="bg-green-600 text-white rounded-full p-1.5 mt-0.5">
@@ -473,7 +653,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
             </div>
           )}
 
-          {successMessage && !showPaymentStep && (
+          {successMessage && !showPaymentStep && !showLocationStep && (
             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
               {successMessage}
             </div>
@@ -496,7 +676,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
                 )}
               </button>
             </div>
-          ) : (
+          ) : showLocationStep ? null : (
           <form onSubmit={isForgotPassword ? handleForgotPassword : isLogin ? handleLogin : handleSignup} className="space-y-4">
             {!isLogin && !isForgotPassword && (
               <>
@@ -624,7 +804,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'login' }:
           </form>
           )}
 
-          {!showPaymentStep && (
+          {!showPaymentStep && !showLocationStep && (
           <div className="mt-6 text-center space-y-2">
             {isForgotPassword ? (
               <button
