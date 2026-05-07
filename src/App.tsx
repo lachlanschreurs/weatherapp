@@ -1155,24 +1155,30 @@ function App() {
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/30 to-transparent" />
             <div className="relative z-10 p-6 xl:p-7 flex flex-col flex-1">
-              {/* Dominant Header with Logo */}
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/15 border border-green-500/30 flex items-center justify-center flex-shrink-0" style={{ boxShadow: '0 0 20px rgba(34,197,94,0.15)' }}>
-                    <Sprout className="w-5 h-5 text-green-400" style={{ filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.5))' }} />
+              {/* Premium Header */}
+              <div className="mb-4 farmcast-fade-in">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 farmcast-spray-icon-glow" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(16,185,129,0.08))', border: '1px solid rgba(34,197,94,0.35)', boxShadow: '0 0 24px rgba(34,197,94,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+                      <SprayCan className="w-6 h-6 text-green-400" style={{ filter: 'drop-shadow(0 0 6px rgba(34,197,94,0.6))' }} />
+                    </div>
+                    <div>
+                      <h2 className="text-[1.65rem] xl:text-[1.85rem] font-extrabold leading-[1.05] tracking-[-0.02em] farmcast-spray-title">
+                        <span style={{ background: 'linear-gradient(180deg, #ffffff 30%, #86efac 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: 'none' }}>FarmCast Spray</span>
+                        <br />
+                        <span style={{ background: 'linear-gradient(180deg, #ffffff 30%, #86efac 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: 'none' }}>Window</span>
+                      </h2>
+                      <p className="text-[9px] text-green-400/60 font-bold uppercase tracking-[0.2em] mt-1.5">AI-Powered Spray Intelligence</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-none" style={{ letterSpacing: '-0.5px' }}>
-                      FarmCast Spray Window
-                    </h2>
-                    <p className="text-[10px] text-green-400/70 font-semibold uppercase tracking-[0.15em] mt-1">FarmCast Decision Engine</p>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-green-500/20 flex-shrink-0 mt-1" style={{ background: 'rgba(34,197,94,0.06)', backdropFilter: 'blur(8px)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 farmcast-pulse-dot" />
+                    <span className="text-[8px] font-bold text-green-300/80 uppercase tracking-[0.15em]">Live</span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-tight">Real-time spray conditions based on weather and farm data</p>
+                <p className="text-[10px] text-slate-500/70 leading-tight ml-[3.75rem]">Real-time weather, drift and Delta T analysis</p>
+                <div className="mt-3 h-[1.5px] w-[45%] rounded-full" style={{ background: 'linear-gradient(90deg, rgba(34,197,94,0.4), rgba(34,197,94,0.05))', boxShadow: '0 0 8px rgba(34,197,94,0.15)' }} />
               </div>
-
-              {/* Divider */}
-              <div className="h-px bg-gradient-to-r from-green-500/30 via-green-500/10 to-transparent mb-3" />
 
               {/* Status line */}
               <div className="text-base xl:text-lg font-bold text-white mb-2">
