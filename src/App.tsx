@@ -1163,7 +1163,7 @@ function App() {
                   </div>
                   <div>
                     <h2 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-none" style={{ letterSpacing: '-0.5px' }}>
-                      Spray Window
+                      FarmCast Spray Window
                     </h2>
                     <p className="text-[10px] text-green-400/70 font-semibold uppercase tracking-[0.15em] mt-1">FarmCast Decision Engine</p>
                   </div>
