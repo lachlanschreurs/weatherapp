@@ -1167,21 +1167,11 @@ function App() {
 
               {/* Status line */}
               <div className="text-base xl:text-lg font-bold text-white mb-2">
-                {rainfall > 0 ? 'Currently Raining — Avoid Spraying' : todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Spray Period` : 'No Spray Window Today'}
+                {todayBestWindow ? `${todayBestWindow.duration.toFixed(0)}hr Optimal Spray Period` : rainfall > 0 ? 'Currently Raining — No Window Found' : 'No Spray Window Today'}
               </div>
 
               {/* Time range + badge */}
-              {rainfall > 0 ? (
-                <div className="mb-3 farmcast-fade-in">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <CloudRain className="w-4 h-4 text-red-400" />
-                    <span className="text-sm font-semibold text-red-300">Rain washes off product — zero efficacy</span>
-                  </div>
-                  <span className="inline-flex items-center text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-red-500/15 text-red-300 border border-red-500/30">
-                    Score: 0 / 10
-                  </span>
-                </div>
-              ) : todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
+              {todayBestWindow && (todayBestWindow.rating === 'Good' || todayBestWindow.rating === 'Moderate') ? (
                 <div className="mb-3 farmcast-fade-in">
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-green-400/70 flex-shrink-0" />

@@ -18,9 +18,9 @@ interface SprayWindowCardProps {
 
 type SprayStatus = 'IDEAL' | 'OKAY' | 'POOR';
 
-function getSprayStatus(windSpeedKmh: number, deltaT: number, rainChance: number, currentRainfall: number): SprayStatus {
+function getSprayStatus(windSpeedKmh: number, deltaT: number, _rainChance: number, currentRainfall: number): SprayStatus {
   if (currentRainfall > 0) return 'POOR';
-  if (windSpeedKmh > 25 || windSpeedKmh < 3 || deltaT < 2 || deltaT > 8 || rainChance > 30) {
+  if (windSpeedKmh > 25 || windSpeedKmh < 3 || deltaT < 2 || deltaT > 8) {
     return 'POOR';
   }
   if (windSpeedKmh > 15 || (deltaT >= 2 && deltaT < 4) || (deltaT > 6 && deltaT <= 8)) {
@@ -52,7 +52,10 @@ const statusConfig = {
 
 export function SprayWindowCard({ sprayWindow, windSpeedKmh, deltaT, rainChance, humidity, currentRainfall = 0, onCardClick }: SprayWindowCardProps) {
   const isRaining = currentRainfall > 0;
-  const status = getSprayStatus(windSpeedKmh, deltaT, rainChance, currentRainfall);
+  const hasWindow = sprayWindow && (sprayWindow.rating === 'Good' || sprayWindow.rating === 'Moderate');
+  const status: SprayStatus = hasWindow
+    ? (sprayWindow.rating === 'Good' ? 'IDEAL' : 'OKAY')
+    : getSprayStatus(windSpeedKmh, deltaT, rainChance, currentRainfall);
   const config = statusConfig[status];
   const hasData = windSpeedKmh !== undefined && deltaT !== undefined;
 
@@ -96,6 +99,7 @@ export function SprayWindowCard({ sprayWindow, windSpeedKmh, deltaT, rainChance,
                   </p>
                   <p className="text-sm text-white/55 mt-2.5 font-medium">
                     {sprayWindow.duration}hr window &bull; {sprayWindow.conditions}
+                    {isRaining ? ' (rain clearing)' : ''}
                   </p>
                 </div>
               ) : (
@@ -104,7 +108,7 @@ export function SprayWindowCard({ sprayWindow, windSpeedKmh, deltaT, rainChance,
                     {isRaining ? 'Currently raining' : 'No suitable window'}
                   </p>
                   <p className="text-sm text-white/40 mt-2">
-                    {isRaining ? 'Spray quality: 0 — rain washes off product' : 'Conditions not favourable today'}
+                    {isRaining ? 'No spray window found today' : 'Conditions not favourable today'}
                   </p>
                 </div>
               )}

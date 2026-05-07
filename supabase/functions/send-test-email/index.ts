@@ -225,20 +225,18 @@ function getSoilTempStatus(t: number): { status: string; color: string } {
 }
 
 function getBestSprayWindow(hours: any[]): { hasWindow: boolean; timeRange: string; reason: string } {
-  const totalRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
-  if (totalRain > 5) return { hasWindow: false, timeRange: '', reason: 'Rain' };
-
   const windows: any[] = [];
   for (const h of hours) {
     const wind = h.wind_speed_kph || (h.wind_speed ? h.wind_speed * 3.6 : 0);
     const dt = calcDeltaT(h.temp, h.humidity);
-    const rainy = (h.rain_mm || 0) > 0.2 || (h.pop || 0) > 0.4;
-    if (!rainy && wind >= 3 && wind <= 15 && dt >= 2 && dt <= 8) {
+    const hourRain = (h.rain_mm || 0) > 0.2;
+    if (!hourRain && wind >= 3 && wind <= 15 && dt >= 2 && dt <= 8) {
       windows.push(h);
     }
   }
 
   if (windows.length === 0) {
+    const totalRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
     if (totalRain > 0.5) return { hasWindow: false, timeRange: '', reason: 'Rain' };
     return { hasWindow: false, timeRange: '', reason: 'Conditions' };
   }
@@ -257,23 +255,20 @@ function getBestSprayWindow(hours: any[]): { hasWindow: boolean; timeRange: stri
   return { hasWindow: true, timeRange, reason: '' };
 }
 
-function getDaySprayLabel(hours: any[], totalRainMm: number): { icon: string; label: string } {
-  if (totalRainMm > 5) return { icon: '\u2717', label: 'Rain' };
-  const totalActualRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
-  if (totalActualRain > 5) return { icon: '\u2717', label: 'Rain' };
-
+function getDaySprayLabel(hours: any[], _totalRainMm: number): { icon: string; label: string } {
   const windows: any[] = [];
   for (const h of hours) {
     const wind = h.wind_speed_kph || 0;
     const dt = calcDeltaT(h.temp, h.humidity);
-    const rainy = (h.rain_mm || 0) > 0.2 || (h.pop || 0) > 0.4;
-    if (!rainy && wind >= 3 && wind <= 15 && dt >= 2 && dt <= 8) {
+    const hourRain = (h.rain_mm || 0) > 0.2;
+    if (!hourRain && wind >= 3 && wind <= 15 && dt >= 2 && dt <= 8) {
       windows.push(h);
     }
   }
 
   if (windows.length === 0) {
-    if (totalActualRain > 0.5 || totalRainMm > 0.5) return { icon: '\u2717', label: 'Rain' };
+    const totalActualRain = hours.reduce((s: number, h: any) => s + (h.rain_mm || 0), 0);
+    if (totalActualRain > 0.5) return { icon: '\u2717', label: 'Rain' };
     return { icon: '\u2717', label: 'Conditions' };
   }
 
