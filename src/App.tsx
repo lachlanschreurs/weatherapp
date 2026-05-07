@@ -1155,16 +1155,24 @@ function App() {
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/30 to-transparent" />
             <div className="relative z-10 p-6 xl:p-7 flex flex-col flex-1">
-              {/* Dominant Header */}
-              <div className="mb-0.5">
-                <h2 className="uppercase text-green-300 text-xl xl:text-2xl font-extrabold tracking-[1.5px]" style={{ textShadow: '0 0 24px rgba(34,197,94,0.2), 0 0 8px rgba(34,197,94,0.1)' }}>
-                  FarmCast Spray Window
-                </h2>
-                <p className="text-[10px] text-slate-500 mt-1 leading-tight">Real-time spray conditions based on weather and farm data</p>
+              {/* Dominant Header with Logo */}
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/15 border border-green-500/30 flex items-center justify-center flex-shrink-0" style={{ boxShadow: '0 0 20px rgba(34,197,94,0.15)' }}>
+                    <Sprout className="w-5 h-5 text-green-400" style={{ filter: 'drop-shadow(0 0 4px rgba(34,197,94,0.5))' }} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl xl:text-3xl font-black text-white tracking-tight leading-none" style={{ letterSpacing: '-0.5px' }}>
+                      Spray Window
+                    </h2>
+                    <p className="text-[10px] text-green-400/70 font-semibold uppercase tracking-[0.15em] mt-1">FarmCast Decision Engine</p>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">Real-time spray conditions based on weather and farm data</p>
               </div>
 
               {/* Divider */}
-              <div className="h-px bg-gradient-to-r from-green-500/30 via-green-500/10 to-transparent my-3" />
+              <div className="h-px bg-gradient-to-r from-green-500/30 via-green-500/10 to-transparent mb-3" />
 
               {/* Status line */}
               <div className="text-base xl:text-lg font-bold text-white mb-2">
