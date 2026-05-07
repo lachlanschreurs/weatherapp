@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, MapPin, Loader2, Star, Trash2, Navigation } from 'lucide-react';
+import { Search, MapPin, Loader2, Star, Trash2, Navigation, Lock } from 'lucide-react';
 import { getSavedLocations, saveLocation, setFavoriteLocation, deleteSavedLocation, SavedLocation } from '../utils/savedLocations';
 import { getUserLocation } from '../utils/geolocation';
+
+const BLOCKED_COUNTRY = 'IN';
 
 export interface Location {
   name: string;
@@ -27,6 +29,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
   const [isExpanded, setIsExpanded] = useState(false);
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>([]);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [blockedLocationMessage, setBlockedLocationMessage] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const favoriteLocation = savedLocations.find(loc => loc.is_favorite);
 
@@ -78,7 +81,7 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
 
       const data = await response.json();
 
-      const locations: Location[] = data.map((item: any) => ({
+      const allLocations: Location[] = data.map((item: any) => ({
         name: item.address?.city || item.address?.town || item.address?.village || item.address?.hamlet || item.name || item.display_name.split(',')[0],
         lat: parseFloat(item.lat),
         lon: parseFloat(item.lon),
@@ -86,6 +89,15 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
         state: item.address?.state,
         postcode: item.address?.postcode,
       }));
+
+      const hasBlockedResults = allLocations.some(loc => loc.country === BLOCKED_COUNTRY);
+      const locations = allLocations.filter(loc => loc.country !== BLOCKED_COUNTRY);
+
+      if (hasBlockedResults && locations.length === 0) {
+        setBlockedLocationMessage(true);
+      } else {
+        setBlockedLocationMessage(false);
+      }
 
       setResults(locations);
       setShowResults(true);
@@ -104,6 +116,11 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
   };
 
   const handleSelectLocation = async (location: Location) => {
+    if (location.country === BLOCKED_COUNTRY) {
+      setBlockedLocationMessage(true);
+      return;
+    }
+    setBlockedLocationMessage(false);
     onLocationSelect(location, false);
     setQuery('');
     setResults([]);
@@ -125,6 +142,12 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
     setIsLoadingLocation(true);
     try {
       const location = await getUserLocation();
+      if (location.country === BLOCKED_COUNTRY) {
+        setBlockedLocationMessage(true);
+        setShowResults(true);
+        return;
+      }
+      setBlockedLocationMessage(false);
       onLocationSelect(location, true);
       setQuery('');
       setResults([]);
@@ -317,7 +340,15 @@ export function LocationSearch({ onLocationSelect, currentLocation, userId, isUs
                 </>
               )}
 
-              {query && query.length >= 2 && results.length === 0 && !isSearching && (
+              {blockedLocationMessage && (
+                <div className="px-4 py-4 text-center">
+                  <Lock className="w-5 h-5 text-red-400 mx-auto mb-2" />
+                  <p className="text-red-600 font-semibold text-sm">Location blocked</p>
+                  <p className="text-gray-500 text-xs mt-1">FarmCast is not available in this region due to licensing restrictions.</p>
+                </div>
+              )}
+
+              {query && query.length >= 2 && results.length === 0 && !isSearching && !blockedLocationMessage && (
                 <div className="px-4 py-4 text-center text-gray-600">
                   No locations found
                 </div>
