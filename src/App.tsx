@@ -153,6 +153,7 @@ function App() {
   const [showConnectSensors, setShowConnectSensors] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showNozzleModal, setShowNozzleModal] = useState(false);
+  const [geoBlocked, setGeoBlocked] = useState(false);
 
   const countryCode = location.country || 'AU';
   const units: RegionUnits = resolveUnits({ country: countryCode }, unitPrefs);
@@ -166,6 +167,19 @@ function App() {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (tz === 'Asia/Kolkata' || tz === 'Asia/Calcutta') {
+      setGeoBlocked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (location.country === 'IN') {
+      setGeoBlocked(true);
+    }
+  }, [location.country]);
 
   useEffect(() => {
     // Show the location prompt screen instead of silently requesting
@@ -525,6 +539,21 @@ function App() {
           >
             Try Again
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (geoBlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center farmcast-bg p-4 relative overflow-hidden">
+        <div className="farmcast-bg-overlay" />
+        <div className="relative z-10 text-center max-w-sm">
+          <div className="w-16 h-16 mx-auto mb-5 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20">
+            <Lock className="w-8 h-8 text-red-400" />
+          </div>
+          <h1 className="text-white text-2xl font-bold tracking-tight mb-2">Service Unavailable</h1>
+          <p className="text-slate-400 text-sm leading-relaxed">FarmCast is not available in your region. This service is currently limited to Australia, New Zealand, USA, Canada, UK, and Europe.</p>
         </div>
       </div>
     );
