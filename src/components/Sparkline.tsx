@@ -5,15 +5,17 @@ interface SparklineProps {
   height?: number;
   strokeWidth?: number;
   filled?: boolean;
+  className?: string;
 }
 
 export function Sparkline({
   values,
   color = '#4ade80',
-  width = 64,
-  height = 24,
+  width = 100,
+  height = 28,
   strokeWidth = 1.5,
   filled = true,
+  className = '',
 }: SparklineProps) {
   if (!values || values.length < 2) return null;
 
@@ -35,12 +37,18 @@ export function Sparkline({
   const fillD = `${pathD} L ${pad + w},${pad + h} L ${pad},${pad + h} Z`;
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+    <svg
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className={`overflow-visible ${className}`}
+    >
       {filled && (
         <path
           d={fillD}
           fill={color}
-          fillOpacity={0.12}
+          fillOpacity={0.1}
         />
       )}
       <path

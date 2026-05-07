@@ -33,6 +33,7 @@ import { ExplainerModal, InfoButton, TrustDisclaimer, UnderstandingFarmCast, Con
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TodayOnYourFarm } from './components/TodayOnYourFarm';
 import NozzleRecommendation from './components/NozzleRecommendation';
+import { Sparkline } from './components/Sparkline';
 import { getConfig, getActivityRecommendation } from './utils/whiteLabel';
 
 const whiteLabelConfig = getConfig();
@@ -863,10 +864,10 @@ function App() {
     <div className="min-h-screen farmcast-bg text-slate-100">
       <div className="farmcast-bg-overlay" />
 
-      <div className="relative z-10 max-w-screen-2xl mx-auto px-4 sm:px-6 xl:px-10 py-5">
+      <div className="relative z-10 max-w-screen-2xl mx-auto px-4 sm:px-6 xl:px-10 py-6">
 
         {/* HEADER */}
-        <header className="mb-6">
+        <header className="mb-7">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-11 h-11 bg-green-500/20 border border-green-500/30 rounded-xl flex-shrink-0 farmcast-logo-glow">
@@ -998,7 +999,7 @@ function App() {
         )}
 
         {/* HERO CURRENT CONDITIONS — 3 CARD ROW */}
-        <div className="mb-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="mb-8 grid grid-cols-1 lg:grid-cols-12 gap-5">
 
           {/* CARD 1 — WEATHER OVERVIEW (5 cols) */}
           <div
@@ -1009,11 +1010,11 @@ function App() {
               boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
             }}
           >
-            <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
+            <div className="relative z-10 p-6 xl:p-7 flex flex-col flex-1">
               {/* Current Conditions Header */}
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-4">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 farmcast-pulse-dot" />
-                <span className="uppercase text-slate-400 text-[10px] font-medium tracking-[2.5px]">Current Conditions</span>
+                <span className="uppercase text-slate-400 text-[11px] font-semibold tracking-[2px]">Current Conditions</span>
               </div>
 
               {/* Main weather section */}
@@ -1153,7 +1154,7 @@ function App() {
             }}
           >
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-green-400/30 to-transparent" />
-            <div className="relative z-10 p-5 xl:p-6 flex flex-col flex-1">
+            <div className="relative z-10 p-6 xl:p-7 flex flex-col flex-1">
               {/* Dominant Header */}
               <div className="mb-0.5">
                 <h2 className="uppercase text-green-300 text-xl xl:text-2xl font-extrabold tracking-[1.5px]" style={{ textShadow: '0 0 24px rgba(34,197,94,0.2), 0 0 8px rgba(34,197,94,0.1)' }}>
@@ -1375,7 +1376,7 @@ function App() {
             {/* Top accent line */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/70 to-transparent opacity-60" />
 
-            <div className="relative z-10 p-5 flex flex-col flex-1 space-y-4">
+            <div className="relative z-10 p-6 flex flex-col flex-1 space-y-4">
               {/* Header */}
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
@@ -1487,10 +1488,10 @@ function App() {
         )}
 
         {/* BIG METRIC CARDS ROW */}
-        <div className="mb-6 grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="mb-8 grid grid-cols-2 lg:grid-cols-5 gap-4">
 
           {/* Wind */}
-          <div className={`farmcast-metric-card p-5 ${windSpeedKmh > 25 ? 'farmcast-glow-red' : windSpeedKmh > 15 ? 'farmcast-glow-yellow' : 'farmcast-glow-green'}`}>
+          <div className={`farmcast-metric-card p-6 ${windSpeedKmh > 25 ? 'farmcast-glow-red' : windSpeedKmh > 15 ? 'farmcast-glow-yellow' : 'farmcast-glow-green'}`}>
             <div className="flex items-center justify-between mb-4">
               <Wind className={`w-5 h-5 ${getWindColor(windSpeedKmh)}`} />
               <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider ${windSpeedKmh > 25 ? 'bg-red-500/15 text-red-300 border border-red-500/25' : windSpeedKmh > 15 ? 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/25' : 'bg-green-500/15 text-green-300 border border-green-500/25'}`}>
@@ -1505,10 +1506,19 @@ function App() {
             {windGustKmh && (
               <div className="text-xs text-white/30 mt-1">Gusts {formatWind(windGustKmh, units.wind)}</div>
             )}
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <Sparkline
+                values={hourlyList.slice(0, 12).map((h: any) => h.wind_speed * 3.6)}
+                color={windSpeedKmh > 25 ? '#f87171' : windSpeedKmh > 15 ? '#fbbf24' : '#4ade80'}
+                width={100}
+                height={28}
+              />
+              <div className="text-[9px] text-white/30 mt-1">12hr trend</div>
+            </div>
           </div>
 
           {/* Rain */}
-          <div className={`farmcast-metric-card p-5 ${todayRainChance > 70 ? 'farmcast-glow-blue' : todayRainChance > 40 ? 'farmcast-glow-blue' : ''}`}>
+          <div className={`farmcast-metric-card p-6 ${todayRainChance > 70 ? 'farmcast-glow-blue' : todayRainChance > 40 ? 'farmcast-glow-blue' : ''}`}>
             <div className="flex items-center justify-between mb-4">
               <CloudRain className={`w-5 h-5 ${todayRainChance > 70 ? 'text-blue-400' : todayRainChance > 40 ? 'text-sky-400' : 'text-white/30'}`} />
               <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider ${todayRainChance > 70 ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : todayRainChance > 40 ? 'bg-sky-500/15 text-sky-300 border border-sky-500/25' : 'bg-white/[0.04] text-white/40 border border-white/[0.06]'}`}>
@@ -1520,10 +1530,19 @@ function App() {
               {todayRainChance}%
             </div>
             <div className="text-sm text-white/50 mt-2">{formatRain(todayExpectedRain, units.rain)} expected</div>
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <Sparkline
+                values={hourlyList.slice(0, 12).map((h: any) => h.pop * 100)}
+                color="#38bdf8"
+                width={100}
+                height={28}
+              />
+              <div className="text-[9px] text-white/30 mt-1">12hr probability</div>
+            </div>
           </div>
 
           {/* Delta T */}
-          <div className={`farmcast-metric-card p-5 ${deltaTCondition.rating === 'Excellent' ? 'farmcast-glow-green farmcast-deltat-glow' : deltaTCondition.rating === 'Poor' ? 'farmcast-glow-red' : 'farmcast-glow-yellow'}`}>
+          <div className={`farmcast-metric-card p-6 ${deltaTCondition.rating === 'Excellent' ? 'farmcast-glow-green farmcast-deltat-glow' : deltaTCondition.rating === 'Poor' ? 'farmcast-glow-red' : 'farmcast-glow-yellow'}`}>
             <div className="flex items-center justify-between mb-4">
               <Activity className={`w-5 h-5 ${getDeltaTIconColor(deltaTCondition.rating)}`} />
               <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider border ${deltaTColors.badge} ${deltaTCondition.rating === 'Excellent' ? 'farmcast-pulse-green' : ''}`}>
@@ -1534,10 +1553,24 @@ function App() {
             <div className={`text-[2.5rem] font-bold leading-none ${getDeltaTValueColor(deltaTCondition.rating)}`} style={{ letterSpacing: '-1px' }}>
               {deltaT.toFixed(1)}&deg;
             </div>
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <Sparkline
+                values={hourlyList.slice(0, 12).map((h: any) => {
+                  const t = h.temp;
+                  const rh = h.humidity;
+                  const wb = t * Math.atan(0.151977 * Math.sqrt(rh + 8.313659)) + Math.atan(t + rh) - Math.atan(rh - 1.676331) + 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh) - 4.686035;
+                  return t - wb;
+                })}
+                color={deltaTCondition.rating === 'Excellent' ? '#4ade80' : deltaTCondition.rating === 'Poor' ? '#f87171' : '#fbbf24'}
+                width={100}
+                height={28}
+              />
+              <div className="text-[9px] text-white/30 mt-1">12hr trend</div>
+            </div>
           </div>
 
           {/* Humidity */}
-          <div className="farmcast-metric-card p-5">
+          <div className="farmcast-metric-card p-6">
             <div className="flex items-center justify-between mb-4">
               <Droplets className="w-5 h-5 text-cyan-400" />
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider bg-white/[0.04] text-white/40 border border-white/[0.06]">
@@ -1549,10 +1582,19 @@ function App() {
               {humidity}%
             </div>
             <div className="text-sm text-white/50 mt-2">Dew point {formatTemp(dewpointC, units.temp)}</div>
+            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+              <Sparkline
+                values={hourlyList.slice(0, 12).map((h: any) => h.humidity)}
+                color="#22d3ee"
+                width={100}
+                height={28}
+              />
+              <div className="text-[9px] text-white/30 mt-1">12hr trend</div>
+            </div>
           </div>
 
           {/* ETo */}
-          <div className="farmcast-metric-card p-5 farmcast-glow-green">
+          <div className="farmcast-metric-card p-6 farmcast-glow-green">
             <div className="flex items-center justify-between mb-4">
               <Leaf className="w-5 h-5 text-emerald-400" />
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wider bg-emerald-900/20 text-emerald-300 border border-emerald-500/25">
@@ -1589,7 +1631,7 @@ function App() {
 
         {/* PREMIUM TEASER — shown after main cards so value lands first */}
         {!user && (
-          <div className="mb-5">
+          <div className="mb-7">
             <PremiumTeaser
               onSignUpClick={() => { setAuthMode('signup'); setShowAuthModal(true); }}
             />
@@ -1671,12 +1713,12 @@ function App() {
         })()}
 
         {/* UNDERSTANDING FARMCAST */}
-        <div className="mb-5">
+        <div className="mb-7">
           <UnderstandingFarmCast />
         </div>
 
         {/* CONNECT SENSORS CTA */}
-        <div className="mb-5">
+        <div className="mb-7">
           <button
             onClick={() => setShowConnectSensors(true)}
             className="w-full rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl p-5 flex items-center justify-between hover:bg-slate-800/70 hover:border-green-500/30 transition-all duration-200 group"
@@ -1697,7 +1739,7 @@ function App() {
         </div>
 
         {/* ACTIONABLE RECOMMENDATIONS */}
-        <div id="actionable-recommendations" className="mb-5">
+        <div id="actionable-recommendations" className="mb-7">
           <ActionableRecommendations
             locationName={`${location.name}${location.state ? ', ' + location.state : ''}`}
             windSpeedKmh={windSpeedKmh}
@@ -1721,15 +1763,15 @@ function App() {
         </div>
 
         {/* HOURLY FORECAST */}
-        <div className="mb-5">
+        <div className="mb-7">
           <HourlyForecast forecastList={hourlyList} currentWeather={current} units={units} />
         </div>
 
         {/* 5-DAY FORECAST */}
-        <div className="mb-5 rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white tracking-tight">5-Day Forecast</h2>
-            <span className="text-xs text-slate-500 uppercase tracking-wider">Spray windows & conditions</span>
+        <div className="mb-7 rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-2xl overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-700/50 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white tracking-tight">5-Day Forecast</h2>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Spray windows & conditions</span>
           </div>
 
           <div className="p-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -1799,7 +1841,7 @@ function App() {
         </div>
 
         {/* PROBE SECTION */}
-        <div id="probe-section" className="mt-5 mb-5 relative">
+        <div id="probe-section" className="mt-6 mb-7 relative">
           {(!user || trialExpired) && <LockedOverlay label="Soil Probe Connection" onSubscribe={() => { setAuthMode('signup'); setShowAuthModal(true); }} />}
           <div className={(!user || trialExpired) ? 'pointer-events-none' : ''}>
             <ProbeConnectionManager />
@@ -1807,7 +1849,7 @@ function App() {
         </div>
 
         {/* RADAR */}
-        <div id="radar-section" className="mb-5">
+        <div id="radar-section" className="mb-7">
           <RainRadar
             lat={location.lat}
             lon={location.lon}
@@ -1815,7 +1857,7 @@ function App() {
           />
         </div>
 
-        <div className="mb-5 relative">
+        <div className="mb-7 relative">
           {(!user || trialExpired) && <LockedOverlay label="30-Day Extended Forecast" onSubscribe={() => { setAuthMode('signup'); setShowAuthModal(true); }} />}
           <div className={(!user || trialExpired) ? 'pointer-events-none' : ''}>
             <ExtendedForecast location={location} />
@@ -1823,13 +1865,13 @@ function App() {
         </div>
 
         {/* PLANTING + IRRIGATION */}
-        <div className="mt-5 relative">
+        <div className="mt-6 relative">
           {(!user || trialExpired) && <LockedOverlay label="Planting & Irrigation Insights" onSubscribe={() => { setAuthMode('signup'); setShowAuthModal(true); }} />}
           <div className={`grid grid-cols-1 lg:grid-cols-2 gap-5 ${(!user || trialExpired) ? 'pointer-events-none' : ''}`}>
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
+              <div className="px-6 py-5 border-b border-slate-700/50 flex items-center gap-2">
                 <Sprout className="w-5 h-5 text-green-400" />
-                <h3 className="text-base font-bold text-white">Best Planting Days</h3>
+                <h3 className="text-lg font-bold text-white">Best Planting Days</h3>
                 <InfoButton onClick={() => setExplainerOpen('planting')} />
               </div>
               <div className="p-4">
@@ -1866,9 +1908,9 @@ function App() {
             </div>
 
             <div className="rounded-2xl border border-slate-700/60 bg-slate-900/70 backdrop-blur-sm shadow-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center gap-2">
+              <div className="px-6 py-5 border-b border-slate-700/50 flex items-center gap-2">
                 <Droplets className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-bold text-white">Irrigation Schedule</h3>
+                <h3 className="text-lg font-bold text-white">Irrigation Schedule</h3>
                 <InfoButton onClick={() => setExplainerOpen('irrigation')} />
               </div>
               <div className="p-4">
@@ -1900,7 +1942,7 @@ function App() {
           </div>
         </div>
 
-        <footer className="mt-8 pb-6">
+        <footer className="mt-10 pb-8">
           <div className="rounded-2xl border border-slate-700/30 bg-slate-900/40 backdrop-blur-sm px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-7 h-7 bg-green-700/40 rounded-lg border border-green-600/30">

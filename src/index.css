@@ -5,6 +5,16 @@
 /* ── Premium Font Stack ─────────────────────────────────────── */
 :root {
   --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fc-spacing-xs: 4px;
+  --fc-spacing-sm: 8px;
+  --fc-spacing-md: 16px;
+  --fc-spacing-lg: 24px;
+  --fc-spacing-xl: 32px;
+  --fc-spacing-2xl: 48px;
+  --fc-radius: 18px;
+  --fc-radius-sm: 12px;
+  --fc-radius-xs: 8px;
+  --fc-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body {
@@ -17,18 +27,18 @@ body {
 
 /* ── Typography Hierarchy ──────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
-.farmcast-heading-xl { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
-.farmcast-heading-lg { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
-.farmcast-heading-md { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.015em; line-height: 1.3; }
-.farmcast-heading-sm { font-size: 0.875rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.4; }
-.farmcast-body { font-size: 0.875rem; font-weight: 400; letter-spacing: 0; line-height: 1.5; }
-.farmcast-caption { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.01em; line-height: 1.4; }
-.farmcast-label { font-size: 0.625rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.3; }
-.farmcast-data { font-size: 1.125rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.farmcast-heading-xl { font-size: 2.75rem; font-weight: 800; letter-spacing: -0.035em; line-height: 1.05; }
+.farmcast-heading-lg { font-size: 1.625rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; }
+.farmcast-heading-md { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.25; }
+.farmcast-heading-sm { font-size: 0.9rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
+.farmcast-body { font-size: 0.875rem; font-weight: 400; letter-spacing: 0; line-height: 1.6; }
+.farmcast-caption { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.01em; line-height: 1.5; color: rgba(255,255,255,0.5); }
+.farmcast-label { font-size: 0.625rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.3; }
+.farmcast-data { font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
 
 /* ── Page Background ────────────────────────────────────────── */
 .farmcast-bg {
@@ -67,134 +77,137 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Card System ────────────────────────────────────────────── */
 .farmcast-card {
-  background: rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  transition: all 0.2s ease-in-out;
+  border-radius: var(--fc-radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: transform var(--fc-transition), box-shadow var(--fc-transition), border-color var(--fc-transition);
 }
 
 .farmcast-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .farmcast-hero-glow {
   box-shadow:
-    0 10px 35px rgba(0, 0, 0, 0.45),
-    0 0 50px -15px rgba(34, 197, 94, 0.1),
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    0 0 60px -15px rgba(34, 197, 94, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-metric-card {
-  background: rgba(255, 255, 255, 0.035);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 16px;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  transition: all 0.2s ease-in-out;
+  border-radius: var(--fc-radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: transform var(--fc-transition), box-shadow var(--fc-transition), border-color var(--fc-transition);
 }
 
 .farmcast-metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Status glow variants */
 .farmcast-glow-green {
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  border-color: rgba(34, 197, 94, 0.18);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 16px -6px rgba(34, 197, 94, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(34, 197, 94, 0.15);
 }
 
 .farmcast-glow-yellow {
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(250, 204, 21, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  border-color: rgba(250, 204, 21, 0.18);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 16px -6px rgba(250, 204, 21, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(250, 204, 21, 0.15);
 }
 
 .farmcast-glow-red {
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  border-color: rgba(239, 68, 68, 0.18);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 16px -6px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(239, 68, 68, 0.15);
 }
 
 .farmcast-glow-blue {
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45), 0 0 20px -4px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  border-color: rgba(56, 189, 248, 0.18);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 16px -6px rgba(56, 189, 248, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-color: rgba(56, 189, 248, 0.15);
 }
 
 .farmcast-spray-glow-good {
   box-shadow:
-    0 10px 35px rgba(0, 0, 0, 0.45),
-    0 0 35px rgba(34, 197, 94, 0.28),
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(34, 197, 94, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-spray-glow-moderate {
   box-shadow:
-    0 10px 35px rgba(0, 0, 0, 0.45),
-    0 0 35px rgba(250, 204, 21, 0.22),
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(250, 204, 21, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-deltat-glow {
   box-shadow:
-    0 10px 35px rgba(0, 0, 0, 0.45),
-    0 0 20px -4px rgba(34, 197, 94, 0.2),
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 16px -6px rgba(34, 197, 94, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-card-glow {
   box-shadow:
-    0 10px 35px rgba(0, 0, 0, 0.45),
+    0 10px 40px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .farmcast-logo-glow {
   box-shadow:
-    0 6px 20px -4px rgba(34, 197, 94, 0.35),
-    0 0 12px rgba(34, 197, 94, 0.2);
+    0 4px 16px -4px rgba(34, 197, 94, 0.25),
+    0 0 8px rgba(34, 197, 94, 0.12);
 }
 
 /* ── Nav Button System ──────────────────────────────────────── */
 .farmcast-nav-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.035);
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.875rem;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s ease-in-out;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all var(--fc-transition);
 }
 
 .farmcast-nav-btn:hover {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.14);
   color: #fff;
-  transform: scale(1.02);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .farmcast-nav-btn-primary {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.25);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.15);
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.1);
 }
 
 .farmcast-nav-btn-primary:hover {
-  background: rgba(34, 197, 94, 0.3);
-  border-color: rgba(34, 197, 94, 0.5);
-  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.25);
+  background: rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.4);
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
 }
 
 /* ── Global Color Overrides ─────────────────────────────────── */
@@ -260,29 +273,59 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Enhanced Glassmorphism ─────────────────────────────────── */
 .farmcast-glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--fc-radius);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+  transition: transform var(--fc-transition), box-shadow var(--fc-transition);
+}
+
+.farmcast-glass:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .farmcast-glass-highlight {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--fc-radius);
   box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.45),
-    0 0 1px rgba(255, 255, 255, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 0 20px rgba(34, 197, 94, 0.02);
+    0 10px 40px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 20px rgba(34, 197, 94, 0.015);
+  transition: transform var(--fc-transition), box-shadow var(--fc-transition);
 }
+
+/* ── Enterprise Tile System ────────────────────────────────── */
+.farmcast-tile {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--fc-radius-sm);
+  padding: 1.25rem;
+  transition: all var(--fc-transition);
+}
+
+.farmcast-tile:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.09);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Trend Line ────────────────────────────────────────────── */
+.farmcast-trend-up { color: #4ade80; }
+.farmcast-trend-down { color: #f87171; }
+.farmcast-trend-flat { color: rgba(255, 255, 255, 0.4); }
 
 /* ── Micro-animations ──────────────────────────────────────── */
 @keyframes farmcast-fade-in {
