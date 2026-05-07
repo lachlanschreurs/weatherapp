@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CloudRain, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight, Clock, SprayCan, UserCheck } from 'lucide-react';
+import { Cloud, CloudRain, CloudSun, Droplets, Wind, Sun, CloudDrizzle, Zap, Sprout, Calendar, RefreshCw, Activity, LogIn, AlertTriangle, Leaf, Snowflake, Thermometer, Map, MapPin, Database, Navigation, Wifi, Lock, ChevronRight, Clock, SprayCan, UserCheck } from 'lucide-react';
 import { getSprayCondition, calculateDeltaT, getDeltaTCondition, getDeltaTCardColors, getDeltaTIconColor, getDeltaTValueColor } from './utils/deltaT';
 import { generateWeatherAlerts } from './utils/weatherAlerts';
 import { findBestSprayWindow } from './utils/sprayWindow';
@@ -577,16 +577,16 @@ function App() {
           {/* Feature highlights */}
           <div className="grid grid-cols-3 gap-3 mb-8 farmcast-fade-in-delay-1">
             <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+              <CloudSun className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
+              <p className="text-[10px] text-slate-300 font-medium">Weather Forecasts</p>
+            </div>
+            <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
               <Wind className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
               <p className="text-[10px] text-slate-300 font-medium">Spray Windows</p>
             </div>
             <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <Activity className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
-              <p className="text-[10px] text-slate-300 font-medium">Disease Alerts</p>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-              <Droplets className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
-              <p className="text-[10px] text-slate-300 font-medium">Rain Forecasts</p>
+              <Leaf className="w-5 h-5 text-green-400 mx-auto mb-1.5" />
+              <p className="text-[10px] text-slate-300 font-medium">Agronomy Advisory</p>
             </div>
           </div>
 
